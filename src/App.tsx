@@ -24,6 +24,7 @@ const AppContent = () => {
       {/* Public routes */}
       <Route path="/" element={<Index />} />
       <Route path="/listings" element={<Listings />} />
+      <Route path="/listings/filter/:filter" element={<Listings />} />
       <Route path="/listings/:slug" element={<ListingDetail />} />
       <Route path="/dealers" element={<Dealers />} />
       <Route path="/types/:typeSlug" element={<TypeDetail />} />

@@ -1,11 +1,9 @@
 import {
   Select,
-  SelectContent,
-  SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Link } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Header } from "@/components/common/Header";
 import { Navbar } from "@/components/common/Navbar";
@@ -14,9 +12,9 @@ import { Footer } from "@/components/common/Footer";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { MapPin, Share2 } from "lucide-react";
-import { useSearchParams } from "react-router-dom";
 import { SharePreview } from "@/components/common/SharePreview";
 import { Car } from "@/types/car";
+import ListingSubFilter from "@/components/common/ListingSubFilter";
 
 const fetchCars = async (params: URLSearchParams): Promise<Car[]> => {
   const response = await fetch(
@@ -34,17 +32,58 @@ const fetchCars = async (params: URLSearchParams): Promise<Car[]> => {
 };
 
 const Listings = () => {
-  const [sortBy, setSortBy] = useState("date-desc");
+  const navigate = useNavigate();
+  const { filter } = useParams<{ filter: string }>();
   const [searchParams] = useSearchParams();
-  const [selectedCar, setSelectedCar] = useState<Car | null>(null);
-  const [showSharePreview, setShowSharePreview] = useState(false);
+
+  // Map URL filter param to internal sortBy state
+  const getSortByFromFilter = (filter?: string) => {
+    switch (filter) {
+      case "newestfirst":
+        return "date-desc";
+      case "oldestfirst":
+        return "date-asc";
+      case "price-low-high":
+        return "price-asc";
+      case "price-high-low":
+        return "price-desc";
+      default:
+        return "date-desc";
+    }
+  };
+
+  // Map sortBy state back to filter param for <Select> value
+  const getFilterFromSortBy = (sortBy: string) => {
+    switch (sortBy) {
+      case "date-desc":
+        return "newestfirst";
+      case "date-asc":
+        return "oldestfirst";
+      case "price-asc":
+        return "price-low-high";
+      case "price-desc":
+        return "price-high-low";
+      default:
+        return "newestfirst";
+    }
+  };
+
+  const [sortBy, setSortBy] = useState(getSortByFromFilter(filter));
+
+  useEffect(() => {
+    setSortBy(getSortByFromFilter(filter));
+  }, [filter]);
+
+  // When select value changes, navigate to new filter route
+  const handleSortChange = (value: string) => {
+    navigate(`/listings/filter/${value}`);
+  };
 
   const { data: cars = [], isLoading } = useQuery({
     queryKey: ["cars", searchParams.toString()],
     queryFn: () => fetchCars(searchParams),
   });
 
-  // Filter cars based on search query
   const searchQuery = searchParams.get("search")?.toLowerCase() || "";
   const filteredCars = searchQuery
     ? cars.filter(
@@ -69,6 +108,9 @@ const Listings = () => {
     }
   });
 
+  const [selectedCar, setSelectedCar] = useState<Car | null>(null);
+  const [showSharePreview, setShowSharePreview] = useState(false);
+
   const handleShare = (car: Car, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -92,16 +134,14 @@ const Listings = () => {
                   ? `Search Results for "${searchQuery}"`
                   : "All Listings"}
               </h1>
-              <Select value={sortBy} onValueChange={setSortBy}>
+              <Select
+                value={getFilterFromSortBy(sortBy)}
+                onValueChange={handleSortChange}
+              >
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="date-desc">Newest First</SelectItem>
-                  <SelectItem value="date-asc">Oldest First</SelectItem>
-                  <SelectItem value="price-asc">Price: Low to High</SelectItem>
-                  <SelectItem value="price-desc">Price: High to Low</SelectItem>
-                </SelectContent>
+                <ListingSubFilter />
               </Select>
             </div>
 
