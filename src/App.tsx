@@ -13,6 +13,7 @@ import PrivateRoute from "./components/PrivateRoute";
 import NotFound from "./pages/NotFound";
 import AdminPortal from "./pages/AdminPortal";
 import { HelmetProvider } from "react-helmet-async";
+import FilteredListings from "./pages/filteredListings";
 
 const queryClient = new QueryClient();
 
@@ -24,7 +25,7 @@ const AppContent = () => {
       {/* Public routes */}
       <Route path="/" element={<Index />} />
       <Route path="/listings" element={<Listings />} />
-      <Route path="/listings/filter/:filter" element={<Listings />} />
+      <Route path="/listings/filter/:filter" element={<FilteredListings />} />
       <Route path="/listings/:slug" element={<ListingDetail />} />
       <Route path="/dealers" element={<Dealers />} />
       <Route path="/types/:typeSlug" element={<TypeDetail />} />
