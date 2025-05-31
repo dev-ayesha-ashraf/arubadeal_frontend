@@ -264,8 +264,8 @@ export const CarFilter = () => {
   };
 
   return (
-    <div className="bg-white p-8 rounded-lg shadow-lg max-w-7xl mx-auto -mt-20 relative z-10">
-      <div className="flex flex-wrap justify-between items-center mb-10">
+    <div className="bg-white px-8 py-4 rounded-lg shadow-lg max-w-7xl mx-auto -mt-30 relative z-10">
+      <div className="flex flex-wrap justify-between items-center">
         {/* Filter Buttons */}
         <div className="flex flex-wrap gap-4 mb-4 md:mb-0">
           <button

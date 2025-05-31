@@ -5,6 +5,13 @@ import { ArrowLeft, ArrowRight, MapPin } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useApi } from "@/hooks/useApi";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 
 const filters = ["All", "Best Seller", "New Arrival", "Popular", "Used Cars"];
 
@@ -159,8 +166,8 @@ export const OurCars = () => {
                   variant={selectedFilter === filter ? "default" : "destructive"}
                   onClick={() => handleFilterChange(filter)}
                   className={`transition-colors ${selectedFilter === filter
-                      ? "bg-dealership-primary text-white hover:bg-dealership-primary/90"
-                      : ""
+                    ? "bg-dealership-primary text-white hover:bg-dealership-primary/90"
+                    : ""
                     }`}
                 >
                   {filter}
@@ -170,19 +177,24 @@ export const OurCars = () => {
 
 
             {/* Mobile Filters */}
-            <div className="md:hidden flex flex-col w-full gap-2">
-              {filters.map((filter) => (
-                <button
-                  key={filter}
-                  onClick={() => handleFilterChange(filter)}
-                  className={`text-left px-4 py-2 transition-colors rounded-md ${selectedFilter === filter
-                      ? "bg-dealership-primary text-white"
-                      : "text-gray-600 hover:bg-gray-100"
-                    }`}
-                >
-                  {filter}
-                </button>
-              ))}
+            <div className="md:hidden w-full">
+              <Select onValueChange={handleFilterChange} value={selectedFilter}>
+                <SelectTrigger className="w-full px-4 py-2 rounded-md border text-gray-700 hover:bg-gray-100 transition-colors duration-150 font-medium">
+                  <SelectValue placeholder="Select a filter" />
+                </SelectTrigger>
+                <SelectContent className="bg-white w-3/4">
+                  {filters.map((filter) => (
+                    <SelectItem
+                      key={filter}
+                      value={filter}
+                      className={`text-gray-700 hover:bg-[#EADDCA] hover:text-black transition-colors duration-150 cursor-pointer font-medium ${selectedFilter === filter ? "bg-dealership-primary text-white" : ""
+                        }`}
+                    >
+                      {filter}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Navigation Arrows - Desktop (Right) & Mobile (Left) */}
@@ -207,71 +219,59 @@ export const OurCars = () => {
           </div>
         </div>
 
-        {/* Cars Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {isLoading ? (
-            <div className="col-span-full flex justify-center items-center py-12">
-              <div className="text-lg">Loading...</div>
+       <div className="grid grid-cols-3 gap-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 sm:gap-6">
+  {isLoading ? (
+    <div className="col-span-full flex justify-center items-center py-8 sm:py-12">
+      <div className="text-xs sm:text-lg">Loading...</div>
+    </div>
+  ) : filteredCars.length === 0 ? (
+    <div className="col-span-full flex justify-center items-center py-8 sm:py-12">
+      <div className="text-xs sm:text-lg">No cars found for this category</div>
+    </div>
+  ) : (
+    getVisibleCars().map((car) => (
+      <Link
+        key={car._id}
+        to={`/listings/${car.slug}`}
+        onClick={() => trackCarView(car._id)}
+      >
+        <Card className="overflow-hidden hover:shadow-md transition-shadow rounded-sm sm:rounded-md">
+          <div className="relative w-full h-16 sm:h-48">
+            <img
+              src={`${import.meta.env.VITE_MEDIA_URL}/${car.image}`}
+              alt={car.make}
+              className="w-full h-full object-cover"
+            />
+            {car.status === 3 && (
+              <div className="absolute top-0.5 right-0.5 bg-red-600 text-white px-1 rounded text-[9px] font-semibold z-10 sm:top-2 sm:right-2 sm:px-3 sm:py-1 sm:text-sm">
+                Sold
+              </div>
+            )}
+          </div>
+          <CardContent className="p-1 sm:p-4">
+            <h3 className="text-[11px] font-semibold text-dealership-navy truncate sm:text-xl">
+              {car.title}
+            </h3>
+            <p className="text-xs font-bold text-dealership-primary mt-0.5 sm:text-2xl sm:mt-2">
+              AWG {Number(car.price).toLocaleString()}
+            </p>
+            <div className="flex items-center text-[9px] text-gray-600 mt-0.5 truncate sm:text-sm">
+              <MapPin size={10} className="mr-0.5 sm:mr-1" />
+              <span>{car.address}</span>
             </div>
-          ) : filteredCars.length === 0 ? (
-            <div className="col-span-full flex justify-center items-center py-12">
-              <div className="text-lg">No cars found for this category</div>
+            <div className="mt-1 flex flex-wrap gap-0.5 text-[8px] text-gray-700 sm:gap-2 sm:text-sm">
+              <span className="px-1 py-0.5 bg-gray-100 rounded">{car.transmission}</span>
+              <span className="px-1 py-0.5 bg-gray-100 rounded">{car.mileage.toLocaleString()} mi</span>
+              <span className="px-1 py-0.5 bg-gray-100 rounded">{car.make}</span>
+              {car.model && <span className="px-1 py-0.5 bg-gray-100 rounded">{car.model}</span>}
             </div>
-          ) : (
-            getVisibleCars().map((car) => (
-              <Link
-                key={car._id}
-                to={`/listings/${car.slug}`}  
-                onClick={() => trackCarView(car._id)}
-              >
-                <Card className="overflow-hidden hover:shadow-lg transition-shadow">
-                  <div className="relative w-full h-48">
-                    <img
-                      src={`${import.meta.env.VITE_MEDIA_URL}/${car.image}`}
-                      alt={car.make}
-                      className="w-full h-full object-cover"
-                    />
-                    {car.status === 3 && (
-                      <div className="absolute top-2 right-2 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-medium z-10">
-                        Sold
-                      </div>
-                    )}
-                  </div>
-                  <CardContent className="p-4">
-                    <div className="p-4">
-                      <h3 className="text-xl font-semibold text-dealership-navy">
-                        {car.title}
-                      </h3>
-                      <p className="text-2xl font-bold text-dealership-primary mt-2">
-                        AWG {Number(car.price).toLocaleString()}
-                      </p>
-                      <div className="flex items-center text-gray-600 mt-2">
-                        <MapPin size={16} className="mr-1" />
-                        <span className="text-sm">{car.address}</span>
-                      </div>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <span className="px-2 py-1 bg-gray-100 text-sm rounded">
-                          {car.transmission}
-                        </span>
-                        <span className="px-2 py-1 bg-gray-100 text-sm rounded">
-                          {car.mileage.toLocaleString()} mi
-                        </span>
-                        <span className="px-2 py-1 bg-gray-100 text-sm rounded">
-                          {car.make}
-                        </span>
-                        {car.model && (
-                          <span className="px-2 py-1 bg-gray-100 text-sm rounded">
-                            {car.model}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))
-          )}
-        </div>
+          </CardContent>
+        </Card>
+      </Link>
+    ))
+  )}
+</div>
+
       </div>
     </section>
   );
