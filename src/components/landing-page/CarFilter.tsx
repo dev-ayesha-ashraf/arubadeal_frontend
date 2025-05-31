@@ -264,176 +264,185 @@ export const CarFilter = () => {
   };
 
   return (
-    <div className="bg-white px-8 py-4 rounded-lg shadow-lg max-w-7xl mx-auto -mt-30 relative z-10">
+    <div className="bg-white px-4 sm:px-8 py-2 sm:py-4 rounded-lg shadow-lg max-w-7xl mx-auto -mt-30 relative z-10">
+
       <div className="flex flex-wrap justify-between items-center">
         {/* Filter Buttons */}
         <div className="flex flex-wrap gap-4 mb-4 md:mb-0">
           <button
             key="all"
             onClick={() => setSelectedFilter("all")}
-            className={`px-3 py-2 rounded-full capitalize ${selectedFilter === "all"
-              ? "bg-dealership-primary text-white"
-              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            className={`text-xs px-2 py-1 rounded-full sm:text-sm sm:px-3 sm:py-2 sm:rounded-full capitalize ${selectedFilter === "all"
+                ? "bg-dealership-primary text-white"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
           >
             all
           </button>
 
+
           {filteredBadges?.map((badge) => (
             <button
               key={badge._id}
               onClick={() => setSelectedFilter(badge._id)}
-              className={`px-3 py-2 rounded-full capitalize ${selectedFilter === badge._id
+              className={`text-xs px-2 py-1 rounded-full sm:text-sm sm:px-3 sm:py-2 sm:rounded-full capitalize ${selectedFilter === badge._id
                 ? "bg-dealership-primary text-white"
-                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
             >
               {badge.name}
             </button>
+
+
+
           ))}
         </div>
         <div className="flex items-center gap-4">
           {/* Listings Count */}
-          <div className="text-lg font-semibold text-dealership-primary">
+          <div className="text-sm sm:text-lg font-semibold text-dealership-primary">
             {totalListings.toLocaleString()} Cars Available
           </div>
-       
 
-        {/* Filters popup */}
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button variant="outline" size="sm" className="text-xl font-semibold text-dealership-primary border-2 border-dealership-primary px-6 py-2 hover:bg-dealership-primary hover:text-white transition-all duration-200 shadow-sm hover:shadow-md">
-              Filter
-            </Button>
-          </DialogTrigger>
 
-          <DialogContent className="sm:max-w-2xl max-w-full">
-            <DialogHeader className="pb-4">
-              <DialogTitle className="text-xl font-semibold">Filter Cars</DialogTitle>
-            </DialogHeader>
-
-            <div className="flex flex-col space-y-4">
-              {/* Make */}
-              <Select
-                onValueChange={(value) =>
-                  setFilters((prev) => ({ ...prev, make: value, model: undefined }))
-                }
-                value={filters.make}
-              >
-                <SelectTrigger className="w-full bg-white">
-                  <SelectValue placeholder="Select Make" />
-                </SelectTrigger>
-                <SelectContent className="bg-white w-[44%] max-h-60 overflow-y-auto rounded-2xl shadow-xl ring-1 ring-gray-200 focus:outline-none transition-all duration-200 py-2 scrollbar-thin scrollbar-thumb-gray-300">
-
-                  {dropdowns?.makes?.map((make) => (
-                    <SelectItem key={make._id} value={make._id} className="text-gray-700 hover:bg-[#EADDCA]
-  hover:text-black transition-colors duration-150 cursor-pointer font-medium">
-                      {make.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {/* Model */}
-              <Select
-                onValueChange={(value) =>
-                  setFilters((prev) => ({ ...prev, model: value }))
-                }
-                value={filters.model}
-              >
-                <SelectTrigger className="w-full bg-white">
-                  <SelectValue placeholder="Select Model" />
-                </SelectTrigger>
-                <SelectContent className="bg-white w-[44%] max-h-60 overflow-y-auto rounded-2xl shadow-xl ring-1 ring-gray-200 focus:outline-none transition-all duration-200 py-2 scrollbar-thin scrollbar-thumb-gray-300">
-                  {modelOptions.length === 0 ? (
-                    <SelectItem value="no-models" disabled className="text-gray-700 hover:bg-[#EADDCA]
-  hover:text-black transition-colors duration-150 cursor-pointer font-medium">
-                      {isLoadingModels ? "Loading models..." : "No models available"}
-                    </SelectItem>
-                  ) : (
-                    modelOptions.map((model) => (
-                      <SelectItem key={model} value={model} className="text-gray-700 hover:bg-[#EADDCA]
-  hover:text-black transition-colors duration-150 cursor-pointer font-medium">
-                        {model}
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
-
-              {/* Type */}
-              <Select
-                onValueChange={(value) =>
-                  setFilters((prev) => ({ ...prev, type: value }))
-                }
-                value={filters.type}
-              >
-                <SelectTrigger className="w-full bg-white">
-                  <SelectValue placeholder="Select Type" />
-                </SelectTrigger>
-                <SelectContent className="bg-white w-[44%] max-h-60 overflow-y-auto rounded-2xl shadow-xl ring-1 ring-gray-200 focus:outline-none transition-all duration-200 py-2 scrollbar-thin scrollbar-thumb-gray-300">
-                  {dropdowns?.types?.map((type) => (
-                    <SelectItem key={type._id} value={type._id} className="text-gray-700 hover:bg-[#EADDCA]
-  hover:text-black transition-colors duration-150 cursor-pointer font-medium">
-                      {type.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {/* Price Range */}
-              <Select
-                onValueChange={(value) =>
-                  setFilters((prev) => ({ ...prev, priceRange: value }))
-                }
-                value={filters.priceRange}
-              >
-                <SelectTrigger className="w-full bg-white">
-                  <SelectValue placeholder="Price Range" />
-                </SelectTrigger>
-                <SelectContent className="bg-white w-[44%] max-h-60 overflow-y-auto rounded-2xl shadow-xl ring-1 ring-gray-200 focus:outline-none transition-all duration-200 py-2 scrollbar-thin scrollbar-thumb-gray-300">
-                  {dropdowns?.prices?.map((price) => (
-                    <SelectItem key={price} value={price.split("-").at(-1)} className="text-gray-700 hover:bg-[#EADDCA]
-  hover:text-black transition-colors duration-150 cursor-pointer font-medium">
-                      {price}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {/* Location */}
-              <Select
-                onValueChange={(value) =>
-                  setFilters((prev) => ({ ...prev, location: value }))
-                }
-                value={filters.location}
-              >
-                <SelectTrigger className="w-full bg-white">
-                  <SelectValue placeholder="Location" />
-                </SelectTrigger>
-                <SelectContent className="bg-white w-[44%] max-h-60 overflow-y-auto rounded-2xl shadow-xl ring-1 ring-gray-200 focus:outline-none transition-all duration-200 py-2 scrollbar-thin scrollbar-thumb-gray-300">
-                  {dropdowns?.locations?.map((location) => (
-                    <SelectItem key={location} value={location} className="text-gray-700 hover:bg-[#EADDCA]
-  hover:text-black transition-colors duration-150 cursor-pointer font-medium">
-                      {location}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              {/* Search Button */}
+          {/* Filters popup */}
+          <Dialog>
+            <DialogTrigger asChild>
               <Button
-                onClick={handleSearch}
-                className="w-full bg-gradient-to-r from-dealership-primary/80 to-dealership-primary/100 py-6 text-lg"
+                variant="outline"
+                size="sm"
+                className="text-sm sm:text-xl font-semibold text-dealership-primary border-2 border-dealership-primary px-3 py-1 sm:px-6 sm:py-2 hover:bg-dealership-primary hover:text-white transition-all duration-200 shadow-sm hover:shadow-md"
               >
-                <Search className="w-5 h-5 mr-2" />
-                Search Cars
+                Filter
               </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+
+            <DialogContent className="sm:max-w-2xl max-w-full">
+              <DialogHeader className="pb-4">
+                <DialogTitle className="text-xl font-semibold">Filter Cars</DialogTitle>
+              </DialogHeader>
+
+              <div className="flex flex-col space-y-4">
+                {/* Make */}
+                <Select
+                  onValueChange={(value) =>
+                    setFilters((prev) => ({ ...prev, make: value, model: undefined }))
+                  }
+                  value={filters.make}
+                >
+                  <SelectTrigger className="w-full bg-white">
+                    <SelectValue placeholder="Select Make" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white w-[44%] max-h-60 overflow-y-auto rounded-2xl shadow-xl ring-1 ring-gray-200 focus:outline-none transition-all duration-200 py-2 scrollbar-thin scrollbar-thumb-gray-300">
+
+                    {dropdowns?.makes?.map((make) => (
+                      <SelectItem key={make._id} value={make._id} className="text-gray-700 hover:bg-[#EADDCA]
+  hover:text-black transition-colors duration-150 cursor-pointer font-medium">
+                        {make.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {/* Model */}
+                <Select
+                  onValueChange={(value) =>
+                    setFilters((prev) => ({ ...prev, model: value }))
+                  }
+                  value={filters.model}
+                >
+                  <SelectTrigger className="w-full bg-white">
+                    <SelectValue placeholder="Select Model" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white w-[44%] max-h-60 overflow-y-auto rounded-2xl shadow-xl ring-1 ring-gray-200 focus:outline-none transition-all duration-200 py-2 scrollbar-thin scrollbar-thumb-gray-300">
+                    {modelOptions.length === 0 ? (
+                      <SelectItem value="no-models" disabled className="text-gray-700 hover:bg-[#EADDCA]
+  hover:text-black transition-colors duration-150 cursor-pointer font-medium">
+                        {isLoadingModels ? "Loading models..." : "No models available"}
+                      </SelectItem>
+                    ) : (
+                      modelOptions.map((model) => (
+                        <SelectItem key={model} value={model} className="text-gray-700 hover:bg-[#EADDCA]
+  hover:text-black transition-colors duration-150 cursor-pointer font-medium">
+                          {model}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+
+                {/* Type */}
+                <Select
+                  onValueChange={(value) =>
+                    setFilters((prev) => ({ ...prev, type: value }))
+                  }
+                  value={filters.type}
+                >
+                  <SelectTrigger className="w-full bg-white">
+                    <SelectValue placeholder="Select Type" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white w-[44%] max-h-60 overflow-y-auto rounded-2xl shadow-xl ring-1 ring-gray-200 focus:outline-none transition-all duration-200 py-2 scrollbar-thin scrollbar-thumb-gray-300">
+                    {dropdowns?.types?.map((type) => (
+                      <SelectItem key={type._id} value={type._id} className="text-gray-700 hover:bg-[#EADDCA]
+  hover:text-black transition-colors duration-150 cursor-pointer font-medium">
+                        {type.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {/* Price Range */}
+                <Select
+                  onValueChange={(value) =>
+                    setFilters((prev) => ({ ...prev, priceRange: value }))
+                  }
+                  value={filters.priceRange}
+                >
+                  <SelectTrigger className="w-full bg-white">
+                    <SelectValue placeholder="Price Range" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white w-[44%] max-h-60 overflow-y-auto rounded-2xl shadow-xl ring-1 ring-gray-200 focus:outline-none transition-all duration-200 py-2 scrollbar-thin scrollbar-thumb-gray-300">
+                    {dropdowns?.prices?.map((price) => (
+                      <SelectItem key={price} value={price.split("-").at(-1)} className="text-gray-700 hover:bg-[#EADDCA]
+  hover:text-black transition-colors duration-150 cursor-pointer font-medium">
+                        {price}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {/* Location */}
+                <Select
+                  onValueChange={(value) =>
+                    setFilters((prev) => ({ ...prev, location: value }))
+                  }
+                  value={filters.location}
+                >
+                  <SelectTrigger className="w-full bg-white">
+                    <SelectValue placeholder="Location" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white w-[44%] max-h-60 overflow-y-auto rounded-2xl shadow-xl ring-1 ring-gray-200 focus:outline-none transition-all duration-200 py-2 scrollbar-thin scrollbar-thumb-gray-300">
+                    {dropdowns?.locations?.map((location) => (
+                      <SelectItem key={location} value={location} className="text-gray-700 hover:bg-[#EADDCA]
+  hover:text-black transition-colors duration-150 cursor-pointer font-medium">
+                        {location}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {/* Search Button */}
+                <Button
+                  onClick={handleSearch}
+                  className="w-full bg-gradient-to-r from-dealership-primary/80 to-dealership-primary/100 py-6 text-lg"
+                >
+                  <Search className="w-5 h-5 mr-2" />
+                  Search Cars
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
- </div>
 
     </div>
   );
