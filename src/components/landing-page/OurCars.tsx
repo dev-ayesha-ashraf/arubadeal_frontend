@@ -152,14 +152,15 @@ export const OurCars = () => {
     (selectedFilter === "Used Cars" && isUsedCarsLoading);
 
   return (
- <section className="pb-4 pt-2 sm:py-16 bg-dealership-silver">
+    <section className="pb-4 pt-2 sm:py-16 bg-dealership-silver">
 
       <div className="container mx-auto">
-       <div className="flex flex-col gap-1 sm:gap-6 mb-4 sm:mb-8">
+        <div className="flex flex-col gap-1 sm:gap-6 mb-4 sm:mb-8">
 
 
-       <h2 className="text-1xl sm:text-3xl font-bold">Our Cars</h2>
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <h2 className="text-sm sm:text-3xl font-bold">Our Cars</h2>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1 sm:gap-4">
+
             {/* Desktop Filters and Navigation */}
             <div className="hidden md:flex items-center gap-4 flex-wrap">
               {filters.map((filter) => (
@@ -198,80 +199,81 @@ export const OurCars = () => {
             </div>
 
             {/* Navigation Arrows - Desktop (Right) & Mobile (Left) */}
-       <div className="flex gap-2 sm:ml-0">
-  <Button
-    variant="outline"
-    size="icon"
-    onClick={handlePrevious}
-    className="rounded-full hover:border-dealership-primary w-8 h-8 sm:w-10 sm:h-10"
-  >
-    <ArrowLeft className="h-3 w-3 sm:h-4 sm:w-4" />
-  </Button>
-  <Button
-    variant="outline"
-    size="icon"
-    onClick={handleNext}
-    className="rounded-full hover:border-dealership-primary w-8 h-8 sm:w-10 sm:h-10"
-  >
-    <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4" />
-  </Button>
-</div>
+            <div className="flex gap-2 sm:ml-0">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handlePrevious}
+                className="rounded-full hover:border-dealership-primary w-4 h-4 sm:w-10 sm:h-10"
+              >
+                <ArrowLeft className="sm:h-5 sm:w-4" style={{ height: '10px', width: '10px' }} />
+
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handleNext}
+                className="rounded-full hover:border-dealership-primary w-4 h-4 sm:w-10 sm:h-10"
+              >
+                <ArrowRight className="sm:h-5 sm:w-4" style={{ height: '10px', width: '10px' }} />
+              </Button>
+            </div>
 
           </div>
         </div>
 
-       <div className="grid grid-cols-3 gap-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 sm:gap-6">
-  {isLoading ? (
-    <div className="col-span-full flex justify-center items-center py-8 sm:py-12">
-      <div className="text-xs sm:text-lg">Loading...</div>
-    </div>
-  ) : filteredCars.length === 0 ? (
-    <div className="col-span-full flex justify-center items-center py-8 sm:py-12">
-      <div className="text-xs sm:text-lg">No cars found for this category</div>
-    </div>
-  ) : (
-    getVisibleCars().map((car) => (
-      <Link
-        key={car._id}
-        to={`/listings/${car.slug}`}
-        onClick={() => trackCarView(car._id)}
-      >
-        <Card className="overflow-hidden hover:shadow-md transition-shadow rounded-sm sm:rounded-md">
-          <div className="relative w-full h-16 sm:h-48">
-            <img
-              src={`${import.meta.env.VITE_MEDIA_URL}/${car.image}`}
-              alt={car.make}
-              className="w-full h-full object-cover"
-            />
-            {car.status === 3 && (
-              <div className="absolute top-0.5 right-0.5 bg-red-600 text-white px-1 rounded text-[9px] font-semibold z-10 sm:top-2 sm:right-2 sm:px-3 sm:py-1 sm:text-sm">
-                Sold
-              </div>
-            )}
-          </div>
-          <CardContent className="p-1 sm:p-4">
-            <h3 className="text-[11px] font-semibold text-dealership-navy truncate sm:text-xl">
-              {car.title}
-            </h3>
-            <p className="text-xs font-bold text-dealership-primary mt-0.5 sm:text-2xl sm:mt-2">
-              AWG {Number(car.price).toLocaleString()}
-            </p>
-            <div className="flex items-center text-[9px] text-gray-600 mt-0.5 truncate sm:text-sm">
-              <MapPin size={10} className="mr-0.5 sm:mr-1" />
-              <span>{car.address}</span>
+        <div className="grid grid-cols-3 gap-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 sm:gap-6">
+          {isLoading ? (
+            <div className="col-span-full flex justify-center items-center py-8 sm:py-12">
+              <div className="text-xs sm:text-lg">Loading...</div>
             </div>
-            <div className="mt-1 flex flex-wrap gap-0.5 text-[8px] text-gray-700 sm:gap-2 sm:text-sm">
-              <span className="px-1 py-0.5 bg-gray-100 rounded">{car.transmission}</span>
-              <span className="px-1 py-0.5 bg-gray-100 rounded">{car.mileage.toLocaleString()} mi</span>
-              <span className="px-1 py-0.5 bg-gray-100 rounded">{car.make}</span>
-              {car.model && <span className="px-1 py-0.5 bg-gray-100 rounded">{car.model}</span>}
+          ) : filteredCars.length === 0 ? (
+            <div className="col-span-full flex justify-center items-center py-8 sm:py-12">
+              <div className="text-xs sm:text-lg">No cars found for this category</div>
             </div>
-          </CardContent>
-        </Card>
-      </Link>
-    ))
-  )}
-</div>
+          ) : (
+            getVisibleCars().map((car) => (
+              <Link
+                key={car._id}
+                to={`/listings/${car.slug}`}
+                onClick={() => trackCarView(car._id)}
+              >
+                <Card className="overflow-hidden hover:shadow-md transition-shadow rounded-sm sm:rounded-md">
+                  <div className="relative w-full h-16 sm:h-48">
+                    <img
+                      src={`${import.meta.env.VITE_MEDIA_URL}/${car.image}`}
+                      alt={car.make}
+                      className="w-full h-full object-cover"
+                    />
+                    {car.status === 3 && (
+                      <div className="absolute top-0.5 right-0.5 bg-red-600 text-white px-1 rounded text-[9px] font-semibold z-10 sm:top-2 sm:right-2 sm:px-3 sm:py-1 sm:text-sm">
+                        Sold
+                      </div>
+                    )}
+                  </div>
+                  <CardContent className="p-1 sm:p-4">
+                    <h3 className="text-[11px] font-semibold text-dealership-navy truncate sm:text-xl">
+                      {car.title}
+                    </h3>
+                    <p className="text-xs font-bold text-dealership-primary mt-0.5 sm:text-2xl sm:mt-2">
+                      AWG {Number(car.price).toLocaleString()}
+                    </p>
+                    <div className="flex items-center text-[9px] text-gray-600 mt-0.5 truncate sm:text-sm">
+                      <MapPin size={10} className="mr-0.5 sm:mr-1" />
+                      <span>{car.address}</span>
+                    </div>
+                    <div className="mt-1 flex flex-wrap gap-0.5 text-[8px] text-gray-700 sm:gap-2 sm:text-sm">
+                      <span className="px-1 py-0.5 bg-gray-100 rounded">{car.transmission}</span>
+                      <span className="px-1 py-0.5 bg-gray-100 rounded">{car.mileage.toLocaleString()} mi</span>
+                      <span className="px-1 py-0.5 bg-gray-100 rounded">{car.make}</span>
+                      {car.model && <span className="px-1 py-0.5 bg-gray-100 rounded">{car.model}</span>}
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))
+          )}
+        </div>
 
       </div>
     </section>
