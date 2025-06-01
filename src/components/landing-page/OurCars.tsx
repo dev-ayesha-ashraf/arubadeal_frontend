@@ -158,7 +158,7 @@ export const OurCars = () => {
         <div className="flex flex-col gap-1 sm:gap-6 mb-4 sm:mb-8">
 
 
-          <h2 className="text-[12px] sm:text-3xl font-bold">Our Cars</h2>
+          <h2 className="text-sm sm:text-3xl font-bold">Our Cars</h2>
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1 sm:gap-4">
 
             {/* Desktop Filters and Navigation */}
@@ -206,7 +206,7 @@ export const OurCars = () => {
                 onClick={handlePrevious}
                 className="rounded-full hover:border-dealership-primary w-4 h-4 sm:w-10 sm:h-10"
               >
-                <ArrowLeft className="sm:h-5 sm:w-4" style={{ height: '7px', width: '7px' }} />
+                <ArrowLeft className="sm:h-5 sm:w-4" style={{ height: '10px', width: '10px' }} />
 
               </Button>
               <Button
