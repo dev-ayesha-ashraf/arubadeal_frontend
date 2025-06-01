@@ -152,7 +152,8 @@ export const OurCars = () => {
     (selectedFilter === "Used Cars" && isUsedCarsLoading);
 
   return (
-    <section className="py-16  bg-dealership-silver">
+ <section className="py-4 sm:py-16 bg-dealership-silver">
+
       <div className="container mx-auto">
         <div className="flex flex-col gap-6 mb-8">
           <h2 className="text-3xl font-bold">Our Cars</h2>
