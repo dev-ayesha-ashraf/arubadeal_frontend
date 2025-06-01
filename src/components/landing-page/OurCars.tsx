@@ -180,7 +180,7 @@ export const OurCars = () => {
             {/* Mobile Filters */}
             <div className="md:hidden w-full">
               <Select onValueChange={handleFilterChange} value={selectedFilter}>
-                <SelectTrigger className="w-full px-4 text-[10px] h-[28px] rounded-md border text-gray-700 hover:bg-gray-100 transition-colors duration-150 font-medium">
+                <SelectTrigger className="w-full px-4 text-[12px] h-[32px] rounded-md border text-gray-700 hover:bg-gray-100 transition-colors duration-150 font-medium">
                   <SelectValue placeholder="Select a filter" />
                 </SelectTrigger>
                 <SelectContent className="bg-white w-3/4">
