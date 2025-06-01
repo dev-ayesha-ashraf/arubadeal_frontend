@@ -155,8 +155,11 @@ export const OurCars = () => {
  <section className="pb-4 pt-2 sm:py-16 bg-dealership-silver">
 
       <div className="container mx-auto">
-        <div className="flex flex-col gap-6 mb-8">
-          <h2 className="text-3xl font-bold">Our Cars</h2>
+       <div className="flex flex-col gap-2 sm:gap-6 mb-4 sm:mb-8">
+
+
+       <h2 className="text-2xl sm:text-3xl font-bold">Our Cars</h2>
+
 
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             {/* Desktop Filters and Navigation */}
@@ -175,8 +178,6 @@ export const OurCars = () => {
                 </Button>
               ))}
             </div>
-
-
             {/* Mobile Filters */}
             <div className="md:hidden w-full">
               <Select onValueChange={handleFilterChange} value={selectedFilter}>
@@ -199,24 +200,25 @@ export const OurCars = () => {
             </div>
 
             {/* Navigation Arrows - Desktop (Right) & Mobile (Left) */}
-            <div className="flex gap-2 sm:ml-0">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={handlePrevious}
-                className="rounded-full hover:border-dealership-primary"
-              >
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={handleNext}
-                className="rounded-full hover:border-dealership-primary"
-              >
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </div>
+       <div className="flex gap-2 sm:ml-0">
+  <Button
+    variant="outline"
+    size="icon"
+    onClick={handlePrevious}
+    className="rounded-full hover:border-dealership-primary w-8 h-8 sm:w-10 sm:h-10"
+  >
+    <ArrowLeft className="h-3 w-3 sm:h-4 sm:w-4" />
+  </Button>
+  <Button
+    variant="outline"
+    size="icon"
+    onClick={handleNext}
+    className="rounded-full hover:border-dealership-primary w-8 h-8 sm:w-10 sm:h-10"
+  >
+    <ArrowRight className="h-3 w-3 sm:h-4 sm:w-4" />
+  </Button>
+</div>
+
           </div>
         </div>
 

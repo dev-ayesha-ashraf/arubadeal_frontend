@@ -27,7 +27,7 @@ export const Header = () => {
         <Clock size={20} />
         <span className="text-base md:text-lg">Mon-Sat: 9AM-8PM</span>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 mx-auto lg:mx-0">
         <a
           href="https://www.facebook.com/share/18bEakUSqf/"
           className="p-2 bg-white rounded-full text-dealership-primary transition hover:bg-gray-200"
