@@ -152,7 +152,7 @@ export const OurCars = () => {
     (selectedFilter === "Used Cars" && isUsedCarsLoading);
 
   return (
- <section className="py-4 sm:py-16 bg-dealership-silver">
+ <section className="pb-4 pt-2 sm:py-16 bg-dealership-silver">
 
       <div className="container mx-auto">
         <div className="flex flex-col gap-6 mb-8">
