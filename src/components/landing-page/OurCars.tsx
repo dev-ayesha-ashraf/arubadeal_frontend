@@ -155,12 +155,10 @@ export const OurCars = () => {
  <section className="pb-4 pt-2 sm:py-16 bg-dealership-silver">
 
       <div className="container mx-auto">
-       <div className="flex flex-col gap-2 sm:gap-6 mb-4 sm:mb-8">
+       <div className="flex flex-col gap-1 sm:gap-6 mb-4 sm:mb-8">
 
 
-       <h2 className="text-2xl sm:text-3xl font-bold">Our Cars</h2>
-
-
+       <h2 className="text-1xl sm:text-3xl font-bold">Our Cars</h2>
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             {/* Desktop Filters and Navigation */}
             <div className="hidden md:flex items-center gap-4 flex-wrap">
