@@ -158,7 +158,7 @@ export const OurCars = () => {
         <div className="flex flex-col gap-1 sm:gap-6 mb-4 sm:mb-8">
 
 
-          <h2 className="text-[10px] sm:text-3xl font-bold">Our Cars</h2>
+          <h2 className="text-[12px] sm:text-3xl font-bold">Our Cars</h2>
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1 sm:gap-4">
 
             {/* Desktop Filters and Navigation */}
