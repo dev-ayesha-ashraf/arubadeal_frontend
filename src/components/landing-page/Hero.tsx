@@ -54,7 +54,7 @@ export const Hero = () => {
   };
 
   return (
-    <div className="relative mt-[17vh] h-[70px] sm:mt-0 sm:h-[500px] md:h-[600px] w-full">
+    <div className="relative mt-[22vh] h-[70px] sm:mt-0 sm:h-[500px] md:h-[600px] w-full">
       <div className="absolute inset-0">
         {isLoading ? (
           <div className="w-full h-full flex items-center justify-center bg-gray-800">

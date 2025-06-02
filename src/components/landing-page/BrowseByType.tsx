@@ -38,7 +38,7 @@ export const BrowseByType = () => {
     <section className="py-16 bg-white">
       <div className="container mx-auto">
         <div className="flex justify-between items-center mb-8">
-          <h2 className="text-3xl font-bold">Browse Cars by Type</h2>
+          <h2 className="text-sm sm:text-3xl font-bold">Browse Cars by Type</h2>
           <div className="hidden sm:block">
             <Link to="/listings">
               <Button variant="ghost" className="gap-2">
