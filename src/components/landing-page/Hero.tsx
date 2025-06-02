@@ -45,6 +45,7 @@ export const Hero = () => {
     setCurrentImageIndex((prev) => (prev + 1) % bannerImages.length);
   };
 
+  
   const prevImage = () => {
     if (!bannerImages || bannerImages.length === 0) return;
     setCurrentImageIndex(

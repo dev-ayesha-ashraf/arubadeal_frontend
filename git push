@@ -1,0 +1,36 @@
+[33mfada934[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m HEAD@{0}: commit (rebase): MobileUi
+[33mbe7a21a[m HEAD@{1}: reset: moving to HEAD~16
+[33ma7ad00a[m HEAD@{2}: reset: moving to HEAD
+[33ma7ad00a[m HEAD@{3}: commit: alltab
+[33mb0d5a22[m HEAD@{4}: commit: AllTab
+[33ma6bfc60[m HEAD@{5}: commit: changed
+[33mc9fae6d[m HEAD@{6}: commit: pixelChanged
+[33m33a488f[m HEAD@{7}: commit: more
+[33ma0caa3a[m HEAD@{8}: commit: moreSmaller
+[33mcea8010[m HEAD@{9}: commit: moreThin
+[33ma63e5d3[m HEAD@{10}: commit: fontchanged
+[33m6d61d88[m HEAD@{11}: commit: UI
+[33mb6db135[m HEAD@{12}: commit: paddingChanged
+[33m3bc6009[m HEAD@{13}: commit: heightChanged
+[33m5889ee0[m HEAD@{14}: commit: bannerThin
+[33m1ffbeaa[m HEAD@{15}: commit: thinnerBanner
+[33m8ae215e[m HEAD@{16}: commit: changes
+[33mbe42522[m HEAD@{17}: commit: filterRoute
+[33mb4a4d3e[m HEAD@{18}: commit: listingSubFilter
+[33mbe7a21a[m HEAD@{19}: reset: moving to be7a21a
+[33m6435d7f[m HEAD@{20}: commit: route-updation
+[33mefc0722[m HEAD@{21}: commit: newCommit
+[33m0c83c6f[m HEAD@{22}: commit: newCommit
+[33m2870a3f[m HEAD@{23}: commit: removedHashRouter
+[33m3703f2a[m HEAD@{24}: commit: hashRouter
+[33m8dc1cf4[m HEAD@{25}: commit: urlSort
+[33me0662b9[m HEAD@{26}: reset: moving to HEAD~1
+[33m7035988[m HEAD@{27}: commit: queryParams
+[33me0662b9[m HEAD@{28}: commit: Sort
+[33mbe7a21a[m HEAD@{29}: reset: moving to HEAD~1
+[33m9978b2e[m HEAD@{30}: commit: url
+[33mbe7a21a[m HEAD@{31}: reset: moving to HEAD~2
+[33m86bbf65[m HEAD@{32}: commit: removedurlSort
+[33me3e437c[m HEAD@{33}: commit: urlSort
+[33mbe7a21a[m HEAD@{34}: Branch: renamed refs/heads/master to refs/heads/main
+[33mbe7a21a[m HEAD@{36}: commit (initial): filter-popup-with-updated-dropdown_
