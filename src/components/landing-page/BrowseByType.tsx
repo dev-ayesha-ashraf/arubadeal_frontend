@@ -49,13 +49,13 @@ export const BrowseByType = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-5">
           {isLoading ? (
             <div>Loading...</div>
           ) : (
             carTypes.map((item) => (
-              <Link 
-                key={item._id} 
+              <Link
+                key={item._id}
                 to={`/types/${item.slug}`}
                 className="group"
               >
@@ -63,10 +63,11 @@ export const BrowseByType = () => {
                   <img
                     src={`${import.meta.env.VITE_MEDIA_URL}/${item.image}`}
                     alt={item.name}
-                    className="w-60 h-44 mx-auto object-contain"
+                   className="w-60 h-20 md:h-44 mx-auto object-contain"
+
                   />
                 </div>
-                <CardContent className="p-2">
+                <CardContent className="p-1 md:p-2">
                   <p className="font-bold text-center mb-1 text-dealership-navy group-hover:text-dealership-primary">
                     {item.name} ({item.totalCars})
                   </p>
@@ -75,6 +76,7 @@ export const BrowseByType = () => {
             ))
           )}
         </div>
+
         <div className="flex justify-center mt-8 lg:hidden">
           <Link to="/listings">
             <Button
