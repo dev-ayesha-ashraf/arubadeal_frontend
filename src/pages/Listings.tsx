@@ -6,7 +6,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Link } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Header } from "@/components/common/Header";
 import { Navbar } from "@/components/common/Navbar";
 import { ListingsFilter } from "@/components/common/ListingsFilter";
@@ -17,6 +17,7 @@ import { MapPin, Share2 } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { SharePreview } from "@/components/common/SharePreview";
 import { Car } from "@/types/car";
+import { ArrowRight } from "lucide-react";
 
 const fetchCars = async (params: URLSearchParams): Promise<Car[]> => {
   const response = await fetch(
@@ -31,6 +32,14 @@ const fetchCars = async (params: URLSearchParams): Promise<Car[]> => {
   if (!response.ok) throw new Error("Failed to fetch cars");
   const res = await response.json();
   return res.data;
+};
+
+// Function to get badge label based on price
+const getPriceBadge = (price: number): string | null => {
+  if (price < 10000) return "Best Deal";
+  if (price >= 10000 && price < 25000) return "Great Price";
+  if (price >= 25000 && price < 40000) return "Good Value";
+  return null;
 };
 
 const Listings = () => {
@@ -51,7 +60,8 @@ const Listings = () => {
       (car) =>
         car.title.toLowerCase().includes(searchQuery) ||
         car.make.toLowerCase().includes(searchQuery) ||
-        (car.model?.toLowerCase() || "").includes(searchQuery)
+        (car.model?.toLowerCase() || "").includes(searchQuery) ||
+        (car.type?.toLowerCase() || "").includes(searchQuery)
     )
     : cars;
 
@@ -114,57 +124,76 @@ const Listings = () => {
                   : "No cars available at the moment."}
               </div>
             ) : (
-           <div className="flex flex-col md:grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-  {sortedCars.map((car) => (
-    <Link
-      key={car._id}
-      to={`/listings/${car.slug}`}
-      className="block"
-    >
-      <Card className="flex flex-row overflow-hidden hover:shadow-lg transition-shadow md:flex-col">
-        {/* Image section */}
-        <div className="relative w-1/4 md:w-full h-24 md:h-48 m-auto">
-          <img
-            src={`${import.meta.env.VITE_MEDIA_URL}/${car.image}`}
-            alt={car.title}
-            className="w-full h-full object-cover"
-          />
-          {car.status === 3 && (
-            <div className="absolute top-2 right-2 bg-red-500 text-white px-2 py-0.5 rounded-full text-xs font-medium">
-              Sold
-            </div>
-          )}
-          <button
-            onClick={(e) => handleShare(car, e)}
-            className="absolute top-2 left-2 p-1.5 bg-white rounded-full shadow-md hover:bg-gray-100 transition-colors"
-          >
-            <Share2 className="w-3 h-3 text-gray-600" />
-          </button>
-        </div>
+              <div className="flex flex-col md:grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {sortedCars.map((car) => {
+                  const badgeLabel = getPriceBadge(Number(car.price));
+                  return (
+                    <Link
+                      key={car._id}
+                      to={`/listings/${car.slug}`}
+                      className="block"
+                    >
+                      <Card className="flex flex-row overflow-hidden hover:shadow-lg transition-shadow md:flex-col relative ">
+                        <div className="relative w-1/4 md:w-full h-24 md:h-48 m-auto">
+                          {badgeLabel && car.status !== 3 && (
+                            <div className="hidden md:block absolute top-2 left-2 bg-dealership-primary text-white px-2 py-0.5 rounded-full text-[15px] font-semibold shadow-md z-10">
+                              {badgeLabel}
+                            </div>
+                          )}
+                          <img
+                            src={`${import.meta.env.VITE_MEDIA_URL}/${car.image}`}
+                            alt={car.title}
+                            className="w-full h-full object-cover"
+                          />
+                          {car.status === 3 && (
+                            <div className="absolute top-2 left-2 bg-red-500 text-white px-2 py-0.5 rounded-full text-xs font-medium">
+                              Sold
+                            </div>
+                          )}
+                          <button
+                            onClick={(e) => handleShare(car, e)}
+                            className="absolute top-2 left-2 p-1.5 bg-white rounded-full shadow-md hover:bg-gray-100 transition-colors md:left-auto md:right-2"
+                          >
+                            <Share2 className="w-3 h-3 text-gray-600" />
+                          </button>
+                        </div>
+                        <CardContent className="p-2 md:p-4 w-3/4 md:w-full">
+                          {/* Car title aligned left with bottom border */}
+                          <h3 className="text-base md:text-lg font-semibold mb-2 md:mb-3 text-left border-b border-gray-200 pb-1">
+                            {car.title}
+                          </h3>
 
-        {/* Details section */}
-        <CardContent className="p-2 md:p-4 w-3/4 md:w-full">
-          <h3 className="text-base md:text-lg font-semibold mb-1 md:mb-2">{car.title}</h3>
-          <p className="text-xl md:text-2xl font-bold text-dealership-primary mb-1 md:mb-2">
-            AWG {car.price}
-          </p>
-          <div className="flex items-center text-gray-600 mb-1 md:mb-2 text-sm md:text-base">
-            <MapPin className="w-4 h-4 mr-1" />
-            <span>{car.address}</span>
-          </div>
-          <div className="grid grid-cols-2 gap-1 text-xs md:text-sm text-gray-600">
-            <div>Make: {car.make}</div>
-            <div>Model: {car.model || "N/A"}</div>
-            <div>Type: {car.type}</div>
-            <div>Mileage: {car.mileage} km</div>
-          </div>
-        </CardContent>
-      </Card>
-    </Link>
-  ))}
-</div>
+                          {/* Car info with bottom border */}
+                          <div className="grid grid-cols-2 gap-1 text-xs md:text-sm text-gray-600 mb-2 border-b border-gray-200 pb-2">
+                            <div>Make: {car.make}</div>
+                            <div>Model: {car.model || "N/A"}</div>
+                            <div>Type: {car.type}</div>
+                            <div>Mileage: {car.mileage} km</div>
+                          </div>
 
+                          {/* Price and View Details button (button visible only on md+) */}
+                          <div className="flex items-center justify-between">
+                            <p className="text-xl font-bold text-dealership-primary">
+                              AWG {car.price}
+                            </p>
+                            <button
+                              className="hidden md:inline-flex items-center gap-1 text-dealership-primary hover:text-[#6B4A2B] font-medium mt-2"
+                              type="button"
+                            >
+                              View Details
+                              <ArrowRight
+                                className="w-4 h-4 transform -rotate-45" // tilted arrow icon
+                              />
+                            </button>
+                          </div>
+                        </CardContent>
 
+                      </Card>
+                    </Link>
+                  );
+                })}
+
+              </div>
             )}
           </div>
         </div>
