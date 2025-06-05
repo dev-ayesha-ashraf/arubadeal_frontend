@@ -15,7 +15,6 @@ import {
 
 const filters = ["All", "Best Seller", "New Arrival", "Popular", "Used Cars"];
 
-// Define the interface for cars
 interface Car {
   _id: string;
   title: string;
@@ -37,10 +36,27 @@ interface Car {
 export const OurCars = () => {
   const [selectedFilter, setSelectedFilter] = useState("All");
   const [currentPage, setCurrentPage] = useState(0);
-  const itemsPerPage = 8;
+  const [itemsPerPage, setItemsPerPage] = useState(() => {
+    const width = window.innerWidth;
+    if (width >= 1024) return 8;
+    return 9;
+  });
   const api = useApi();
 
-  // Query for all cars when no filter is selected
+  useEffect(() => {
+    const handleResize = () => {
+      const width = window.innerWidth;
+      if (width >= 1024) {
+        setItemsPerPage(8);
+      } else {
+        setItemsPerPage(9);
+      }
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   const { data: allCars = [], isLoading: isAllCarsLoading } = useQuery({
     queryKey: ["all-cars"],
     queryFn: async () => {
@@ -50,7 +66,6 @@ export const OurCars = () => {
     enabled: selectedFilter === "All",
   });
 
-  // Query for best seller cars
   const { data: bestSellerCars = [], isLoading: isBestSellerLoading } = useQuery({
     queryKey: ["best-seller-cars"],
     queryFn: async () => {
@@ -60,7 +75,6 @@ export const OurCars = () => {
     enabled: selectedFilter === "Best Seller",
   });
 
-  // Query for new arrival cars
   const { data: newArrivalCars = [], isLoading: isNewArrivalLoading } = useQuery({
     queryKey: ["new-arrival-cars"],
     queryFn: async () => {
@@ -70,7 +84,6 @@ export const OurCars = () => {
     enabled: selectedFilter === "New Arrival",
   });
 
-  // Query for popular cars
   const { data: popularCars = [], isLoading: isPopularLoading } = useQuery({
     queryKey: ["popular-cars"],
     queryFn: async () => {
@@ -80,7 +93,6 @@ export const OurCars = () => {
     enabled: selectedFilter === "Popular",
   });
 
-  // Query for used cars
   const { data: usedCars = [], isLoading: isUsedCarsLoading } = useQuery({
     queryKey: ["used-cars"],
     queryFn: async () => {
@@ -90,7 +102,6 @@ export const OurCars = () => {
     enabled: selectedFilter === "Used Cars",
   });
 
-  // Determine which cars array to use based on the selected filter
   const getFilteredCars = () => {
     switch (selectedFilter) {
       case "Best Seller":
@@ -111,11 +122,11 @@ export const OurCars = () => {
   const totalPages = Math.ceil(filteredCars.length / itemsPerPage);
 
   const handlePrevious = () => {
-    setCurrentPage(prev => (prev > 0 ? prev - 1 : totalPages - 1));
+    setCurrentPage((prev) => (prev > 0 ? prev - 1 : totalPages - 1));
   };
 
   const handleNext = () => {
-    setCurrentPage(prev => (prev + 1) % totalPages);
+    setCurrentPage((prev) => (prev + 1) % totalPages);
   };
 
   const getVisibleCars = () => {
@@ -123,27 +134,6 @@ export const OurCars = () => {
     return filteredCars.slice(start, start + itemsPerPage);
   };
 
-  const handleFilterChange = (filter: string) => {
-    setSelectedFilter(filter);
-    setCurrentPage(0); // Reset to first page when changing filters
-  };
-
-  // Track car view when a car is clicked
-  const trackCarView = async (carId: string) => {
-    try {
-      // Get user IP and user agent
-      const ipAddress = ""; // In a real app, you'd get this from an IP service or server
-      const userAgent = navigator.userAgent;
-
-      // Call the track view endpoint
-      await api.patch(`/cars/v1/track-car-view/${carId}?ip=${ipAddress}&ua=${encodeURIComponent(userAgent)}`);
-    } catch (error) {
-      console.error("Error tracking car view:", error);
-      // Don't block the user from viewing the car if tracking fails
-    }
-  };
-
-  // Determine if loading based on the selected filter
   const isLoading =
     (selectedFilter === "All" && isAllCarsLoading) ||
     (selectedFilter === "Best Seller" && isBestSellerLoading) ||
@@ -152,34 +142,28 @@ export const OurCars = () => {
     (selectedFilter === "Used Cars" && isUsedCarsLoading);
 
   return (
-    <section className="pb-4 pt-2 sm:py-16 bg-dealership-silver">
-
+    <section className="pb-4 pt-2 sm:py-4 bg-dealership-silver">
       <div className="container mx-auto">
         <div className="flex flex-col gap-1 sm:gap-6 mb-4 sm:mb-8">
-
-
           <h2 className="text-sm sm:text-3xl font-bold">Our Cars</h2>
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1 sm:gap-4">
-
-            {/* Desktop Filters and Navigation */}
             <div className="hidden md:flex items-center gap-4 flex-wrap">
               {filters.map((filter) => (
                 <Button
                   key={filter}
                   variant={selectedFilter === filter ? "default" : "destructive"}
-                  onClick={() => handleFilterChange(filter)}
-                  className={`transition-colors ${selectedFilter === filter
-                    ? "bg-dealership-primary text-white hover:bg-dealership-primary/90"
-                    : ""
-                    }`}
+                  onClick={() => {
+                    setSelectedFilter(filter);
+                    setCurrentPage(0);
+                  }}
+                  className={`transition-colors ${selectedFilter === filter ? "bg-dealership-primary text-white hover:bg-dealership-primary/90" : ""}`}
                 >
                   {filter}
                 </Button>
               ))}
             </div>
-            {/* Mobile Filters */}
             <div className="md:hidden w-full">
-              <Select onValueChange={handleFilterChange} value={selectedFilter}>
+              <Select onValueChange={(val) => { setSelectedFilter(val); setCurrentPage(0); }} value={selectedFilter}>
                 <SelectTrigger className="w-full px-4 text-[12px] h-[32px] rounded-md border text-gray-700 hover:bg-gray-100 transition-colors duration-150 font-medium">
                   <SelectValue placeholder="Select a filter" />
                 </SelectTrigger>
@@ -188,8 +172,7 @@ export const OurCars = () => {
                     <SelectItem
                       key={filter}
                       value={filter}
-                      className={`text-gray-700 hover:bg-[#EADDCA] hover:text-black transition-colors duration-150 cursor-pointer font-medium ${selectedFilter === filter ? "bg-dealership-primary text-white" : ""
-                        }`}
+                      className={`text-gray-700 hover:bg-[#EADDCA] hover:text-black transition-colors duration-150 cursor-pointer font-medium ${selectedFilter === filter ? "bg-dealership-primary text-white" : ""}`}
                     >
                       {filter}
                     </SelectItem>
@@ -198,31 +181,30 @@ export const OurCars = () => {
               </Select>
             </div>
 
-            {/* Navigation Arrows - Desktop (Right) & Mobile (Left) */}
-            <div className="flex gap-2 sm:ml-0">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={handlePrevious}
-                className="rounded-full hover:border-dealership-primary w-4 h-4 sm:w-10 sm:h-10"
-              >
-                <ArrowLeft className="sm:h-5 sm:w-4" style={{ height: '10px', width: '10px' }} />
+            <div className="flex justify-between items-center w-full lg:w-auto">
+              <div className="flex gap-2 sm:ml-0">
+                <Button variant="outline" size="icon" onClick={handlePrevious} className="rounded-full hover:border-dealership-primary w-4 h-4 sm:w-10 sm:h-10">
+                  <ArrowLeft className="sm:h-5 sm:w-4" style={{ height: '10px', width: '10px' }} />
+                </Button>
+                <Button variant="outline" size="icon" onClick={handleNext} className="rounded-full hover:border-dealership-primary w-4 h-4 sm:w-10 sm:h-10">
+                  <ArrowRight className="sm:h-5 sm:w-4" style={{ height: '10px', width: '10px' }} />
+                </Button>
+              </div>
+              <Link to="/listings" className="block sm:hidden">
+                <Button
+                  variant="default"
+                  className="px-2 mt-1 py-0 text-sm gap-1 bg-gradient-to-r from-dealership-primary/80 to-dealership-primary/100"
+                >
+                  More Cars
+                  <ArrowRight className="w-2 h-2 mt-1" />
+                </Button>
 
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={handleNext}
-                className="rounded-full hover:border-dealership-primary w-4 h-4 sm:w-10 sm:h-10"
-              >
-                <ArrowRight className="sm:h-5 sm:w-4" style={{ height: '10px', width: '10px' }} />
-              </Button>
+              </Link>
             </div>
-
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 sm:gap-6">
+        <div className="grid grid-cols-3 xs:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4">
           {isLoading ? (
             <div className="col-span-full flex justify-center items-center py-8 sm:py-12">
               <div className="text-xs sm:text-lg">Loading...</div>
@@ -233,11 +215,7 @@ export const OurCars = () => {
             </div>
           ) : (
             getVisibleCars().map((car) => (
-              <Link
-                key={car._id}
-                to={`/listings/${car.slug}`}
-                onClick={() => trackCarView(car._id)}
-              >
+              <Link key={car._id} to={`/listings/${car.slug}`}>
                 <Card className="overflow-hidden hover:shadow-md transition-shadow rounded-sm sm:rounded-md">
                   <div className="relative w-full h-16 sm:h-48">
                     <img
@@ -274,7 +252,6 @@ export const OurCars = () => {
             ))
           )}
         </div>
-
       </div>
     </section>
   );

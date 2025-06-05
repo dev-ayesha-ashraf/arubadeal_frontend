@@ -221,7 +221,7 @@ const TypeDetail = () => {
         </div>
         <div className="flex flex-col lg:flex-row gap-8">
 
-          <div className="w-full lg:w-3/4">
+          <div className="w-full">
             {carsLoading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {[...Array(6)].map((_, i) => (
@@ -238,11 +238,11 @@ const TypeDetail = () => {
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="flex flex-col md:grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {sortedCars.map((car) => (
                   <Link key={car._id} to={`/listings/${car.slug}`}>
-                    <Card className="overflow-hidden hover:shadow-lg transition-shadow">
-                      <div className="relative w-full h-48">
+                    <Card className="overflow-hidden hover:shadow-lg transition-shadow flex flex-row md:flex-col h-32 md:h-auto">
+                      <div className="relative w-1/3 md:w-full h-full md:h-48">
                         <img
                           src={`${import.meta.env.VITE_MEDIA_URL}/${car.image}`}
                           alt={car.make}
@@ -251,32 +251,24 @@ const TypeDetail = () => {
                         {car.status === 3 && (
                           <div className="absolute top-2 right-2 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-medium z-10">
                             Sold
-                          </div>  
+                          </div>
                         )}
                       </div>
-                      <CardContent className="p-4">
-                        <div className="p-4">
-                          <h3 className="text-xl font-semibold text-dealership-navy">
-                            {car.title}
-                          </h3>
-                          <p className="text-2xl font-bold text-dealership-primary mt-2">
-                            AWG {Number(car.price).toLocaleString()}
-                          </p>
-                          <div className="flex items-center text-gray-600 mt-2">
-                            <MapPin size={16} className="mr-1" />
-                            <span className="text-sm">{car.address}</span>
-                          </div>
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            <span className="px-2 py-1 bg-gray-100 text-sm rounded">
-                              {car.transmission}
-                            </span>
-                            <span className="px-2 py-1 bg-gray-100 text-sm rounded">
-                              {car.mileage.toLocaleString()} mi
-                            </span>
-                            <span className="px-2 py-1 bg-gray-100 text-sm rounded">
-                              {car.make}
-                            </span>
-                          </div>
+                      <CardContent className="p-1 sm:p-4 w-2/3 md:w-full flex flex-col justify-center">
+                        <h3 className="text-sm sm:text-lg font-normal md:text-xl md:font-semibold text-dealership-navy">
+                          {car.title}
+                        </h3>
+                        <p className="text-sm sm:text-lg font-normal md:text-2xl md:font-bold text-dealership-primary mt-1 sm:mt-2">
+                          AWG {Number(car.price).toLocaleString()}
+                        </p>
+                        <div className="flex items-center text-gray-600 mt-[2px] sm:mt-2 text-sm md:text-base">
+                          <MapPin size={16} className="mr-1" />
+                          <span>{car.address}</span>
+                        </div>
+                        <div className="mt-1 sm:mt-3 flex flex-wrap gap-2 text-xs md:text-sm">
+                          <span className="px-2 py-1 bg-gray-100 rounded">{car.transmission}</span>
+                          <span className="px-2 py-1 bg-gray-100 rounded">{car.mileage.toLocaleString()} mi</span>
+                          <span className="px-1 py-1 bg-gray-100 rounded">{car.make}</span>
                         </div>
                       </CardContent>
                     </Card>
@@ -285,6 +277,7 @@ const TypeDetail = () => {
               </div>
             )}
           </div>
+
         </div>
       </div>
       <Footer />

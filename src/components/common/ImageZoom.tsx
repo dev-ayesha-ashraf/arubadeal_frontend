@@ -10,18 +10,18 @@ interface ImageZoomProps {
   currentIndex?: number;
 }
 
-export const ImageZoom = ({ 
-  isOpen, 
-  onClose, 
-  imageUrl, 
-  alt, 
-  images, 
-  currentIndex = 0 
+export const ImageZoom = ({
+  isOpen,
+  onClose,
+  imageUrl,
+  alt,
+  images,
+  currentIndex = 0
 }: ImageZoomProps) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(currentIndex);
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
-  
+
   // Reset the current index when props change
   useEffect(() => {
     if (images?.length) {
@@ -66,15 +66,16 @@ export const ImageZoom = ({
   const handleTouchStart = (e: TouchEvent<HTMLDivElement>) => {
     touchStartX.current = e.touches[0].clientX;
   };
-  
+
   const handleTouchMove = (e: TouchEvent<HTMLDivElement>) => {
     touchEndX.current = e.touches[0].clientX;
   };
-  
-  const handleTouchEnd = () => {
+
+  const handleTouchEnd = (e: TouchEvent<HTMLDivElement>) => {
+    touchEndX.current = e.changedTouches[0].clientX;
     const touchDiff = touchStartX.current - touchEndX.current;
     const minSwipeDistance = 50;
-    
+
     if (Math.abs(touchDiff) > minSwipeDistance && images?.length) {
       if (touchDiff > 0) {
         navigateNext();
@@ -84,16 +85,17 @@ export const ImageZoom = ({
     }
   };
 
+
   // Determine current image URL and alt text
   const currentImageUrl = images?.length ? images[currentImageIndex].url : imageUrl;
   const currentImageAlt = images?.length ? images[currentImageIndex].alt : alt;
 
   return (
-    <div 
+    <div
       className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4"
       onClick={onClose}
     >
-      <div 
+      <div
         className="relative max-w-7xl w-full h-full flex items-center justify-center"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
@@ -110,7 +112,7 @@ export const ImageZoom = ({
         {/* Navigation arrows - only shown when multiple images */}
         {images && images.length > 1 && (
           <>
-            <button 
+            <button
               onClick={(e) => {
                 e.stopPropagation();
                 navigatePrevious();
@@ -120,8 +122,8 @@ export const ImageZoom = ({
             >
               <ChevronLeft size={32} />
             </button>
-            
-            <button 
+
+            <button
               onClick={(e) => {
                 e.stopPropagation();
                 navigateNext();
@@ -131,7 +133,7 @@ export const ImageZoom = ({
             >
               <ChevronRight size={32} />
             </button>
-            
+
             {/* Image counter */}
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 text-white text-sm px-3 py-1 rounded-full">
               {currentImageIndex + 1} / {images.length}

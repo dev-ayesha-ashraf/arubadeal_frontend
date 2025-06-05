@@ -54,7 +54,7 @@ export const Hero = () => {
   };
 
   return (
-    <div className="relative mt-[17vh] h-[70px] sm:mt-0 sm:h-[500px] md:h-[600px] w-full">
+    <div className="relative mt-[19vh] h-[70px] lg:mt-0 sm:h-[95px] md:h-[95px] w-full">
       <div className="absolute inset-0">
         {isLoading ? (
           <div className="w-full h-full flex items-center justify-center bg-gray-800">
@@ -98,7 +98,7 @@ export const Hero = () => {
       )}
 
       <div className="absolute inset-0 flex flex-col items-center justify-center px-4">
-        <h1 className="text-2xl sm:text-3xl md:text-5xl font-bold text-white mb-0 sm:mb-10 text-center">
+        <h1 className="text-2xl sm:text-3xl md:text-5xl font-bold text-white mb-0 text-center">
           Find Your Perfect Drive
         </h1>
 

@@ -85,7 +85,7 @@ export const BrowseByMake = () => {
   };
 
   return (
-    <section className="py-16 bg-white overflow-hidden">
+    <section className="py-2 sm:py-16  bg-white overflow-hidden">
       <div className="container mx-auto">
         <div className="flex flex-col md:flex-row justify-between md:items-center gap-2 mb-8">
           <h2 className="text-sm sm:text-3xl font-bold">Browse by Make</h2>

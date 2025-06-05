@@ -63,7 +63,7 @@ export const BrowseByType = () => {
                   <img
                     src={`${import.meta.env.VITE_MEDIA_URL}/${item.image}`}
                     alt={item.name}
-                   className="w-60 h-20 md:h-44 mx-auto object-contain"
+                    className="w-60 h-20 md:h-44 mx-auto object-contain"
 
                   />
                 </div>

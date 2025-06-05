@@ -82,43 +82,54 @@ const ListingDetail = () => {
     queryFn: () => fetchCarDetail(slug!),
     enabled: !!slug,
   });
-
+  useEffect(() => {
+    if (listing?.images?.length) {
+      setSelectedImageIndex(0);
+    }
+  }, [listing?.images]);
   // Touch handling for swipe gestures
-  const touchStartX = useRef(0);
+  const touchStartX = useRef<number | null>(null);
+
   const touchEndX = useRef(0);
-  
+
   const handleTouchStart = (e: TouchEvent<HTMLDivElement>) => {
     touchStartX.current = e.touches[0].clientX;
   };
-  
+
+
   const handleTouchMove = (e: TouchEvent<HTMLDivElement>) => {
     touchEndX.current = e.touches[0].clientX;
   };
-  
-  const handleTouchEnd = () => {
-    const touchDiff = touchStartX.current - touchEndX.current;
-    const minSwipeDistance = 50; // Minimum distance to register a swipe
-    
+
+  const handleTouchEnd = (e: TouchEvent<HTMLDivElement>) => {
+    if (touchStartX.current === null) return;
+
+    const touchEndX = e.changedTouches[0].clientX;
+    const touchDiff = touchStartX.current - touchEndX;
+    const minSwipeDistance = 50; // Minimum swipe distance
+
     if (Math.abs(touchDiff) > minSwipeDistance) {
       if (touchDiff > 0) {
-        navigateNext();
+        navigateNext(); // Swiped left
       } else {
-        navigatePrevious();
+        navigatePrevious(); // Swiped right
       }
     }
+
+    touchStartX.current = null; // Reset
   };
 
   // Navigation functions for gallery
   const navigatePrevious = () => {
     if (!listing?.images?.length) return;
-    setSelectedImageIndex((prev) => 
+    setSelectedImageIndex((prev) =>
       prev !== null ? (prev > 0 ? prev - 1 : listing.images.length - 1) : 0
     );
   };
 
   const navigateNext = () => {
     if (!listing?.images?.length) return;
-    setSelectedImageIndex((prev) => 
+    setSelectedImageIndex((prev) =>
       prev !== null ? (prev < listing.images.length - 1 ? prev + 1 : 0) : 0
     );
   };
@@ -182,16 +193,16 @@ const ListingDetail = () => {
                   {listing?.images?.length > 0 ? (
                     <>
                       <img
-                        src={`${import.meta.env.VITE_MEDIA_URL}/${listing.images[selectedImageIndex]?.image??listing.images[0]?.image}`}
+                        src={`${import.meta.env.VITE_MEDIA_URL}/${listing.images[selectedImageIndex ?? 0]?.image}`}
                         alt={listing.title}
                         className="w-full h-full object-contain cursor-pointer"
-                        onClick={() => openZoomView(selectedImageIndex || 0)}
+                        onClick={() => openZoomView(selectedImageIndex ?? 0)}
                       />
-                      
+
                       {/* Navigation arrows */}
                       {listing.images.length > 1 && (
                         <>
-                          <button 
+                          <button
                             onClick={(e) => {
                               e.stopPropagation();
                               navigatePrevious();
@@ -201,8 +212,8 @@ const ListingDetail = () => {
                           >
                             <ChevronLeft size={24} />
                           </button>
-                          
-                          <button 
+
+                          <button
                             onClick={(e) => {
                               e.stopPropagation();
                               navigateNext();
@@ -212,10 +223,10 @@ const ListingDetail = () => {
                           >
                             <ChevronRight size={24} />
                           </button>
-                          
+
                           {/* Image counter */}
                           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 text-white text-sm px-3 py-1 rounded-full">
-                            {(selectedImageIndex || 0) + 1} / {listing.images.length}
+                            {(selectedImageIndex ?? 0) + 1} / {listing.images.length}
                           </div>
                         </>
                       )}
@@ -224,16 +235,15 @@ const ListingDetail = () => {
                     <div className="text-gray-400">No image available</div>
                   )}
                 </div>
-                
+
                 {/* Thumbnails */}
                 {listing?.images?.length > 1 && (
                   <div className="flex overflow-x-auto p-2 gap-2 bg-gray-50">
                     {listing.images.map((img, index) => (
-                      <div 
+                      <div
                         key={img._id}
-                        className={`w-20 h-20 flex-shrink-0 cursor-pointer ${
-                          selectedImageIndex === index ? "ring-2 ring-primary" : ""
-                        }`}
+                        className={`w-20 h-20 flex-shrink-0 cursor-pointer ${selectedImageIndex === index ? "ring-2 ring-primary" : ""
+                          }`}
                         onClick={() => setSelectedImageIndex(index)}
                       >
                         <img
@@ -405,10 +415,10 @@ const ListingDetail = () => {
         <ImageZoom
           isOpen={isZoomOpen}
           onClose={() => setIsZoomOpen(false)}
-          imageUrl={formattedImages[selectedImageIndex || 0]?.url || ''}
-          alt={formattedImages[selectedImageIndex || 0]?.alt || ''}
+          imageUrl={formattedImages[selectedImageIndex ?? 0]?.url || ''}
+          alt={formattedImages[selectedImageIndex ?? 0]?.alt || ''}
           images={formattedImages}
-          currentIndex={selectedImageIndex || 0}
+          currentIndex={selectedImageIndex ?? 0}
         />
       )}
     </div>
