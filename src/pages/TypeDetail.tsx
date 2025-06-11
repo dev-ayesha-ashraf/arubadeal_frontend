@@ -158,7 +158,7 @@ const TypeDetail = () => {
   const isLoading = typesLoading || !currentType;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 max-[800px]:mt-[20vh]">
       <Header />
       <Navbar />
 
@@ -166,58 +166,37 @@ const TypeDetail = () => {
       {isLoading ? (
         <div className="w-full h-64 bg-gray-200 animate-pulse"></div>
       ) : (
-        <div className="relative w-full h-64 md:h-96">
-
-          {/* Banner Image */}
-          <img
-            src={`${import.meta.env.VITE_MEDIA_URL}/${currentType?.banner || currentType?.image}`}
-            alt={currentType?.name}
-            className="w-full h-full object-cover"
-          />
-
-          {/* Dark Overlay */}
-          <div className="absolute inset-0 bg-black bg-opacity-50">
-            {/* Content Container Using Same Margin as Tab */}
-            <div className="container mx-auto h-full flex flex-col justify-center">
-              {/* Breadcrumb Text Above Main Title */}
-              <span className="text-white text-sm md:text-base uppercase tracking-wide mb-2">
-                Home / {currentType?.name.toUpperCase()}
-              </span>
-              {/* Main Title and Share Button */}
-              <div className="flex justify-between items-center">
-                <h1 className="text-white text-3xl md:text-6xl lg:text-7xl font-extrabold uppercase">
-                  {currentType?.name}
-                </h1>
-                <ShareButtons
-                  title={`${currentType?.name} Vehicles`}
-                  url={window.location.href}
-                  imageUrl={currentType?.banner || currentType?.image ?
-                    `${import.meta.env.VITE_MEDIA_URL}/${currentType?.banner || currentType?.image}` :
-                    undefined
-                  }
-                />
-              </div>
-            </div>
-          </div>
+        <div>
         </div>
       )}
 
       <div className="container mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex justify-between items-center mb-6 max-[600px]:flex-col">
           <h2 className="text-2xl font-bold text-dealership-navy">
             Available {currentType?.name} Vehicles
           </h2>
-          <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="w-[200px] bg-white">
-              <SelectValue placeholder="Sort by" />
-            </SelectTrigger>
-            <SelectContent className="bg-white">
-              <SelectItem value="date-desc">Newest First</SelectItem>
-              <SelectItem value="date-asc">Oldest First</SelectItem>
-              <SelectItem value="price-asc">Price: Low to High</SelectItem>
-              <SelectItem value="price-desc">Price: High to Low</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex">
+            <ShareButtons
+              title={`${currentType?.name} Vehicles`}
+              url={window.location.href}
+              imageUrl={currentType?.banner || currentType?.image ?
+                `${import.meta.env.VITE_MEDIA_URL}/${currentType?.banner || currentType?.image}` :
+                undefined
+              }
+            />
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="w-[120px] bg-white sm:w-[200px]">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent className="bg-white">
+                <SelectItem value="date-desc">Newest First</SelectItem>
+                <SelectItem value="date-asc">Oldest First</SelectItem>
+                <SelectItem value="price-asc">Price: Low to High</SelectItem>
+                <SelectItem value="price-desc">Price: High to Low</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
         </div>
         <div className="flex flex-col lg:flex-row gap-8">
 

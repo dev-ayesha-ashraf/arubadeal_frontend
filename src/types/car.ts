@@ -6,7 +6,9 @@ export interface Car {
   make: string;
   model?: string;
   transmission: string;
-  type: string;
+  type: string; 
+  color?: string;
+  seats?: number; 
   image: string;
   address: string;
   status?: number;
@@ -14,4 +16,4 @@ export interface Car {
   serialNumber?: string;
   makeId?: string;
   slug: string;
-} 
+}
