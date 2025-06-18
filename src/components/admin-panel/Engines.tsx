@@ -28,7 +28,7 @@ interface Engine {
 // API functions
 const fetchEngines = async (): Promise<Engine[]> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/engines/v1/list-engines`,
+    `${import.meta.env.VITE_API_URL}/engines/list-engines`,
     {
       method: "GET",
       headers: {
@@ -49,7 +49,7 @@ const fetchEngines = async (): Promise<Engine[]> => {
 
 const createEngine = async (data: EngineFormData): Promise<Engine> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/engines/v1/add-engine`,
+    `${import.meta.env.VITE_API_URL}/engines/add-engine`,
     {
       method: "POST",
       headers: {
@@ -77,7 +77,7 @@ const updateEngine = async ({
   data: EngineFormData;
 }): Promise<Engine> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/engines/v1/update-engine/${_id}`,
+    `${import.meta.env.VITE_API_URL}/engines/update-engine/${_id}`,
     {
       method: "PATCH",
       headers: {
@@ -99,7 +99,7 @@ const updateEngine = async ({
 
 const deleteEngine = async (_id: string): Promise<void> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/engines/v1/delete-engine/${_id}`,
+    `${import.meta.env.VITE_API_URL}/engines/delete-engine/${_id}`,
     {
       method: "DELETE",
       headers: {

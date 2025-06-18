@@ -44,7 +44,7 @@ interface Car {
 // Fetch functions
 const fetchAllTypes = async (): Promise<CarType[]> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/types/v1/list-types`,
+    `${import.meta.env.VITE_API_URL}/types/list-types`,
     {
       method: "GET",
       headers: {
@@ -73,7 +73,7 @@ const fetchCars = async (params: URLSearchParams): Promise<Car[]> => {
   }
 
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/cars/v1/list-cars-for-home-page?${params.toString()}`,
+    `${import.meta.env.VITE_API_URL}/cars/list-cars-for-home-page?${params.toString()}`,
     {
       method: "GET",
       headers,

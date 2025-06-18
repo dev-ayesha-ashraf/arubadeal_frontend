@@ -30,7 +30,7 @@ interface CarType {
 
 const fetchTypes = async (): Promise<CarType[]> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/types/v1/list-types`,
+    `${import.meta.env.VITE_API_URL}/types/list-types`,
     {
       method: "GET",
       headers: {
@@ -87,12 +87,12 @@ const CarTypes = () => {
       console.log('Request options:', {
         method: requestOptions.method,
         headers: requestOptions.headers,
-        url: `${import.meta.env.VITE_API_URL}/types/v1/add-type`,
+        url: `${import.meta.env.VITE_API_URL}/types/add-type`,
       });
       
       // Make the API request
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/types/v1/add-type`,
+        `${import.meta.env.VITE_API_URL}/types/add-type`,
         requestOptions
       );
 
@@ -150,12 +150,12 @@ const CarTypes = () => {
       console.log('Request options:', {
         method: requestOptions.method,
         headers: requestOptions.headers,
-        url: `${import.meta.env.VITE_API_URL}/types/v1/update-type/${id}`,
+        url: `${import.meta.env.VITE_API_URL}/types/update-type/${id}`,
       });
       
       // Make the API request
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/types/v1/update-type/${id}`,
+        `${import.meta.env.VITE_API_URL}/types/update-type/${id}`,
         requestOptions
       );
 
@@ -198,7 +198,7 @@ const CarTypes = () => {
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/types/v1/delete-type/${id}`,
+        `${import.meta.env.VITE_API_URL}/types/delete-type/${id}`,
         {
           method: "DELETE",
           headers: {

@@ -15,7 +15,7 @@ interface CarType {
 
 const fetchCarTypes = async (): Promise<CarType[]> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/types/v1/list-types`,
+    `${import.meta.env.VITE_API_URL}/types/list-types`,
     {
       method: "GET",
       headers: {

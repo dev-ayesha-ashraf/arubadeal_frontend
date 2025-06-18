@@ -129,7 +129,7 @@ export const ListingsFilter = () => {
     setIsLoadingModels(true);
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/cars/v1/list-cars`
+        `${import.meta.env.VITE_API_URL}/cars/list-cars`
       );
       const data = await response.json();
       if (data.success && Array.isArray(data.data)) {
@@ -169,7 +169,7 @@ export const ListingsFilter = () => {
 
         try {
           const resp = await fetch(
-            `${import.meta.env.VITE_API_URL}/cars/v1/models-by-make/${filters.make}`
+            `${import.meta.env.VITE_API_URL}/cars/models-by-make/${filters.make}`
           );
           if (resp.ok) {
             const d = await resp.json();
@@ -184,7 +184,7 @@ export const ListingsFilter = () => {
 
         if (!fetchSuccess) {
           const resp = await fetch(
-            `${import.meta.env.VITE_API_URL}/cars/v1/list-cars`
+            `${import.meta.env.VITE_API_URL}/cars/list-cars`
           );
           if (resp.ok) {
             const d = await resp.json();
@@ -210,7 +210,7 @@ export const ListingsFilter = () => {
 
         // ✅ Also update colors after filtered models load
         const resp2 = await fetch(
-          `${import.meta.env.VITE_API_URL}/cars/v1/list-cars`
+          `${import.meta.env.VITE_API_URL}/cars/list-cars`
         );
         const d2 = await resp2.json();
         if (d2.success && Array.isArray(d2.data)) {
@@ -235,7 +235,7 @@ export const ListingsFilter = () => {
     if (filters.make) {
       fetchFilteredModels();
     } else {
-      fetchAllModelsAndColors(); // ✅ fetch both models & colors
+      fetchAllModelsAndColors(); 
     }
   }, [filters.make]);
 
@@ -247,7 +247,7 @@ export const ListingsFilter = () => {
     if (filters.type) searchParams.append("typeSlug", filters.type);
     if (filters.priceRange) searchParams.append("price", filters.priceRange);
     if (filters.location) searchParams.append("location", filters.location);
-    if (filters.color) searchParams.append("color", filters.color); // ✅ add color
+    if (filters.color) searchParams.append("color", filters.color); 
 
     dropdowns?.customFields?.forEach((field) => {
       if (filters[field.name]) searchParams.append(field.name, filters[field.name]);

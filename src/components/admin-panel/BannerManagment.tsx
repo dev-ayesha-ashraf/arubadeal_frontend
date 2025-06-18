@@ -26,7 +26,7 @@ interface Banner {
 
 const fetchBanners = async (): Promise<Banner[]> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/banners/v1/list-banners`,
+    `${import.meta.env.VITE_API_URL}/banners/list-banners`,
     {
       method: "GET",
       headers: {
@@ -44,7 +44,7 @@ const fetchBanners = async (): Promise<Banner[]> => {
 
 const addBanner = async (formData: FormData): Promise<Banner> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/banners/v1/add-banner`,
+    `${import.meta.env.VITE_API_URL}/banners/add-banner`,
     {
       method: "POST",
       body: formData,
@@ -68,7 +68,7 @@ const updateBanner = async ({
   formData: FormData;
 }): Promise<Banner> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/banners/v1/update-banner/${_id}`,
+    `${import.meta.env.VITE_API_URL}/banners/update-banner/${_id}`,
     {
       method: "PATCH",
       body: formData,
@@ -86,7 +86,7 @@ const updateBanner = async ({
 
 const deleteBanner = async (_id: string) => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/banners/v1/delete-banner/${_id}`,
+    `${import.meta.env.VITE_API_URL}/banners/delete-banner/${_id}`,
     {
       method: "DELETE",
       headers: {

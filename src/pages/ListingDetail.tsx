@@ -58,7 +58,7 @@ interface CarListing {
 // Fetch function for car detail
 const fetchCarDetail = async (slug: string): Promise<CarListing> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/cars/v1/get-car-by-slug/${slug}`,
+    `${import.meta.env.VITE_API_URL}/cars/get-car-by-slug/${slug}`,
     {
       method: "GET",
       headers: {

@@ -44,7 +44,7 @@ export const SubscriptionBox = ({ className = "" }: SubscriptionBoxProps) => {
       setIsLoading(true);
       
       // Call the subscription API endpoint
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/subscriptions/v1/subscribe`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/subscriptions/subscribe`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),

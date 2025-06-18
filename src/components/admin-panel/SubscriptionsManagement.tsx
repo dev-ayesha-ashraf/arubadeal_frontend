@@ -22,7 +22,7 @@ interface Subscription {
 
 const fetchSubscriptions = async (): Promise<Subscription[]> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/subscriptions/v1/admin/list`,
+    `${import.meta.env.VITE_API_URL}/subscriptions/admin/list`,
     {
       method: "GET",
       headers: {
@@ -47,7 +47,7 @@ const fetchSubscriptions = async (): Promise<Subscription[]> => {
 
 const deleteSubscription = async (id: string): Promise<void> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/subscriptions/v1/admin/delete/${id}`,
+    `${import.meta.env.VITE_API_URL}/subscriptions/admin/delete/${id}`,
     {
       method: "DELETE",
       headers: {
@@ -70,7 +70,7 @@ const deleteSubscription = async (id: string): Promise<void> => {
 
 const sendNewsletter = async (subject: string, content: string): Promise<void> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/subscriptions/v1/admin/send-newsletter`,
+    `${import.meta.env.VITE_API_URL}/subscriptions/admin/send-newsletter`,
     {
       method: "POST",
       headers: {

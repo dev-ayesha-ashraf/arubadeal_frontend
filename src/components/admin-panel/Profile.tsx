@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 // API function for updating profile
 const updateProfile = async (formData: FormData): Promise<any> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/users/v1/update-profile`,
+    `${import.meta.env.VITE_API_URL}/users/update-profile`,
     {
       method: "PATCH",
       headers: {

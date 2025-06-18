@@ -26,7 +26,7 @@ interface Make {
 
 const fetchMakes = async (): Promise<Make[]> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/makes/v1/list-makes`,
+    `${import.meta.env.VITE_API_URL}/makes/list-makes`,
     {
       method: "GET",
       headers: {
@@ -44,7 +44,7 @@ const fetchMakes = async (): Promise<Make[]> => {
 
 const addMake = async (formData: FormData): Promise<Make> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/makes/v1/add-make`,
+    `${import.meta.env.VITE_API_URL}/makes/add-make`,
     {
       method: "POST",
       body: formData,
@@ -68,7 +68,7 @@ const updateMake = async ({
   formData: FormData;
 }): Promise<Make> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/makes/v1/update-make/${_id}`,
+    `${import.meta.env.VITE_API_URL}/makes/update-make/${_id}`,
     {
       method: "PATCH",
       body: formData,
@@ -86,7 +86,7 @@ const updateMake = async ({
 
 const deleteMake = async (_id: string) => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/makes/v1/delete-make/${_id}`,
+    `${import.meta.env.VITE_API_URL}/makes/delete-make/${_id}`,
     {
       method: "DELETE",
       headers: {

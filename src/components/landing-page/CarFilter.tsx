@@ -64,8 +64,8 @@ export const CarFilter = () => {
    const fetchDropdowns = async () => {
   try {
     const [filtersRes, carsRes] = await Promise.all([
-      fetch(`${import.meta.env.VITE_API_URL}/cars/v1/list-filters`),
-      fetch(`${import.meta.env.VITE_API_URL}/cars/v1/list-cars`)
+      fetch(`${import.meta.env.VITE_API_URL}/cars/list-filters`),
+      fetch(`${import.meta.env.VITE_API_URL}/cars/list-cars`)
     ]);
 
     const filtersData = await filtersRes.json();
@@ -110,7 +110,7 @@ export const CarFilter = () => {
         let models = [];
         let fetchSuccess = false;
         try {
-          const response = await fetch(`${import.meta.env.VITE_API_URL}/cars/v1/models-by-make/${filters.make}`);
+          const response = await fetch(`${import.meta.env.VITE_API_URL}/cars/models-by-make/${filters.make}`);
           if (response.ok) {
             const data = await response.json();
             if (data.success && Array.isArray(data.data)) {
@@ -123,7 +123,7 @@ export const CarFilter = () => {
         }
 
         if (!fetchSuccess) {
-          const response = await fetch(`${import.meta.env.VITE_API_URL}/cars/v1/list-cars`);
+          const response = await fetch(`${import.meta.env.VITE_API_URL}/cars/list-cars`);
           if (response.ok) {
             const data = await response.json();
             if (data.success && Array.isArray(data.data)) {

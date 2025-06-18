@@ -139,7 +139,7 @@ interface VehicleImage {
 const fetchVehicles = async (): Promise<Vehicle[]> => {
   try {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/cars/v1/list-cars`,
+    `${import.meta.env.VITE_API_URL}/cars/list-cars`,
     {
       method: "GET",
       headers: {
@@ -170,7 +170,7 @@ const addVehicleInfo = async (
 ): Promise<Vehicle> => {
   // Get the current highest serial number
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/cars/v1/get-highest-serial`,
+    `${import.meta.env.VITE_API_URL}/cars/get-highest-serial`,
     {
       method: "GET",
       headers: {
@@ -196,7 +196,7 @@ const addVehicleInfo = async (
   };
 
   const createResponse = await fetch(
-    `${import.meta.env.VITE_API_URL}/cars/v1/add-car`,
+    `${import.meta.env.VITE_API_URL}/cars/add-car`,
     {
       method: "POST",
       headers: {
@@ -228,7 +228,7 @@ const uploadVehicleImages = async ({
   formData.append("isPrimary", isPrimary ? "true" : "false");
 
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/cars/v1/add-car-images/${vehicleId}`,
+    `${import.meta.env.VITE_API_URL}/cars/add-car-images/${vehicleId}`,
     {
       method: "POST",
       body: formData,
@@ -267,7 +267,7 @@ const updateVehicle = async ({
   console.log("Sending data to server:", JSON.stringify(dataToSend, null, 2));
   
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/cars/v1/update-car/${_id}`,
+    `${import.meta.env.VITE_API_URL}/cars/update-car/${_id}`,
     {
       method: "PATCH",
       headers: {
@@ -293,7 +293,7 @@ const updateVehicle = async ({
 
 const deleteVehicle = async (_id: string) => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/cars/v1/delete-car/${_id}`,
+    `${import.meta.env.VITE_API_URL}/cars/delete-car/${_id}`,
     {
       method: "DELETE",
       headers: {
@@ -310,7 +310,7 @@ const deleteVehicle = async (_id: string) => {
 
 const fetchDropdowns = async (): Promise<DropdownData> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/cars/v1/list-dropdowns`,
+    `${import.meta.env.VITE_API_URL}/cars/list-dropdowns`,
     {
       method: "GET",
       headers: {
@@ -354,7 +354,7 @@ interface CustomProperty {
 const fetchVehicleImages = async (vehicleId: string): Promise<string[]> => {
   try {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/cars/v1/get-car-images/${vehicleId}`,
+    `${import.meta.env.VITE_API_URL}/cars/get-car-images/${vehicleId}`,
     {
       method: "GET",
       headers: {
@@ -385,7 +385,7 @@ const fetchVehicleImages = async (vehicleId: string): Promise<string[]> => {
 const deleteVehicleImage = async (imageId: string): Promise<void> => {
   try {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/cars/v1/delete-car-image/${imageId}`,
+    `${import.meta.env.VITE_API_URL}/cars/delete-car-image/${imageId}`,
     {
       method: "DELETE",
       headers: {
@@ -406,7 +406,7 @@ const deleteVehicleImage = async (imageId: string): Promise<void> => {
 const setPrimaryImage = async (vehicleId: string, imageId: string): Promise<void> => {
   try {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/cars/v1/set-primary-image/${vehicleId}/${imageId}`,
+    `${import.meta.env.VITE_API_URL}/cars/set-primary-image/${vehicleId}/${imageId}`,
     {
       method: "PATCH",
       headers: {

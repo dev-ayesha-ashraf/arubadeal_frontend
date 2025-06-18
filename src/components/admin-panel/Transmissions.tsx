@@ -28,7 +28,7 @@ interface Transmission {
 // API functions
 const fetchTransmissions = async (): Promise<Transmission[]> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/transmissions/v1/list-transmissions`,
+    `${import.meta.env.VITE_API_URL}/transmissions/list-transmissions`,
     {
       method: "GET",
       headers: {
@@ -51,7 +51,7 @@ const createTransmission = async (
   data: TransmissionFormData
 ): Promise<Transmission> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/transmissions/v1/add-transmission`,
+    `${import.meta.env.VITE_API_URL}/transmissions/add-transmission`,
     {
       method: "POST",
       headers: {

@@ -11,7 +11,7 @@ interface BannerImage {
 
 const fetchBannerImages = async (): Promise<BannerImage[]> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/banners/v1/list-banners`,
+    `${import.meta.env.VITE_API_URL}/banners/list-banners`,
     {
       method: "GET",
       headers: {

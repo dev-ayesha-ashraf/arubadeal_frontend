@@ -60,7 +60,7 @@ export const OurCars = () => {
   const { data: allCars = [], isLoading: isAllCarsLoading } = useQuery({
     queryKey: ["all-cars"],
     queryFn: async () => {
-      const response = await api.get<{ data: Car[] }>("/cars/v1/list-cars-for-home-page");
+      const response = await api.get<{ data: Car[] }>("/cars/list-cars-for-home-page");
       return response.data;
     },
     enabled: selectedFilter === "All",
@@ -69,7 +69,7 @@ export const OurCars = () => {
   const { data: bestSellerCars = [], isLoading: isBestSellerLoading } = useQuery({
     queryKey: ["best-seller-cars"],
     queryFn: async () => {
-      const response = await api.get<{ data: Car[] }>("/cars/v1/best-sellers");
+      const response = await api.get<{ data: Car[] }>("/cars/best-sellers");
       return response.data;
     },
     enabled: selectedFilter === "Best Seller",
@@ -78,7 +78,7 @@ export const OurCars = () => {
   const { data: newArrivalCars = [], isLoading: isNewArrivalLoading } = useQuery({
     queryKey: ["new-arrival-cars"],
     queryFn: async () => {
-      const response = await api.get<{ data: Car[] }>("/cars/v1/new-arrivals");
+      const response = await api.get<{ data: Car[] }>("/cars/new-arrivals");
       return response.data;
     },
     enabled: selectedFilter === "New Arrival",
@@ -87,7 +87,7 @@ export const OurCars = () => {
   const { data: popularCars = [], isLoading: isPopularLoading } = useQuery({
     queryKey: ["popular-cars"],
     queryFn: async () => {
-      const response = await api.get<{ data: Car[] }>("/cars/v1/popular-cars");
+      const response = await api.get<{ data: Car[] }>("/cars/popular-cars");
       return response.data;
     },
     enabled: selectedFilter === "Popular",
@@ -96,7 +96,7 @@ export const OurCars = () => {
   const { data: usedCars = [], isLoading: isUsedCarsLoading } = useQuery({
     queryKey: ["used-cars"],
     queryFn: async () => {
-      const response = await api.get<{ data: Car[] }>("/cars/v1/used-cars");
+      const response = await api.get<{ data: Car[] }>("/cars/used-cars");
       return response.data;
     },
     enabled: selectedFilter === "Used Cars",

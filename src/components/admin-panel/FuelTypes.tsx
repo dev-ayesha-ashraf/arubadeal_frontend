@@ -28,7 +28,7 @@ interface FuelType {
 // API functions
 const fetchFuelTypes = async (): Promise<FuelType[]> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/fuel-types/v1/list-fuel-types`,
+    `${import.meta.env.VITE_API_URL}/fuel-types/list-fuel-types`,
     {
       method: "GET",
       headers: {
@@ -49,7 +49,7 @@ const fetchFuelTypes = async (): Promise<FuelType[]> => {
 
 const createFuelType = async (data: FuelTypeFormData): Promise<FuelType> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/fuel-types/v1/add-fuel-type`,
+    `${import.meta.env.VITE_API_URL}/fuel-types/add-fuel-type`,
     {
       method: "POST",
       headers: {
@@ -77,7 +77,7 @@ const updateFuelType = async ({
   data: FuelTypeFormData;
 }): Promise<FuelType> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/fuel-types/v1/update-fuel-type/${_id}`,
+    `${import.meta.env.VITE_API_URL}/fuel-types/update-fuel-type/${_id}`,
     {
       method: "PATCH",
       headers: {
@@ -99,7 +99,7 @@ const updateFuelType = async ({
 
 const deleteFuelType = async (_id: string): Promise<void> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/fuel-types/v1/delete-fuel-type/${_id}`,
+    `${import.meta.env.VITE_API_URL}/fuel-types/delete-fuel-type/${_id}`,
     {
       method: "DELETE",
       headers: {

@@ -40,7 +40,7 @@ interface Make {
 
 const fetchModels = async (): Promise<Model[]> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/models/v1/list-models`,
+    `${import.meta.env.VITE_API_URL}/models/list-models`,
     {
       method: "GET",
       headers: {
@@ -58,7 +58,7 @@ const fetchModels = async (): Promise<Model[]> => {
 
 const fetchMakes = async (): Promise<Make[]> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/makes/v1/list-makes`,
+    `${import.meta.env.VITE_API_URL}/makes/list-makes`,
     {
       method: "GET",
       headers: {
@@ -76,7 +76,7 @@ const fetchMakes = async (): Promise<Make[]> => {
 
 const addModel = async (formData: FormData): Promise<Model> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/models/v1/add-model`,
+    `${import.meta.env.VITE_API_URL}/models/add-model`,
     {
       method: "POST",
       body: formData,
@@ -110,7 +110,7 @@ const updateModel = async ({
   formData: FormData;
 }): Promise<Model> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/models/v1/update-model/${_id}`,
+    `${import.meta.env.VITE_API_URL}/models/update-model/${_id}`,
     {
       method: "PATCH",
       body: formData,
@@ -128,7 +128,7 @@ const updateModel = async ({
 
 const deleteModel = async (_id: string) => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/models/v1/delete-model/${_id}`,
+    `${import.meta.env.VITE_API_URL}/models/delete-model/${_id}`,
     {
       method: "DELETE",
       headers: {

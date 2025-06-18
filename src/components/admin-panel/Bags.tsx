@@ -28,7 +28,7 @@ interface Bag {
 // API functions
 const fetchBags = async (): Promise<Bag[]> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/bags/v1/list-bags`,
+    `${import.meta.env.VITE_API_URL}/bags/list-bags`,
     {
       method: "GET",
       headers: {
@@ -49,7 +49,7 @@ const fetchBags = async (): Promise<Bag[]> => {
 
 const createBag = async (data: BagFormData): Promise<Bag> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/bags/v1/add-bag`,
+    `${import.meta.env.VITE_API_URL}/bags/add-bag`,
     {
       method: "POST",
       headers: {
@@ -77,7 +77,7 @@ const updateBag = async ({
   data: BagFormData;
 }): Promise<Bag> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/bags/v1/update-bag/${_id}`,
+    `${import.meta.env.VITE_API_URL}/bags/update-bag/${_id}`,
     {
       method: "PATCH",
       headers: {
@@ -99,7 +99,7 @@ const updateBag = async ({
 
 const deleteBag = async (_id: string): Promise<void> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/bags/v1/delete-bag/${_id}`,
+    `${import.meta.env.VITE_API_URL}/bags/delete-bag/${_id}`,
     {
       method: "DELETE",
       headers: {

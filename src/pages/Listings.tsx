@@ -34,7 +34,7 @@ interface Manufacturer {
 
 const fetchCars = async (params: URLSearchParams): Promise<Car[]> => {
   const listRes = await fetch(
-    `${import.meta.env.VITE_API_URL}/cars/v1/list-cars-for-home-page?${params.toString()}`,
+    `${import.meta.env.VITE_API_URL}/cars/list-cars-for-home-page?${params.toString()}`,
     {
       method: "GET",
       headers: {
@@ -47,8 +47,8 @@ const fetchCars = async (params: URLSearchParams): Promise<Car[]> => {
   const baseCars = (await listRes.json()).data;
 
   const [detailsRes, typesRes] = await Promise.all([
-    fetch(`${import.meta.env.VITE_API_URL}/cars/v1/list-cars`),
-    fetch(`${import.meta.env.VITE_API_URL}/types/v1/list-types`),
+    fetch(`${import.meta.env.VITE_API_URL}/cars/list-cars`),
+    fetch(`${import.meta.env.VITE_API_URL}/types/list-types`),
   ]);
 
   const detailsArray: CarDetail[] = (await detailsRes.json()).data ?? [];
@@ -88,7 +88,7 @@ const fetchCars = async (params: URLSearchParams): Promise<Car[]> => {
 };
 
 const fetchMakes = async (): Promise<Manufacturer[]> => {
-  const response = await fetch(`${import.meta.env.VITE_API_URL}/makes/v1/list-makes`);
+  const response = await fetch(`${import.meta.env.VITE_API_URL}/makes/list-makes`);
   if (!response.ok) throw new Error("Failed to fetch makes");
   const data = await response.json();
   return data.data;

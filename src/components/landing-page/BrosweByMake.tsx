@@ -15,7 +15,7 @@ interface Manufacturer {
 
 const fetchManufacturers = async (): Promise<Manufacturer[]> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/makes/v1/list-makes`,
+    `${import.meta.env.VITE_API_URL}/makes/list-makes`,
     {
       method: "GET",
       headers: {
