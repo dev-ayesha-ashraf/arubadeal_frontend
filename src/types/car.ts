@@ -17,3 +17,14 @@ export interface Car {
   makeId?: string;
   slug: string;
 }
+
+// interface DetailedCar {
+//   _id: string;
+//   engineId: string;
+//   [key: string]: any;
+// }
+
+// interface Engine {
+//   _id: string;
+//   name: string;
+// }

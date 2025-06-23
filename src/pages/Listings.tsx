@@ -125,18 +125,20 @@ const Listings = () => {
   const selectedMake = makes.find((make) => make._id === makeId);
 
   const filteredCars = cars.filter((car) => {
-    const matchesSearch =
-      !searchQuery ||
-      car.title.toLowerCase().includes(searchQuery) ||
-      car.make.toLowerCase().includes(searchQuery) ||
-      (car.model?.toLowerCase() || "").includes(searchQuery) ||
-      (car.type?.toLowerCase() || "").includes(searchQuery);
+  const matchesSearch =
+    !searchQuery ||
+    car.title.toLowerCase().includes(searchQuery) ||
+    car.make.toLowerCase().includes(searchQuery) ||
+    (car.model?.toLowerCase() || "").includes(searchQuery) ||
+    (car.type?.toLowerCase() || "").includes(searchQuery) ||
+    (car.color?.toLowerCase() || "").includes(searchQuery);
 
-    const matchesColor =
-      !colorQuery || (car.color?.toLowerCase() || "") === colorQuery;
+  const matchesColor =
+    !colorQuery || (car.color?.toLowerCase() || "") === colorQuery;
 
-    return matchesSearch && matchesColor;
-  });
+  return matchesSearch && matchesColor;
+});
+
 
   const sortedCars = [...filteredCars].sort((a, b) => {
     switch (sortBy) {
@@ -174,8 +176,8 @@ const Listings = () => {
                 {searchQuery
                   ? `Search Results for "${searchQuery}"`
                   : makeId && selectedMake
-                  ? `All ${selectedMake.name} Vehicles`
-                  : "All Listings"}
+                    ? `All ${selectedMake.name} Vehicles`
+                    : "All Listings"}
               </h1>
               <Select value={sortBy} onValueChange={setSortBy}>
                 <SelectTrigger className="w-[180px]">

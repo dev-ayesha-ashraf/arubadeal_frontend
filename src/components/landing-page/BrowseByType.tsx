@@ -1,16 +1,16 @@
 import { ArrowRight } from "lucide-react";
 import { Button } from "../ui/button";
-import { Card, CardContent } from "../ui/card";
+import { CardContent } from "../ui/card";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 
-// Define the type interface
+// ✅ Updated type interface to match API response
 interface CarType {
   _id: string;
   name: string;
-  image: string;
-  totalCars: number;
   slug: string;
+  totalCars: number;
+  logo: string; // used instead of image
 }
 
 const fetchCarTypes = async (): Promise<CarType[]> => {
@@ -24,7 +24,9 @@ const fetchCarTypes = async (): Promise<CarType[]> => {
     }
   );
   if (!response.ok) throw new Error("Failed to fetch car types");
+
   const res = await response.json();
+  console.log("API response data:", res.data); // you can remove this once done
   return res.data;
 };
 
@@ -33,6 +35,8 @@ export const BrowseByType = () => {
     queryKey: ["types"],
     queryFn: fetchCarTypes,
   });
+
+  const mediaUrl = import.meta.env.VITE_MEDIA_URL;
 
   return (
     <section className="py-16 bg-white">
@@ -53,27 +57,26 @@ export const BrowseByType = () => {
           {isLoading ? (
             <div>Loading...</div>
           ) : (
-            carTypes.map((item) => (
-              <Link
-                key={item._id}
-                to={`/types/${item.slug}`}
-                className="group"
-              >
-                <div>
-                  <img
-                    src={`${import.meta.env.VITE_MEDIA_URL}/${item.image}`}
-                    alt={item.name}
-                    className="w-60 h-20 md:h-44 mx-auto object-contain"
-
-                  />
-                </div>
-                <CardContent className="p-1 md:p-2">
-                  <p className="font-bold text-center mb-1 text-dealership-navy group-hover:text-dealership-primary">
-                    {item.name} ({item.totalCars})
-                  </p>
-                </CardContent>
-              </Link>
-            ))
+            carTypes.map((item) => {
+              const imagePath = item.logo;
+              const fullImageUrl = `${mediaUrl}/${imagePath}`;
+              return (
+                <Link key={item._id} to={`/types/${item.slug}`} className="group">
+                  <div>
+                    <img
+                      src={fullImageUrl}
+                      alt={item.name}
+                      className="w-60 h-20 md:h-44 mx-auto object-contain"
+                    />
+                  </div>
+                  <CardContent className="p-1 md:p-2">
+                    <p className="font-bold text-center mb-1 text-dealership-navy group-hover:text-dealership-primary">
+                      {item.name} ({item.totalCars})
+                    </p>
+                  </CardContent>
+                </Link>
+              );
+            })
           )}
         </div>
 
