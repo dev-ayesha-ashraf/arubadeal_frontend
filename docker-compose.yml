@@ -1,0 +1,21 @@
+version: "3.3"
+
+services:
+  frontend_app:
+    container_name: aru_frontend
+    build:
+      context: .
+      dockerfile: dockerfile
+      args:
+        - NODE_ENV=production
+        - VITE_MEASUREMENT_ID=${VITE_MEASUREMENT_ID}
+        - VITE_API_URL=${VITE_API_URL}
+        - VITE_MEDIA_URL=${VITE_MEDIA_URL}
+    env_file:
+      - .env
+    networks:
+      - nginx-proxy-net
+
+networks:
+  nginx-proxy-net:
+    external: true
