@@ -25,7 +25,7 @@ const fetchCarTypes = async (): Promise<CarType[]> => {
   );
   if (!response.ok) throw new Error("Failed to fetch car types");
   const res = await response.json();
-  return res.data;
+  return res.data ?? [];
 };
 
 export const BrowseByType = () => {
@@ -34,7 +34,7 @@ export const BrowseByType = () => {
     queryFn: fetchCarTypes,
   });
 
-    const mediaUrl = import.meta.env.VITE_MEDIA_URL;
+  const mediaUrl = import.meta.env.VITE_MEDIA_URL;
 
   return (
     <section className="py-16 bg-white">
@@ -54,7 +54,7 @@ export const BrowseByType = () => {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-5">
           {isLoading ? (
             <div>Loading...</div>
-          ) : (
+          ) : carTypes && carTypes.length > 0 ? (
             carTypes.map((item) => {
               const imagePath = item.logo;
               const fullImageUrl = `${mediaUrl}/${imagePath}`;
@@ -75,7 +75,10 @@ export const BrowseByType = () => {
                 </Link>
               );
             })
+          ) : (
+            <div>No car types found.</div>
           )}
+
         </div>
         <div className="flex justify-center mt-8 lg:hidden">
           <Link to="/listings">

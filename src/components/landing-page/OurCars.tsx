@@ -68,7 +68,7 @@ export const OurCars = () => {
     queryKey: ["all-cars"],
     queryFn: async () => {
       const response = await api.get<{ data: Car[] }>("/cars/list-cars-for-home-page");
-      return response.data;
+      return response.data ?? [];
     },
     enabled: selectedFilter === "All",
   });
@@ -140,21 +140,22 @@ export const OurCars = () => {
   const getFilteredCars = () => {
     switch (selectedFilter) {
       case "Best Seller":
-        return bestSellerCars;
+        return bestSellerCars || [];
       case "New Arrival":
-        return newArrivalCars;
+        return newArrivalCars || [];
       case "Popular":
-        return popularCars;
+        return popularCars || [];
       case "Used Cars":
-        return usedCars;
+        return usedCars || [];
       case "All":
       default:
-        return allCars;
+        return allCars || [];
     }
   };
 
-  const filteredCars = getFilteredCars() || [];
-  const totalPages = Math.ceil((filteredCars.length || 0) / itemsPerPage);
+  const rawFilteredCars = getFilteredCars();
+  const filteredCars = Array.isArray(rawFilteredCars) ? rawFilteredCars : [];
+  const totalPages = Math.ceil((filteredCars?.length || 0) / itemsPerPage);
 
   const handlePrevious = () => {
     setCurrentPage((prev) => (prev > 0 ? prev - 1 : totalPages - 1));

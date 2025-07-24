@@ -112,11 +112,16 @@ const Listings = () => {
     queryFn: fetchTypes,
   });
 
-  const selectedMake = makes.find((make) => make._id === makeId);
+  const selectedMake = Array.isArray(makes)
+    ? makes.find((make) => make._id === makeId)
+    : null;
 
-  const mergedCars = homeCars.map((car) => {
-    const fullCar = fullCars.find((c) => c._id === car._id);
-    const typeName = types.find((t) => t._id === fullCar?.typeId)?.name || "N/A";
+
+  const mergedCars = Array.isArray(homeCars) ? homeCars.map((car) => {
+    const fullCar = fullCars?.find((c) => c._id === car._id);
+    const typeName = Array.isArray(types)
+      ? types.find((t) => t._id === fullCar?.typeId)?.name || "N/A"
+      : "N/A";
 
     return {
       ...car,
@@ -124,7 +129,9 @@ const Listings = () => {
       color: fullCar?.color || "N/A",
       type: typeName,
     };
-  });
+  }) : [];
+
+
 
   const filteredCars = mergedCars.filter((car) => {
     const matchesSearch =
@@ -183,8 +190,8 @@ const Listings = () => {
                 {searchQuery
                   ? `Search Results for "${searchQuery}"`
                   : makeId && selectedMake
-                  ? `All ${selectedMake.name} Vehicles`
-                  : "All Listings"}
+                    ? `All ${selectedMake.name} Vehicles`
+                    : "All Listings"}
               </h1>
               <Select value={sortBy} onValueChange={setSortBy}>
                 <SelectTrigger className="w-[180px]">

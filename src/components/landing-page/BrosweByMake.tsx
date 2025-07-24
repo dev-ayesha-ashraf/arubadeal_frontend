@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 
-// Remove the manufacturers array and create an interface for the manufacturer type
 interface Manufacturer {
   _id: string;
   name: string;
@@ -23,19 +22,29 @@ const fetchManufacturers = async (): Promise<Manufacturer[]> => {
       },
     }
   );
+
   if (!response.ok) throw new Error("Failed to fetch manufacturers");
+
   const res = await response.json();
-  return res.data;
+  const data = Array.isArray(res.data) ? res.data : [];
+  // console.log("Fetched manufacturers:", data);
+
+  return data;
 };
+
+
 
 export const BrowseByMake = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
-  
-  const { data: manufacturers = [], isLoading } = useQuery({
+
+  const { data = [], isLoading } = useQuery({
     queryKey: ["makes"],
     queryFn: fetchManufacturers,
   });
+
+  const manufacturers: Manufacturer[] = Array.isArray(data) ? data : [];
+
 
   const itemsPerPage = {
     mobile: 1,
@@ -119,14 +128,13 @@ export const BrowseByMake = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-5 gap-6 transition-all duration-500 ease-in-out">
               {getVisibleManufacturers().map((maker) => (
-                <Link 
+                <Link
                   key={`${maker._id}`}
                   to={`/listings?makeId=${maker._id}`}
                 >
                   <Card
-                    className={`overflow-hidden cursor-pointer group border hover:border-dealership-primary transition-all duration-300 ${
-                      isAnimating ? 'animate-fade-in' : ''
-                    }`}
+                    className={`overflow-hidden cursor-pointer group border hover:border-dealership-primary transition-all duration-300 ${isAnimating ? 'animate-fade-in' : ''
+                      }`}
                   >
                     <CardContent className="p-6 flex flex-col items-center justify-center">
                       <div className="w-20 h-20 mb-4 flex items-center justify-center overflow-hidden group-hover:scale-110 transition-transform duration-300">
