@@ -1,4 +1,4 @@
-import { Search, X } from "lucide-react";
+import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import {
@@ -14,7 +14,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogClose,
 } from "@/components/ui/dialog";
 import { useNavigate } from "react-router-dom";
 
@@ -26,7 +25,7 @@ interface DropdownItem {
   label?: string;
   status?: number;
   image?: string;
-  [key: string]: any; 
+  [key: string]: any;
 }
 
 interface DropdownsData {
@@ -37,7 +36,7 @@ interface DropdownsData {
   prices: string[];
   colors: string[];
   total: number;
-  models?: string[]; 
+  models?: string[];
 }
 
 interface FilterState {
@@ -65,25 +64,33 @@ export const CarFilter = () => {
       try {
         const [filtersRes, carsRes] = await Promise.all([
           fetch(`${import.meta.env.VITE_API_URL}/cars/list-filters`),
-          fetch(`${import.meta.env.VITE_API_URL}/cars/list-cars`)
+          fetch(`${import.meta.env.VITE_API_URL}/cars/list-cars-for-home-page?page=1&limit=8`)
         ]);
 
         const filtersData = await filtersRes.json();
         const carsData = await carsRes.json();
 
-        if (filtersData.success && carsData.success) {
-          // Extract unique, cleaned colors from car data
+        console.log("carsData.data:", carsData.data); // Debug this structure
+
+        const carList =
+          Array.isArray(carsData.data?.cars)
+            ? carsData.data.cars
+            : Array.isArray(carsData.data?.cars?.items)
+              ? carsData.data.cars.items
+              : [];
+
+        if (filtersData.success && carsData.success && carList.length > 0) {
           const carColors = Array.from(
             new Set(
-              carsData.data
+              carList
                 .map((car: any) => car.color?.trim()?.toLowerCase())
-                .filter((color: string | undefined) => !!color)
+                .filter(Boolean)
             )
           ).sort();
 
           setDropdowns({
             ...filtersData.data,
-            colors: carColors
+            colors: carColors,
           });
 
           setTotalListings(filtersData.data.total || 0);
@@ -92,46 +99,48 @@ export const CarFilter = () => {
           if (filtersData.data.models && Array.isArray(filtersData.data.models)) {
             setModelOptions(filtersData.data.models);
           }
+        } else {
+          console.warn("Unexpected API response structure", carsData);
         }
+
       } catch (error) {
         console.error("Error fetching dropdowns:", error);
       }
     };
 
-
     fetchDropdowns();
   }, []);
 
-  // Fetch filtered models when make changes
   useEffect(() => {
     const fetchFilteredModels = async () => {
       if (!filters.make) return;
       setIsLoadingModels(true);
       try {
-        let models = [];
+        let models: string[] = [];
         let fetchSuccess = false;
+
         try {
-          const response = await fetch(`${import.meta.env.VITE_API_URL}/cars/models-by-make/${filters.make}`);
-          if (response.ok) {
-            const data = await response.json();
+          const res = await fetch(`${import.meta.env.VITE_API_URL}/cars/models-by-make/${filters.make}`);
+          if (res.ok) {
+            const data = await res.json();
             if (data.success && Array.isArray(data.data)) {
               models = data.data;
               fetchSuccess = true;
             }
           }
-        } catch (endpointError) {
-          console.error('Error fetching from models-by-make endpoint:', endpointError);
+        } catch (err) {
+          console.error("Error fetching models-by-make:", err);
         }
 
         if (!fetchSuccess) {
-          const response = await fetch(`${import.meta.env.VITE_API_URL}/cars/list-cars`);
-          if (response.ok) {
-            const data = await response.json();
+          const res = await fetch(`${import.meta.env.VITE_API_URL}/cars/list-cars`);
+          if (res.ok) {
+            const data = await res.json();
             if (data.success && Array.isArray(data.data)) {
               models = Array.from(
                 new Set(
                   data.data
-                    .filter(car => car.makeId === filters.make && car.model && car.model.trim() !== '' && car.status === 1)
+                    .filter(car => car.makeId === filters.make && car.model?.trim() && car.status === 1)
                     .map(car => car.model)
                 )
               );
@@ -139,266 +148,150 @@ export const CarFilter = () => {
           }
         }
 
-        setModelOptions([...models].sort());
+        setModelOptions(models.sort());
       } catch (error) {
-        console.error('Error in fetchFilteredModels:', error);
+        console.error("Error in fetchFilteredModels:", error);
         setModelOptions([]);
       } finally {
         setIsLoadingModels(false);
       }
     };
 
-    if (filters.make) {
-      fetchFilteredModels();
-    }
+    if (filters.make) fetchFilteredModels();
   }, [filters.make]);
 
-  // Update filtered badges when filters change
   useEffect(() => {
-    // Instead of making an API call, filter the badges client-side
     if (dropdowns?.badges) {
-      // If no filters are applied, show all badges
-      if (!filters.make && !filters.type && !filters.priceRange && !filters.location) {
-        setFilteredBadges(dropdowns.badges);
-        return;
-      }
-
-      // For now, we'll just show all badges since we don't have the API endpoint
-      // In a real implementation, you would filter based on the selected criteria
       setFilteredBadges(dropdowns.badges);
-
-      // TODO: When the API endpoint is available, replace this with:
-      /*
-      const fetchFilteredBadges = async () => {
-        try {
-          const queryParams = new URLSearchParams();
-          
-          if (filters.make) {
-            queryParams.append('makeId', filters.make);
-          }
-          if (filters.type) {
-            queryParams.append('typeId', filters.type);
-          }
-          if (filters.priceRange) {
-            queryParams.append('price', filters.priceRange);
-          }
-          if (filters.location) {
-            queryParams.append('location', filters.location);
-          }
-          
-          const response = await fetch(`${import.meta.env.VITE_API_URL}/cars/v1/list-badges?${queryParams.toString()}`);
-          const data = await response.json();
-          if (data.success) {
-            setFilteredBadges(data.data || []);
-          }
-        } catch (error) {
-          console.error('Error fetching filtered badges:', error);
-          // Fallback to showing all badges if the API call fails
-          setFilteredBadges(dropdowns.badges);
-        }
-      };
-      
-      fetchFilteredBadges();
-      */
     }
   }, [filters, dropdowns]);
 
   const handleSearch = () => {
     const searchParams = new URLSearchParams();
+    if (filters.make) searchParams.append("makeId", filters.make);
+    if (filters.model) searchParams.append("model", filters.model);
+    if (filters.type) searchParams.append("typeId", filters.type);
+    if (filters.priceRange) searchParams.append("price", filters.priceRange);
+    if (filters.location) searchParams.append("location", filters.location);
+    if (filters.color) searchParams.append("color", filters.color);
+    if (selectedFilter !== "all") searchParams.append("badgeId", selectedFilter);
 
-    if (filters.make) {
-      searchParams.append('makeId', filters.make);
-    }
-    if (filters.model) {
-      searchParams.append('model', filters.model); // Change from 'modelId' to 'model'
-    }
-    if (filters.type) {
-      searchParams.append('typeId', filters.type);
-    }
-    if (filters.priceRange) {
-      searchParams.append('price', filters.priceRange);
-    }
-    if (filters.location) {
-      searchParams.append('location', filters.location);
-    }
-     if (filters.color) searchParams.append('color', filters.color);
-    if (selectedFilter !== 'all') {
-      searchParams.append('badgeId', selectedFilter);
-    }
-
-    console.log('Search parameters:', Object.fromEntries(searchParams.entries()));
+    console.log("Search parameters:", Object.fromEntries(searchParams.entries()));
     navigate(`/listings?${searchParams.toString()}`);
   };
 
   return (
-    <div className="bg-white px-4 sm:px-8 py-2 sm:py-4 rounded-lg shadow-lg max-w-7xl mx-auto -mt-30 relative z-10">
+    <div className="bg-white px-4 sm:px-8 py-4 rounded-lg shadow-lg max-w-7xl mx-auto -mt-30 relative z-10">
       <div className="flex flex-wrap justify-between items-center">
-        {/* Filter Buttons */}
         <div className="flex flex-wrap gap-4 mb-4 md:mb-0">
           <button
             key="all"
             onClick={() => setSelectedFilter("all")}
-            className={`text-xs px-2 py-1 rounded-full sm:text-sm sm:px-3 sm:py-2 sm:rounded-full capitalize ${selectedFilter === "all"
-              ? "bg-dealership-primary text-white"
-              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
+            className={`text-xs px-3 py-2 rounded-full sm:text-sm capitalize ${selectedFilter === "all" ? "bg-dealership-primary text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
           >
             all
           </button>
-
-          {filteredBadges?.map((badge) => (
+          {filteredBadges.map((badge) => (
             <button
               key={badge._id}
-              onClick={() => setSelectedFilter(badge._id)}
-              className={`text-xs px-2 py-1 rounded-full sm:text-sm sm:px-3 sm:py-2 sm:rounded-full capitalize ${selectedFilter === badge._id
-                ? "bg-dealership-primary text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
+              onClick={() => setSelectedFilter(badge._id!)}
+              className={`text-xs px-3 py-2 rounded-full sm:text-sm capitalize ${selectedFilter === badge._id ? "bg-dealership-primary text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
             >
               {badge.name}
             </button>
           ))}
         </div>
+
         <div className="flex items-center gap-4">
-          {/* Listings Count */}
           <div className="text-sm sm:text-lg font-semibold text-dealership-primary">
             {totalListings.toLocaleString()} Cars Available
           </div>
 
-
-          {/* Filters popup */}
           <Dialog>
             <DialogTrigger asChild>
-              <Button variant="outline" size="sm" className="text-sm sm:text-xl font-semibold text-dealership-primary border-2 border-dealership-primary px-3 py-1 sm:px-6 sm:py-2 hover:bg-dealership-primary hover:text-white transition-all duration-200 shadow-sm hover:shadow-md">
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-sm sm:text-xl font-semibold text-dealership-primary border-2 border-dealership-primary px-6 py-2 hover:bg-dealership-primary hover:text-white transition-all"
+              >
                 Filter
               </Button>
             </DialogTrigger>
-
-            <DialogContent className="sm:max-w-2xl max-w-full">
-              <DialogHeader className="pb-4">
-                <DialogTitle className="text-xl font-semibold">Filter Cars</DialogTitle>
+            <DialogContent className="sm:max-w-2xl w-full">
+              <DialogHeader>
+                <DialogTitle className="text-xl font-semibold mb-4">Filter Cars</DialogTitle>
               </DialogHeader>
 
               <div className="flex flex-col space-y-4">
                 {/* Make */}
-                <Select
-                  onValueChange={(value) =>
-                    setFilters((prev) => ({ ...prev, make: value, model: undefined }))
-                  }
-                  value={filters.make}
-                >
-                  <SelectTrigger className="w-full bg-white">
-                    <SelectValue placeholder="Select Make" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white w-[44%] max-h-60 overflow-y-auto rounded-2xl shadow-xl ring-1 ring-gray-200 focus:outline-none transition-all duration-200 py-2 scrollbar-thin scrollbar-thumb-gray-300">
-
+                <Select onValueChange={(value) => setFilters(prev => ({ ...prev, make: value, model: undefined }))} value={filters.make}>
+                  <SelectTrigger className="w-full bg-white"><SelectValue placeholder="Select Make" /></SelectTrigger>
+                  <SelectContent className="bg-white w-full max-h-60 overflow-y-auto">
                     {dropdowns?.makes?.map((make) => (
-                      <SelectItem key={make._id} value={make._id} className="text-gray-700 hover:bg-[#EADDCA]
-  hover:text-black transition-colors duration-150 cursor-pointer font-medium">
-                        {make.name}
-                      </SelectItem>
+                      <SelectItem key={make._id} value={make._id!}>{make.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
 
                 {/* Model */}
-                <Select
-                  onValueChange={(value) =>
-                    setFilters((prev) => ({ ...prev, model: value }))
-                  }
-                  value={filters.model}
-                >
-                  <SelectTrigger className="w-full bg-white">
-                    <SelectValue placeholder="Select Model" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white w-[44%] max-h-60 overflow-y-auto rounded-2xl shadow-xl ring-1 ring-gray-200 focus:outline-none transition-all duration-200 py-2 scrollbar-thin scrollbar-thumb-gray-300">
+                <Select onValueChange={(value) => setFilters(prev => ({ ...prev, model: value }))} value={filters.model}>
+                  <SelectTrigger className="w-full bg-white"><SelectValue placeholder="Select Model" /></SelectTrigger>
+                  <SelectContent className="bg-white w-full max-h-60 overflow-y-auto">
                     {modelOptions.length === 0 ? (
-                      <SelectItem value="no-models" disabled className="text-gray-700 hover:bg-[#EADDCA]
-  hover:text-black transition-colors duration-150 cursor-pointer font-medium">
+                      <SelectItem value="no-models" disabled>
                         {isLoadingModels ? "Loading models..." : "No models available"}
                       </SelectItem>
                     ) : (
                       modelOptions.map((model) => (
-                        <SelectItem key={model} value={model} className="text-gray-700 hover:bg-[#EADDCA]
-  hover:text-black transition-colors duration-150 cursor-pointer font-medium">
-                          {model}
-                        </SelectItem>
+                        <SelectItem key={model} value={model}>{model}</SelectItem>
                       ))
                     )}
                   </SelectContent>
                 </Select>
 
                 {/* Type */}
-                <Select
-                  onValueChange={(value) =>
-                    setFilters((prev) => ({ ...prev, type: value }))
-                  }
-                  value={filters.type}
-                >
-                  <SelectTrigger className="w-full bg-white">
-                    <SelectValue placeholder="Select Type" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white w-[44%] max-h-60 overflow-y-auto rounded-2xl shadow-xl ring-1 ring-gray-200 focus:outline-none transition-all duration-200 py-2 scrollbar-thin scrollbar-thumb-gray-300">
+                <Select onValueChange={(value) => setFilters(prev => ({ ...prev, type: value }))} value={filters.type}>
+                  <SelectTrigger className="w-full bg-white"><SelectValue placeholder="Select Type" /></SelectTrigger>
+                  <SelectContent className="bg-white w-full max-h-60 overflow-y-auto">
                     {dropdowns?.types?.map((type) => (
-                      <SelectItem key={type._id} value={type._id} className="text-gray-700 hover:bg-[#EADDCA]
-  hover:text-black transition-colors duration-150 cursor-pointer font-medium">
-                        {type.name}
-                      </SelectItem>
+                      <SelectItem key={type._id} value={type._id!}>{type.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
 
-                {/* Price Range */}
-                <Select
-                  onValueChange={(value) =>
-                    setFilters((prev) => ({ ...prev, priceRange: value }))
-                  }
-                  value={filters.priceRange}
-                >
-                  <SelectTrigger className="w-full bg-white">
-                    <SelectValue placeholder="Price Range" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white w-[44%] max-h-60 overflow-y-auto rounded-2xl shadow-xl ring-1 ring-gray-200 focus:outline-none transition-all duration-200 py-2 scrollbar-thin scrollbar-thumb-gray-300">
+                {/* Price */}
+                <Select onValueChange={(value) => setFilters(prev => ({ ...prev, priceRange: value }))} value={filters.priceRange}>
+                  <SelectTrigger className="w-full bg-white"><SelectValue placeholder="Price Range" /></SelectTrigger>
+                  <SelectContent className="bg-white w-full max-h-60 overflow-y-auto">
                     {dropdowns?.prices?.map((price) => (
-                      <SelectItem key={price} value={price.split("-").at(-1)} className="text-gray-700 hover:bg-[#EADDCA]
-  hover:text-black transition-colors duration-150 cursor-pointer font-medium">
-                        {price}
-                      </SelectItem>
+                      <SelectItem key={price} value={price.split("-").at(-1) ?? price}>{price}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
 
                 {/* Location */}
-                <Select
-                  onValueChange={(value) =>
-                    setFilters((prev) => ({ ...prev, location: value }))
-                  }
-                  value={filters.location}
-                >
-                  <SelectTrigger className="w-full bg-white">
-                    <SelectValue placeholder="Location" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white w-[44%] max-h-60 overflow-y-auto rounded-2xl shadow-xl ring-1 ring-gray-200 focus:outline-none transition-all duration-200 py-2 scrollbar-thin scrollbar-thumb-gray-300">
+                <Select onValueChange={(value) => setFilters(prev => ({ ...prev, location: value }))} value={filters.location}>
+                  <SelectTrigger className="w-full bg-white"><SelectValue placeholder="Location" /></SelectTrigger>
+                  <SelectContent className="bg-white w-full max-h-60 overflow-y-auto">
                     {dropdowns?.locations?.map((location) => (
-                      <SelectItem key={location} value={location} className="text-gray-700 hover:bg-[#EADDCA]
-  hover:text-black transition-colors duration-150 cursor-pointer font-medium">
-                        {location}
-                      </SelectItem>
+                      <SelectItem key={location} value={location}>{location}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                <Select onValueChange={(value) => setFilters((prev) => ({ ...prev, color: value }))} value={filters.color}>
-                  <SelectTrigger className="w-full bg-white"><SelectValue placeholder="Select Color" /></SelectTrigger>
-                  <SelectContent className="bg-white w-[44%] max-h-60 overflow-y-auto rounded-2xl shadow-xl ring-1 ring-gray-200 focus:outline-none transition-all duration-200 py-2 scrollbar-thin scrollbar-thumb-gray-300">
+
+                {/* Color */}
+                <Select onValueChange={(value) => setFilters(prev => ({ ...prev, color: value }))} value={filters.color}>
+                  <SelectTrigger className="w-full bg-white"><SelectValue placeholder="Color" /></SelectTrigger>
+                  <SelectContent className="bg-white w-full max-h-60 overflow-y-auto">
                     {dropdowns?.colors?.map((color) => (
-                      <SelectItem key={color} value={color} className="text-gray-700 hover:bg-[#EADDCA]   hover:text-black transition-colors duration-150 cursor-pointer font-medium">{color}</SelectItem>
+                      <SelectItem key={color} value={color}>{color}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                {/* Search Button */}
+
                 <Button
                   onClick={handleSearch}
-                  className="w-full bg-gradient-to-r from-dealership-primary/80 to-dealership-primary/100 py-6 text-lg"
+                  className="w-full bg-gradient-to-r from-dealership-primary/80 to-dealership-primary py-6 text-lg"
                 >
                   <Search className="w-5 h-5 mr-2" />
                   Search Cars
@@ -408,7 +301,6 @@ export const CarFilter = () => {
           </Dialog>
         </div>
       </div>
-
     </div>
   );
 };

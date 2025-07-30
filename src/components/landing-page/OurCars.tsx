@@ -12,6 +12,7 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
+import { Pagination } from "../common/Pagination";
 
 const filters = ["All", "Best Seller", "New Arrival", "Popular", "Used Cars"];
 
@@ -45,7 +46,7 @@ interface Engine {
 
 export const OurCars = () => {
   const [selectedFilter, setSelectedFilter] = useState("All");
-  const [currentPage, setCurrentPage] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(() => {
     const width = window.innerWidth;
     return width >= 1024 ? 8 : 9;
@@ -58,74 +59,67 @@ export const OurCars = () => {
       const width = window.innerWidth;
       setItemsPerPage(width >= 1024 ? 8 : 9);
     };
-
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Fetch data queries
-  const { data: allCars = [] } = useQuery({
-    queryKey: ["all-cars"],
+  const {
+    data: carsData = [],
+    isLoading,
+  } = useQuery({
+    queryKey: ["cars", selectedFilter, currentPage, itemsPerPage],
     queryFn: async () => {
-      const response = await api.get<{ data: Car[] }>("/cars/list-cars-for-home-page");
-      return response.data ?? [];
-    },
-    enabled: selectedFilter === "All",
-  });
+      let endpoint = "";
 
-  const { data: bestSellerCars = [] } = useQuery({
-    queryKey: ["best-seller-cars"],
-    queryFn: async () => {
-      const response = await api.get<{ data: Car[] }>("/cars/best-sellers");
-      return response.data;
-    },
-    enabled: selectedFilter === "Best Seller",
-  });
+      switch (selectedFilter) {
+        case "Best Seller":
+          endpoint = "/cars/best-sellers";
+          break;
+        case "New Arrival":
+          endpoint = "/cars/new-arrivals";
+          break;
+        case "Popular":
+          endpoint = "/cars/popular-cars";
+          break;
+        case "Used Cars":
+          endpoint = "/cars/used-cars";
+          break;
+        case "All":
+        default:
+          endpoint = `/cars/list-cars-for-home-page?page=${currentPage}&limit=${itemsPerPage}`;
+      }
 
-  const { data: newArrivalCars = [] } = useQuery({
-    queryKey: ["new-arrival-cars"],
-    queryFn: async () => {
-      const response = await api.get<{ data: Car[] }>("/cars/new-arrivals");
-      return response.data;
-    },
-    enabled: selectedFilter === "New Arrival",
-  });
+      const response = await api.get(endpoint);
+      const result = response.data;
 
-  const { data: popularCars = [] } = useQuery({
-    queryKey: ["popular-cars"],
-    queryFn: async () => {
-      const response = await api.get<{ data: Car[] }>("/cars/popular-cars");
-      return response.data;
-    },
-    enabled: selectedFilter === "Popular",
-  });
+      if (Array.isArray(result)) return result;
+      if (Array.isArray(result.data)) return result.data;
+      if (Array.isArray(result.data?.data)) return result.data.data;
 
-  const { data: usedCars = [] } = useQuery({
-    queryKey: ["used-cars"],
-    queryFn: async () => {
-      const response = await api.get<{ data: Car[] }>("/cars/used-cars");
-      return response.data;
+      return [];
     },
-    enabled: selectedFilter === "Used Cars",
   });
 
   const { data: fullCars = [] } = useQuery({
     queryKey: ["full-cars"],
     queryFn: async () => {
-      const response = await api.get<{ data: FullCar[] }>("/cars/list-cars");
-      return response.data;
+      const response = await api.get<{ data: { data: FullCar[] } }>(
+        `/cars/list-cars-for-home-page?page=${currentPage}&limit=${itemsPerPage}`
+      );
+      return response.data?.data ?? [];
     },
   });
 
   const { data: engines = [] } = useQuery({
     queryKey: ["engines"],
     queryFn: async () => {
-      const response = await api.get<{ data: Engine[] }>("/engines/list-engines");
+      const response = await api.get<{ data: Engine[] }>(
+        "/engines/list-engines"
+      );
       return response.data;
     },
   });
 
-  // Map engine ID to name
   const engineMap = new Map<string, string>(
     engines?.map((engine) => [engine._id, engine.name]) || []
   );
@@ -137,61 +131,26 @@ export const OurCars = () => {
     }
   });
 
-  const getFilteredCars = () => {
-    switch (selectedFilter) {
-      case "Best Seller":
-        return bestSellerCars || [];
-      case "New Arrival":
-        return newArrivalCars || [];
-      case "Popular":
-        return popularCars || [];
-      case "Used Cars":
-        return usedCars || [];
-      case "All":
-      default:
-        return allCars || [];
-    }
-  };
-
-  const rawFilteredCars = getFilteredCars();
-  const filteredCars = Array.isArray(rawFilteredCars) ? rawFilteredCars : [];
-  const totalPages = Math.ceil((filteredCars?.length || 0) / itemsPerPage);
-
-  const handlePrevious = () => {
-    setCurrentPage((prev) => (prev > 0 ? prev - 1 : totalPages - 1));
-  };
-
-  const handleNext = () => {
-    setCurrentPage((prev) => (prev + 1) % totalPages);
-  };
-
-  const getVisibleCars = () => {
-    if (!filteredCars || filteredCars.length === 0) return [];
-    const start = currentPage * itemsPerPage;
-    return filteredCars.slice(start, start + itemsPerPage);
-  };
-
   const handleFilterChange = (filter: string) => {
     setSelectedFilter(filter);
-    setCurrentPage(0);
+    setCurrentPage(1);
   };
 
   const trackCarView = async (carId: string) => {
     try {
-      const ipAddress = ""; // optional: get real IP from server
+      const ipAddress = ""; // optional
       const userAgent = navigator.userAgent;
-      await api.patch(`/cars/v1/track-car-view/${carId}?ip=${ipAddress}&ua=${encodeURIComponent(userAgent)}`);
+      await api.patch(
+        `/cars/v1/track-car-view/${carId}?ip=${ipAddress}&ua=${encodeURIComponent(
+          userAgent
+        )}`
+      );
     } catch (error) {
       console.error("Error tracking car view:", error);
     }
   };
 
-  const isLoading =
-    (selectedFilter === "All" && allCars.length === 0) ||
-    (selectedFilter === "Best Seller" && bestSellerCars.length === 0) ||
-    (selectedFilter === "New Arrival" && newArrivalCars.length === 0) ||
-    (selectedFilter === "Popular" && popularCars.length === 0) ||
-    (selectedFilter === "Used Cars" && usedCars.length === 0);
+  const filteredCars = Array.isArray(carsData) ? carsData : [];
 
   return (
     <section className="pb-4 pt-2 sm:py-4 bg-dealership-silver">
@@ -204,11 +163,13 @@ export const OurCars = () => {
               {filters.map((filter) => (
                 <Button
                   key={filter}
-                  variant={selectedFilter === filter ? "default" : "destructive"}
+                  variant={
+                    selectedFilter === filter ? "default" : "destructive"
+                  }
                   onClick={() => handleFilterChange(filter)}
                   className={`transition-colors ${selectedFilter === filter
-                    ? "bg-dealership-primary text-white hover:bg-dealership-primary/90"
-                    : ""
+                      ? "bg-dealership-primary text-white hover:bg-dealership-primary/90"
+                      : ""
                     }`}
                 >
                   {filter}
@@ -217,7 +178,10 @@ export const OurCars = () => {
             </div>
 
             <div className="md:hidden w-full">
-              <Select onValueChange={handleFilterChange} value={selectedFilter}>
+              <Select
+                onValueChange={handleFilterChange}
+                value={selectedFilter}
+              >
                 <SelectTrigger className="w-full px-4 text-[12px] h-[32px] rounded-md border text-gray-700 hover:bg-gray-100 font-medium">
                   <SelectValue placeholder="Select a filter" />
                 </SelectTrigger>
@@ -226,7 +190,9 @@ export const OurCars = () => {
                     <SelectItem
                       key={filter}
                       value={filter}
-                      className={`text-gray-700 hover:bg-[#EADDCA] hover:text-black font-medium ${selectedFilter === filter ? "bg-dealership-primary text-white" : ""
+                      className={`text-gray-700 hover:bg-[#EADDCA] hover:text-black font-medium ${selectedFilter === filter
+                          ? "bg-dealership-primary text-white"
+                          : ""
                         }`}
                     >
                       {filter}
@@ -236,25 +202,15 @@ export const OurCars = () => {
               </Select>
             </div>
 
-            <div className="flex justify-between items-center w-full lg:w-auto">
-              <div className="flex gap-2 sm:ml-0">
-                <Button variant="outline" size="icon" onClick={handlePrevious} className="rounded-full w-4 h-4 sm:w-10 sm:h-10">
-                  <ArrowLeft className="sm:h-5 sm:w-4" style={{ height: '10px', width: '10px' }} />
-                </Button>
-                <Button variant="outline" size="icon" onClick={handleNext} className="rounded-full w-4 h-4 sm:w-10 sm:h-10">
-                  <ArrowRight className="sm:h-5 sm:w-4" style={{ height: '10px', width: '10px' }} />
-                </Button>
-              </div>
-              <Link to="/listings" className="block sm:hidden">
-                <Button
-                  variant="default"
-                  className="px-2 mt-1 py-0 text-sm gap-1 bg-gradient-to-r from-dealership-primary/80 to-dealership-primary/100"
-                >
-                  More Cars
-                  <ArrowRight className="w-2 h-2 mt-1" />
-                </Button>
-              </Link>
-            </div>
+            <Link to="/listings" className="block sm:hidden">
+              <Button
+                variant="default"
+                className="px-2 mt-1 py-0 text-sm gap-1 bg-gradient-to-r from-dealership-primary/80 to-dealership-primary/100"
+              >
+                More Cars
+                <ArrowRight className="w-2 h-2 mt-1" />
+              </Button>
+            </Link>
           </div>
         </div>
 
@@ -265,10 +221,12 @@ export const OurCars = () => {
             </div>
           ) : !filteredCars || filteredCars.length === 0 ? (
             <div className="col-span-full flex justify-center items-center py-8 sm:py-12">
-              <div className="text-xs sm:text-lg">No cars found for this category</div>
+              <div className="text-xs sm:text-lg">
+                No cars found for this category
+              </div>
             </div>
           ) : (
-            getVisibleCars().map((car) => {
+            filteredCars.map((car) => {
               const engine = carEngineMap.get(car._id) || "Engine N/A";
 
               return (
@@ -300,8 +258,12 @@ export const OurCars = () => {
                         </p>
                         <div className="flex items-center text-[9px] text-gray-600 mt-0.5 truncate sm:text-sm">
                           <div className="flex flex-wrap items-center text-sm">
-                            <h1 className="font-bold text-[9px] sm:text-[15px] mr-1">Engine:</h1>
-                            <span className="text-[9px] sm:text-[15px]">{engine}</span>
+                            <h1 className="font-bold text-[9px] sm:text-[15px] mr-1">
+                              Engine:
+                            </h1>
+                            <span className="text-[9px] sm:text-[15px]">
+                              {engine}
+                            </span>
                           </div>
                         </div>
                         <div className="mt-1 flex flex-wrap gap-0.5 text-[8px] text-gray-700 sm:gap-2 sm:text-sm">
@@ -325,6 +287,13 @@ export const OurCars = () => {
             })
           )}
         </div>
+
+        {/* Pagination controls */}
+        <Pagination
+          currentPage={currentPage}
+          totalPages={11} // Replace with real total from API
+          onPageChange={(page) => setCurrentPage(page)}
+        />
       </div>
     </section>
   );
