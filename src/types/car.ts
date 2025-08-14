@@ -2,7 +2,7 @@ export interface Car {
   _id: string;
   title: string;
   price: string;
-  mileage: number;
+  mileage: String;
   make: string;
   model?: string;
   transmission: string;

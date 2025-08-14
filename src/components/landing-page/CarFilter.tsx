@@ -64,13 +64,13 @@ export const CarFilter = () => {
       try {
         const [filtersRes, carsRes] = await Promise.all([
           fetch(`${import.meta.env.VITE_API_URL}/cars/list-filters`),
-          fetch(`${import.meta.env.VITE_API_URL}/cars/list-cars-for-home-page?page=1&limit=8`)
+          fetch(`${import.meta.env.VITE_API_URL}/cars/list-cars-for-home-page`)
         ]);
 
         const filtersData = await filtersRes.json();
         const carsData = await carsRes.json();
 
-        console.log("carsData.data:", carsData.data); // Debug this structure
+        console.log("carsData.data:", carsData.data); 
 
         const carList =
           Array.isArray(carsData.data?.cars)
@@ -78,13 +78,13 @@ export const CarFilter = () => {
             : Array.isArray(carsData.data?.cars?.items)
               ? carsData.data.cars.items
               : [];
+        console.log("filtersData:", filtersData);
+        console.log("carsData:", carsData);
 
-        if (filtersData.success && carsData.success && carList.length > 0) {
+        if (filtersData.success) {
           const carColors = Array.from(
             new Set(
-              carList
-                .map((car: any) => car.color?.trim()?.toLowerCase())
-                .filter(Boolean)
+              carList.map((car: any) => car.color?.trim()?.toLowerCase()).filter(Boolean)
             )
           ).sort();
 
@@ -99,9 +99,12 @@ export const CarFilter = () => {
           if (filtersData.data.models && Array.isArray(filtersData.data.models)) {
             setModelOptions(filtersData.data.models);
           }
-        } else {
-          console.warn("Unexpected API response structure", carsData);
         }
+
+        if (!filtersData.success || !carsData.success) {
+          console.warn("Unexpected API response structure", { filtersData, carsData });
+        }
+
 
       } catch (error) {
         console.error("Error fetching dropdowns:", error);

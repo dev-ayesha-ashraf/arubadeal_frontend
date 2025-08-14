@@ -1,5 +1,5 @@
 
-FROM node:18-alpine AS build
+FROM node:20-alpine AS build
 
 ARG VITE_API_URL
 ARG VITE_MEDIA_URL
@@ -16,7 +16,7 @@ COPY . .
 RUN npm run build
 
 # Stage 2: Minimal production image using 'serve'
-FROM node:18-alpine AS production
+FROM node:20-alpine AS production
 
 # Install 'serve' globally
 RUN npm install -g serve

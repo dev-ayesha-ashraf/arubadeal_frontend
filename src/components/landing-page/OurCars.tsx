@@ -32,6 +32,7 @@ interface Car {
   condition?: number;
   status?: number;
   slug?: string;
+  engine?: string;
 }
 
 interface FullCar {
@@ -100,37 +101,6 @@ export const OurCars = () => {
     },
   });
 
-  const { data: fullCars = [] } = useQuery({
-    queryKey: ["full-cars"],
-    queryFn: async () => {
-      const response = await api.get<{ data: { data: FullCar[] } }>(
-        `/cars/list-cars-for-home-page?page=${currentPage}&limit=${itemsPerPage}`
-      );
-      return response.data?.data ?? [];
-    },
-  });
-
-  const { data: engines = [] } = useQuery({
-    queryKey: ["engines"],
-    queryFn: async () => {
-      const response = await api.get<{ data: Engine[] }>(
-        "/engines/list-engines"
-      );
-      return response.data;
-    },
-  });
-
-  const engineMap = new Map<string, string>(
-    engines?.map((engine) => [engine._id, engine.name]) || []
-  );
-
-  const carEngineMap = new Map<string, string>();
-  fullCars?.forEach((car) => {
-    if (car.engineId) {
-      carEngineMap.set(car._id, engineMap.get(car.engineId) || "Engine N/A");
-    }
-  });
-
   const handleFilterChange = (filter: string) => {
     setSelectedFilter(filter);
     setCurrentPage(1);
@@ -138,7 +108,7 @@ export const OurCars = () => {
 
   const trackCarView = async (carId: string) => {
     try {
-      const ipAddress = ""; // optional
+      const ipAddress = "";
       const userAgent = navigator.userAgent;
       await api.patch(
         `/cars/v1/track-car-view/${carId}?ip=${ipAddress}&ua=${encodeURIComponent(
@@ -168,8 +138,8 @@ export const OurCars = () => {
                   }
                   onClick={() => handleFilterChange(filter)}
                   className={`transition-colors ${selectedFilter === filter
-                      ? "bg-dealership-primary text-white hover:bg-dealership-primary/90"
-                      : ""
+                    ? "bg-dealership-primary text-white hover:bg-dealership-primary/90"
+                    : ""
                     }`}
                 >
                   {filter}
@@ -191,8 +161,8 @@ export const OurCars = () => {
                       key={filter}
                       value={filter}
                       className={`text-gray-700 hover:bg-[#EADDCA] hover:text-black font-medium ${selectedFilter === filter
-                          ? "bg-dealership-primary text-white"
-                          : ""
+                        ? "bg-dealership-primary text-white"
+                        : ""
                         }`}
                     >
                       {filter}
@@ -227,8 +197,6 @@ export const OurCars = () => {
             </div>
           ) : (
             filteredCars.map((car) => {
-              const engine = carEngineMap.get(car._id) || "Engine N/A";
-
               return (
                 <Link
                   key={car._id}
@@ -262,7 +230,7 @@ export const OurCars = () => {
                               Engine:
                             </h1>
                             <span className="text-[9px] sm:text-[15px]">
-                              {engine}
+                              {car.engine || "Engine N/A"}
                             </span>
                           </div>
                         </div>
@@ -271,8 +239,13 @@ export const OurCars = () => {
                             {car.transmission}
                           </span>
                           <span className="px-1 py-0.5 bg-gray-100 rounded">
-                            {car.mileage.toLocaleString()} mi
+                            {typeof car.mileage === "number"
+                              ? `${car.mileage.toLocaleString()} miles`
+                              : car.mileage.toLowerCase().includes("km") || car.mileage.toLowerCase().includes("miles")
+                                ? car.mileage
+                                : `${car.mileage} miles`}
                           </span>
+
                           {car.model && (
                             <span className="px-1 py-0.5 bg-gray-100 rounded">
                               {car.model}

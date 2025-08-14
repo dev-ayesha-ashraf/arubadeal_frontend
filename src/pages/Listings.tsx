@@ -6,17 +6,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Link, useSearchParams } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Header } from "@/components/common/Header";
 import { Navbar } from "@/components/common/Navbar";
 import { ListingsFilter } from "@/components/common/ListingsFilter";
 import { Footer } from "@/components/common/Footer";
-import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { MapPin, Share2 } from "lucide-react";
 import { SharePreview } from "@/components/common/SharePreview";
 import { Car } from "@/types/car";
 import { ArrowRight } from "lucide-react";
+import { useQuery } from '@tanstack/react-query';
+import { Pagination } from "@/components/common/Pagination";
 
 interface CarDetail {
   _id: string;
@@ -38,26 +39,41 @@ interface CarType {
   name: string;
 }
 
-const fetchCars = async (params: URLSearchParams): Promise<Car[]> => {
-  const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/cars/list-cars-for-home-page?${params.toString()}`,
-    {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    }
-  );
-  if (!response.ok) throw new Error("Failed to fetch cars");
-  const res = await response.json();
-  return res.data;
+const fetchAllCars = async (makeId?: string): Promise<Car[]> => {
+  const allCars: Car[] = [];
+  let page = 1;
+  const limit = 10;
+
+  while (true) {
+    const params = new URLSearchParams();
+    params.set("page", page.toString());
+    params.set("limit", limit.toString());
+    if (makeId) params.set("makeId", makeId);
+
+    const response = await fetch(
+      `${import.meta.env.VITE_API_URL}/cars/list-cars-for-home-page?${params.toString()}`
+    );
+    if (!response.ok) throw new Error("Failed to fetch cars");
+
+    const res = await response.json();
+    const cars: Car[] = res.data.data;
+    allCars.push(...cars);
+
+    const total = res.data.pagination?.total || cars.length;
+    const totalPages = Math.ceil(total / limit);
+
+    if (page >= totalPages) break;
+    page++;
+  }
+
+  return allCars;
 };
 
 const fetchFullCars = async (): Promise<CarDetail[]> => {
   const response = await fetch(`${import.meta.env.VITE_API_URL}/cars/list-cars`);
   if (!response.ok) throw new Error("Failed to fetch full cars");
   const res = await response.json();
-  return res.data;
+  return res.data.cars;
 };
 
 const fetchMakes = async (): Promise<Manufacturer[]> => {
@@ -84,20 +100,21 @@ const getPriceBadge = (price: number): string | null => {
 const Listings = () => {
   const [selectedCar, setSelectedCar] = useState<Car | null>(null);
   const [showSharePreview, setShowSharePreview] = useState(false);
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const [sortBy, setSortBy] = useState(searchParams.get("sort") || "date-desc");
-
   const makeId = searchParams.get("makeId");
   const searchQuery = searchParams.get("search")?.toLowerCase() || "";
   const colorQuery = searchParams.get("color")?.toLowerCase() || "";
+  const [currentPage, setCurrentPage] = useState(1);
+  const carsPerPage = 9;
 
   const { data: homeCars = [], isLoading } = useQuery({
-    queryKey: ["cars", searchParams.toString()],
-    queryFn: () => fetchCars(searchParams),
+    queryKey: ['cars', makeId],
+    queryFn: () => fetchAllCars(makeId),
   });
 
   const { data: fullCars = [] } = useQuery({
-    queryKey: ["fullCars"],
+    queryKey: ['fullCars'],
     queryFn: fetchFullCars,
   });
 
@@ -112,26 +129,18 @@ const Listings = () => {
     queryFn: fetchTypes,
   });
 
-  const selectedMake = Array.isArray(makes)
-    ? makes.find((make) => make._id === makeId)
-    : null;
+  const selectedMake = makes.find((make) => make._id === makeId);
 
-
-  const mergedCars = Array.isArray(homeCars) ? homeCars.map((car) => {
-    const fullCar = fullCars?.find((c) => c._id === car._id);
-    const typeName = Array.isArray(types)
-      ? types.find((t) => t._id === fullCar?.typeId)?.name || "N/A"
-      : "N/A";
-
+  const mergedCars = homeCars.map((car) => {
+    const fullCar = fullCars.find((c) => c._id === car._id);
+    const typeName = types.find((t) => t._id === fullCar?.typeId)?.name || "N/A";
     return {
       ...car,
       model: fullCar?.model || "N/A",
       color: fullCar?.color || "N/A",
       type: typeName,
     };
-  }) : [];
-
-
+  });
 
   const filteredCars = mergedCars.filter((car) => {
     const matchesSearch =
@@ -142,31 +151,22 @@ const Listings = () => {
       (car.type?.toLowerCase() || "").includes(searchQuery) ||
       (car.color?.toLowerCase() || "").includes(searchQuery);
 
-    const matchesColor =
-      !colorQuery || (car.color?.toLowerCase() || "") === colorQuery;
+    const matchesColor = !colorQuery || (car.color?.toLowerCase() || "") === colorQuery;
 
     return matchesSearch && matchesColor;
   });
 
-  useEffect(() => {
-    const newParams = new URLSearchParams(searchParams);
-    newParams.set("sort", sortBy);
-    setSearchParams(newParams, { replace: true });
-  }, [sortBy]);
-
   const sortedCars = [...filteredCars].sort((a, b) => {
     switch (sortBy) {
-      case "price-asc":
-        return Number(a.price) - Number(b.price);
-      case "price-desc":
-        return Number(b.price) - Number(a.price);
-      case "date-asc":
-        return a._id.localeCompare(b._id);
-      case "date-desc":
-      default:
-        return b._id.localeCompare(a._id);
+      case "price-asc": return Number(a.price) - Number(b.price);
+      case "price-desc": return Number(b.price) - Number(a.price);
+      case "date-asc": return a._id.localeCompare(b._id);
+      default: return b._id.localeCompare(a._id);
     }
   });
+
+  const totalPages = Math.ceil(sortedCars.length / carsPerPage);
+  const paginatedCars = sortedCars.slice((currentPage - 1) * carsPerPage, currentPage * carsPerPage);
 
   const handleShare = (car: Car, e: React.MouseEvent) => {
     e.preventDefault();
@@ -181,17 +181,11 @@ const Listings = () => {
       <Navbar />
       <div className="container mx-auto px-4 py-8">
         <div className="flex flex-col gap-8">
-          <div>
-            <ListingsFilter />
-          </div>
+          <ListingsFilter />
           <div>
             <div className="flex justify-between items-center mb-6">
               <h1 className="text-2xl font-bold text-gray-800">
-                {searchQuery
-                  ? `Search Results for "${searchQuery}"`
-                  : makeId && selectedMake
-                    ? `All ${selectedMake.name} Vehicles`
-                    : "All Listings"}
+                {searchQuery ? `Search Results for "${searchQuery}"` : makeId && selectedMake ? `All ${selectedMake.name} Vehicles` : "All Listings"}
               </h1>
               <Select value={sortBy} onValueChange={setSortBy}>
                 <SelectTrigger className="w-[180px]">
@@ -205,25 +199,16 @@ const Listings = () => {
                 </SelectContent>
               </Select>
             </div>
-
             {isLoading ? (
               <div className="text-center py-8">Loading...</div>
-            ) : sortedCars.length === 0 ? (
-              <div className="text-center py-8">
-                {searchQuery
-                  ? "No cars found matching your search criteria."
-                  : "No cars available at the moment."}
-              </div>
+            ) : paginatedCars.length === 0 ? (
+              <div className="text-center py-8">No cars found matching your search criteria.</div>
             ) : (
-              <div className="flex flex-col md:grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {sortedCars.map((car) => {
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {paginatedCars.map((car) => {
                   const badgeLabel = getPriceBadge(Number(car.price));
                   return (
-                    <Link
-                      key={car._id}
-                      to={`/listings/${car.slug}`}
-                      className="block"
-                    >
+                    <Link key={car._id} to={`/listings/${car.slug}`} className="block">
                       <Card className="flex flex-row overflow-hidden hover:shadow-lg transition-shadow md:flex-col relative">
                         <div className="relative w-1/4 md:w-full h-24 md:h-48 m-auto">
                           {badgeLabel && car.status !== 3 && (
@@ -237,32 +222,50 @@ const Listings = () => {
                             className="w-full h-full object-cover"
                           />
                           {car.status === 3 && (
-                            <div className="absolute top-2 left-2 bg-red-500 text-white px-2 py-0.5 rounded-full text-xs font-medium">
+                            <div className="hidden md:block absolute top-2 left-2 bg-red-500 text-white px-2 py-0.5 rounded-full text-xs font-medium z-10">
                               Sold
                             </div>
                           )}
+
                           <button
                             onClick={(e) => handleShare(car, e)}
-                            className="absolute top-2 left-2 p-1.5 bg-white rounded-full shadow-md hover:bg-gray-100 transition-colors md:left-auto md:right-2"
+                            className="absolute top-2 left-2 p-1.5 bg-white rounded-full shadow-md hover:bg-gray-100 transition-colors md:left-auto md:right-2 z-20"
                           >
                             <Share2 className="w-3 h-3 text-gray-600" />
                           </button>
                         </div>
+
                         <CardContent className="p-2 md:p-4 w-3/4 md:w-full">
-                          <h3 className="text-base md:text-lg font-semibold mb-2 md:mb-3 text-left border-b border-gray-200 pb-1">
-                            {car.title}
-                          </h3>
+                          <div className="flex items-center justify-between mb-2 md:mb-3 border-b border-gray-200 pb-1">
+                            <h3 className="text-base md:text-lg font-semibold text-left">
+                              {car.title}
+                            </h3>
+                            {car.status === 3 && (
+                              <div className="block md:hidden bg-red-500 text-white px-2 py-0.5 rounded-full text-xs font-medium">
+                                Sold
+                              </div>
+                            )}
+                          </div>
+
                           <div className="grid grid-cols-2 gap-1 text-xs md:text-sm text-gray-600 mb-2 border-b border-gray-200 pb-2">
                             <div>Make: {car.make}</div>
                             <div>Model: {car.model}</div>
                             <div>Type: {car.type}</div>
-                            <div>Mileage: {car.mileage} km</div>
+                            <div>
+                              Mileage:{' '}
+                              {car.mileage !== undefined && car.mileage !== null
+                                ? typeof car.mileage === 'number'
+                                  ? `${car.mileage.toLocaleString()} miles`
+                                  : `${car.mileage}`.toLowerCase().includes('km') || `${car.mileage}`.toLowerCase().includes('miles')
+                                    ? car.mileage
+                                    : `${car.mileage} miles`
+                                : '0 miles'}
+                            </div>
                             <div>Color: {car.color}</div>
                           </div>
+
                           <div className="flex items-center justify-between">
-                            <p className="text-xl font-bold text-dealership-primary">
-                              AWG {car.price}
-                            </p>
+                            <p className="text-xl font-bold text-dealership-primary">AWG {car.price}</p>
                             <button
                               className="hidden md:inline-flex items-center gap-1 text-dealership-primary hover:text-[#6B4A2B] font-medium mt-2"
                               type="button"
@@ -273,10 +276,19 @@ const Listings = () => {
                           </div>
                         </CardContent>
                       </Card>
+
+
                     </Link>
                   );
                 })}
               </div>
+            )}
+            {totalPages > 1 && (
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+              />
             )}
           </div>
         </div>

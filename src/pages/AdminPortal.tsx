@@ -13,6 +13,7 @@ import TransmissionsManagement from "@/components/admin-panel/Transmissions";
 import VehicleManagement from "@/components/admin-panel/VehicleManagment";
 import VehicleProperties from "@/components/admin-panel/VehicleProperties";
 import { Button } from "@/components/ui/button";
+import ListingDetail from "./ListingDetail";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -73,6 +74,7 @@ const Sidebar = ({
     { path: "/admin/messages", icon: MessageSquare, label: "Messages" },
     { path: "/admin/banners", icon: ImagePlus, label: "Banners" },
     { path: "/admin/subscriptions", icon: Mail, label: "Subscriptions" },
+
   ];
 
   return (
@@ -251,6 +253,7 @@ const AdminPortal = () => {
             <Route path="/messages" element={<Messages />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/subscriptions" element={<SubscriptionsManagement />} />
+            <Route path="/listings/:slug" element={<ListingDetail isAdmin />} />
           </Routes>
         </div>
       </div>

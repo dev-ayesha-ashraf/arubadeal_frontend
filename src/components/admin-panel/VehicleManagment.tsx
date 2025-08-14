@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import React from "react";
 import {
   Dialog,
   DialogContent,
@@ -12,7 +13,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { z } from "zod";
 import { useNavigate } from "react-router-dom";
-import { Plus, Settings, Edit, Trash2, Trash, Search } from "lucide-react";
+import { Eye, Plus, Settings, Edit, Trash2, Trash, Search } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import {
   DragDropContext,
@@ -22,6 +23,7 @@ import {
 } from '@hello-pangea/dnd';
 import { useLocalStorage } from "../../hooks/use-local-storage";
 import { PropertySection } from "./PropertySection";
+import { Pagination } from "../common/Pagination";
 
 const vehicleSchema = z.object({
   price: z.string().min(1, "Price is required"),
@@ -29,7 +31,7 @@ const vehicleSchema = z.object({
   color: z.string().min(1, "Color is required"),
   seats: z.number().min(1, "Number of seats is required"),
   condition: z.number().min(0, "Condition is required"),
-  mileage: z.number().min(0, "Mileage is required"),
+  mileage: z.string().min(1, "Mileage is required"),
   description: z.string().min(1, "Description is required"),
   city: z.string().min(1, "City is required"),
   address: z.string().min(1, "Address is required"),
@@ -56,7 +58,6 @@ const vehicleSchema = z.object({
   })).optional(),
   forceUpdate: z.boolean().optional(),
 });
-
 type VehicleFormData = z.infer<typeof vehicleSchema>;
 
 interface Vehicle {
@@ -67,7 +68,7 @@ interface Vehicle {
   color: string;
   seats: number;
   condition: number;
-  mileage: number;
+  mileage?: string | number | null;
   description: string;
   city: string;
   address: string;
@@ -138,32 +139,49 @@ interface VehicleImage {
 // API functions
 const fetchVehicles = async (): Promise<Vehicle[]> => {
   try {
-  const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/cars/list-cars`,
-    {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${JSON.parse(
-          localStorage.getItem("access_token") || ""
-        )}`,
-      },
-    }
-  );
-    if (!response.ok) {
-      if (response.status === 401) {
-        handleAuthError({ response: { status: 401 } });
-        return [];
+    const accessToken = localStorage.getItem("access_token") || "";
+    const allVehicles: Vehicle[] = [];
+    let page = 1;
+    let totalPages = 1;
+    const baseUrl = import.meta.env.VITE_API_URL;
+
+    do {
+      const response = await fetch(
+        `${baseUrl}/cars/list-cars?page=${page}&limit=12`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${JSON.parse(accessToken)}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          handleAuthError({ response: { status: 401 } });
+          return [];
+        }
+        throw new Error("Failed to fetch vehicles");
       }
-      throw new Error("Failed to fetch vehicles");
-    }
-  const res = await response.json();
-  return res.data;
+
+      const res = await response.json();
+      const cars = res.data.cars;
+      const pages = res.data.meta.pages;
+      allVehicles.push(...cars);
+      totalPages = pages;
+      page++;
+    } while (page <= totalPages);
+
+
+    return allVehicles;
   } catch (error) {
     handleAuthError(error);
     return [];
   }
 };
+
+
 
 const addVehicleInfo = async (
   vehicleData: VehicleFormData
@@ -181,7 +199,7 @@ const addVehicleInfo = async (
       },
     }
   );
-  
+
   let nextSerialNumber = "001";
   if (response.ok) {
     const data = await response.json();
@@ -223,25 +241,25 @@ const uploadVehicleImages = async ({
   isPrimary: boolean;
 }): Promise<Vehicle> => {
   try {
-  const formData = new FormData();
-  formData.append("image", image);
-  formData.append("isPrimary", isPrimary ? "true" : "false");
+    const formData = new FormData();
+    formData.append("image", image);
+    formData.append("isPrimary", isPrimary ? "true" : "false");
 
-  const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/cars/add-car-images/${vehicleId}`,
-    {
-      method: "POST",
-      body: formData,
-      headers: {
-        Authorization: `Bearer ${JSON.parse(
-          localStorage.getItem("access_token") || ""
-        )}`,
-      },
-    }
-  );
-  if (!response.ok) throw new Error("Failed to upload vehicle image");
-  const res = await response.json();
-  return res.data;
+    const response = await fetch(
+      `${import.meta.env.VITE_API_URL}/cars/add-car-images/${vehicleId}`,
+      {
+        method: "POST",
+        body: formData,
+        headers: {
+          Authorization: `Bearer ${JSON.parse(
+            localStorage.getItem("access_token") || ""
+          )}`,
+        },
+      }
+    );
+    if (!response.ok) throw new Error("Failed to upload vehicle image");
+    const res = await response.json();
+    return res.data;
   } catch (error) {
     handleAuthError(error);
     return {} as Vehicle;
@@ -256,16 +274,16 @@ const updateVehicle = async ({
   vehicleData: Partial<VehicleFormData>;
 }): Promise<Vehicle> => {
   console.log("Updating vehicle with data:", JSON.stringify(vehicleData, null, 2));
-  
+
   // Add a timestamp to force the server to recognize changes
   const dataToSend = {
     ...vehicleData,
     model: vehicleData.model,
     forceUpdate: true // Add this to force detection of changes
   };
-  
+
   console.log("Sending data to server:", JSON.stringify(dataToSend, null, 2));
-  
+
   const response = await fetch(
     `${import.meta.env.VITE_API_URL}/cars/update-car/${_id}`,
     {
@@ -279,13 +297,13 @@ const updateVehicle = async ({
       body: JSON.stringify(dataToSend),
     }
   );
-  
+
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     console.error("Update response error:", errorData);
     throw new Error(errorData?.message || "Failed to update vehicle");
   }
-  
+
   const res = await response.json();
   console.log("Update response:", res);
   return res.data;
@@ -353,18 +371,18 @@ interface CustomProperty {
 // Add these functions for image management
 const fetchVehicleImages = async (vehicleId: string): Promise<string[]> => {
   try {
-  const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/cars/get-car-images/${vehicleId}`,
-    {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${JSON.parse(
-          localStorage.getItem("access_token") || ""
-        )}`,
-      },
-    }
-  );
+    const response = await fetch(
+      `${import.meta.env.VITE_API_URL}/cars/get-car-images/${vehicleId}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${JSON.parse(
+            localStorage.getItem("access_token") || ""
+          )}`,
+        },
+      }
+    );
     if (!response.ok) {
       if (response.status === 401) {
         handleAuthError({ response: { status: 401 } });
@@ -374,8 +392,8 @@ const fetchVehicleImages = async (vehicleId: string): Promise<string[]> => {
       console.error('Error response:', errorText);
       throw new Error(`Failed to fetch vehicle images: ${errorText}`);
     }
-  const res = await response.json();
-  return res.data || [];
+    const res = await response.json();
+    return res.data || [];
   } catch (error) {
     handleAuthError(error);
     return [];
@@ -384,20 +402,20 @@ const fetchVehicleImages = async (vehicleId: string): Promise<string[]> => {
 
 const deleteVehicleImage = async (imageId: string): Promise<void> => {
   try {
-  const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/cars/delete-car-image/${imageId}`,
-    {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${JSON.parse(
-          localStorage.getItem("access_token") || ""
-        )}`,
-      },
-    }
-  );
-  if (!response.ok) throw new Error("Failed to delete vehicle image");
-  return await response.json();
+    const response = await fetch(
+      `${import.meta.env.VITE_API_URL}/cars/delete-car-image/${imageId}`,
+      {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${JSON.parse(
+            localStorage.getItem("access_token") || ""
+          )}`,
+        },
+      }
+    );
+    if (!response.ok) throw new Error("Failed to delete vehicle image");
+    return await response.json();
   } catch (error) {
     handleAuthError(error);
   }
@@ -405,20 +423,20 @@ const deleteVehicleImage = async (imageId: string): Promise<void> => {
 
 const setPrimaryImage = async (vehicleId: string, imageId: string): Promise<void> => {
   try {
-  const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/cars/set-primary-image/${vehicleId}/${imageId}`,
-    {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${JSON.parse(
-          localStorage.getItem("access_token") || ""
-        )}`,
-      },
-    }
-  );
-  if (!response.ok) throw new Error("Failed to set primary image");
-  return await response.json();
+    const response = await fetch(
+      `${import.meta.env.VITE_API_URL}/cars/set-primary-image/${vehicleId}/${imageId}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${JSON.parse(
+            localStorage.getItem("access_token") || ""
+          )}`,
+        },
+      }
+    );
+    if (!response.ok) throw new Error("Failed to set primary image");
+    return await response.json();
   } catch (error) {
     handleAuthError(error);
   }
@@ -444,12 +462,12 @@ interface AddPropertyDialogProps {
   onAddProperty: () => void;
 }
 
-const AddPropertyDialog = ({ 
-  open, 
-  onOpenChange, 
-  newProperty, 
-  setNewProperty, 
-  onAddProperty 
+const AddPropertyDialog = ({
+  open,
+  onOpenChange,
+  newProperty,
+  setNewProperty,
+  onAddProperty
 }: AddPropertyDialogProps) => {
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newName = e.target.value;
@@ -459,7 +477,7 @@ const AddPropertyDialog = ({
       name: newName
     }));
   };
-  
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent style={{ transition: 'none' }}>
@@ -527,6 +545,8 @@ const AddPropertyDialog = ({
 };
 
 const VehicleManagement = () => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { logout, isAuthenticated } = useAuth();
@@ -535,6 +555,9 @@ const VehicleManagement = () => {
     queryKey: ["vehicles"],
     queryFn: fetchVehicles,
   });
+  const handleViewClick = (slug: string) => {
+    navigate(`/admin/listings/${slug}`);
+  };
 
   const { data: dropdowns, isLoading: isLoadingDropdowns } = useQuery({
     queryKey: ["car-dropdowns"],
@@ -542,19 +565,31 @@ const VehicleManagement = () => {
   });
 
   // Filter vehicles based on search query
-  const filteredVehicles = vehicles.filter((vehicle) => {
-    const searchLower = searchQuery.toLowerCase();
-    const makeName = dropdowns?.makes?.find((make) => make._id === vehicle.makeId)?.name || '';
-    const typeName = dropdowns?.types?.find((type) => type._id === vehicle.typeId)?.name || '';
-    
-    return (
-      vehicle.title.toLowerCase().includes(searchLower) ||
-      makeName.toLowerCase().includes(searchLower) ||
-      typeName.toLowerCase().includes(searchLower) ||
-      (vehicle.model || '').toLowerCase().includes(searchLower) ||
-      (vehicle.serialNumber || '').toLowerCase().includes(searchLower)
-    );
-  });
+  const filteredVehicles = Array.isArray(vehicles)
+    ? vehicles.filter((vehicle) => {
+      const searchLower = searchQuery.toLowerCase();
+      const makeName = dropdowns?.makes?.find((make) => make._id === vehicle.makeId)?.name || '';
+      const typeName = dropdowns?.types?.find((type) => type._id === vehicle.typeId)?.name || '';
+
+      return (
+        vehicle.title.toLowerCase().includes(searchLower) ||
+        makeName.toLowerCase().includes(searchLower) ||
+        typeName.toLowerCase().includes(searchLower) ||
+        (vehicle.model || '').toLowerCase().includes(searchLower) ||
+        (vehicle.serialNumber || '').toLowerCase().includes(searchLower)
+      );
+    })
+    : [];
+  const vehiclesPerPage = 12;
+  useEffect(() => {
+    setTotalPages(Math.ceil(filteredVehicles.length / vehiclesPerPage) || 1);
+  }, [filteredVehicles]);
+
+  const paginatedVehicles = filteredVehicles.slice(
+    (currentPage - 1) * vehiclesPerPage,
+    currentPage * vehiclesPerPage
+  );
+
 
   const [selectedMakeId, setSelectedMakeId] = useState<string>("");
   const [showAddEditDialog, setShowAddEditDialog] = useState(false);
@@ -578,6 +613,20 @@ const VehicleManagement = () => {
     { name: "", value: "" },
     { name: "", value: "" },
   ]);
+  const [showDescriptionDialog, setShowDescriptionDialog] = useState(false);
+  const [descriptionInput, setDescriptionInput] = useState(editingVehicle?.description || "");
+  const [showFeaturesDialog, setShowFeaturesDialog] = useState(false);
+  const [featuresInput, setFeaturesInput] = useState([]);
+  const mileageString = typeof editingVehicle?.mileage === "string"
+  ? editingVehicle.mileage
+  : editingVehicle?.mileage?.toString() || "";
+const mileageParts = mileageString.split(" ");
+  const mileageValueDefault = mileageParts.length > 0 ? parseInt(mileageParts[0]) : "";
+  const mileageUnitDefault = mileageParts.length > 1 ? mileageParts[1] : "miles";
+  useEffect(() => {
+    setDescriptionInput(editingVehicle?.description || "");
+  }, [editingVehicle]);
+
   const [primaryImageIndex, setPrimaryImageIndex] = useState<number>(0);
 
   // Add these state variables for tracking upload progress
@@ -623,6 +672,7 @@ const VehicleManagement = () => {
   useEffect(() => {
     if (editingVehicle) {
       // Set form values using refs instead of FormData
+      console.log("Raw vehicle.features from API:", editingVehicle.features);
       const form = document.querySelector('form');
       if (form) {
         const inputs = form.querySelectorAll('input, select, textarea');
@@ -643,9 +693,9 @@ const VehicleManagement = () => {
         editingVehicle.features && editingVehicle.features.length > 0
           ? editingVehicle.features
           : [
-              { name: "", value: "" },
-              { name: "", value: "" },
-            ]
+            { name: "", value: "" },
+            { name: "", value: "" },
+          ]
       );
       setModelInput(editingVehicle.model || "");
 
@@ -801,7 +851,7 @@ const VehicleManagement = () => {
   });
 
   const setPrimaryImageMutation = useMutation({
-    mutationFn: ({ vehicleId, imageId }: { vehicleId: string; imageId: string }) => 
+    mutationFn: ({ vehicleId, imageId }: { vehicleId: string; imageId: string }) =>
       setPrimaryImage(vehicleId, imageId),
     onSuccess: () => {
       if (editingVehicle) {
@@ -922,14 +972,14 @@ const VehicleManagement = () => {
     const updatedProperties = [...customProperties, property];
     localStorage.setItem("vehicle-custom-properties", JSON.stringify(updatedProperties));
     setCustomProperties(updatedProperties);
-    
+
     setShowAddPropertyDialog(false);
     setNewProperty({
       name: '',
       type: 'text',
       required: false
     });
-    
+
     toast({
       title: "Success",
       description: "Custom property added successfully",
@@ -942,7 +992,7 @@ const VehicleManagement = () => {
       const updatedProperties = customProperties.filter(p => p._id !== propertyId);
       localStorage.setItem("vehicle-custom-properties", JSON.stringify(updatedProperties));
       setCustomProperties(updatedProperties);
-      
+
       toast({
         title: "Success",
         description: "Property removed successfully",
@@ -963,7 +1013,7 @@ const VehicleManagement = () => {
   // Add this function to handle property value changes
   const handlePropertyValueChange = (propertyId: string, value: string) => {
     console.log(`Property value changed: ID=${propertyId}, value=${value}`);
-    
+
     // Update the properties array with the new value
     const updatedProperties = customProperties.map(p => {
       if (p._id === propertyId) {
@@ -971,10 +1021,10 @@ const VehicleManagement = () => {
       }
       return p;
     });
-    
+
     // Save to state
     setCustomProperties(updatedProperties);
-    
+
     // If in edit mode, force a re-render by updating model input
     if (editingVehicle) {
       console.log("Vehicle in edit mode, marking as modified");
@@ -987,7 +1037,6 @@ const VehicleManagement = () => {
     e.preventDefault();
 
     const formData = new FormData(e.currentTarget);
-    
     try {
       // Get make name for title generation
       const selectedMake = dropdowns?.makes.find(make => make._id === formData.get("makeId"));
@@ -1019,6 +1068,9 @@ const VehicleManagement = () => {
 
       // Check if custom properties have changed
       const customPropertiesChanged = localStorage.getItem("custom-properties-changed") === "true";
+      const mileageValue = formData.get("mileageValue")?.toString() || "";
+      const mileageUnit = formData.get("mileageUnit")?.toString() || "miles";
+      const mileage = mileageValue ? `${mileageValue} ${mileageUnit}` : "";
 
       // Extract and format the data
       const vehicleData: VehicleFormData = {
@@ -1026,16 +1078,22 @@ const VehicleManagement = () => {
         color: formData.get("color") as string,
         seats: parseInt(formData.get("seats") as string) || 0,
         condition: parseInt(formData.get("condition") as string) || 0,
-        mileage: parseInt(formData.get("mileage") as string) || 0,
-        description: formData.get("description") as string,
+        mileage: mileage,
+        description: descriptionInput,
         city: formData.get("city") as string,
         address: formData.get("address") as string,
         typeId: formData.get("typeId") as string,
         transmissionId: formData.get("transmissionId") as string,
         bagIds: selectedBadges,
-        features: features.filter(
-          (f) => f.name.trim() !== "" && f.value.trim() !== ""
-        ),
+        features: features
+          .filter(f => f.name.trim() && f.value.trim())
+          .map(f => ({
+            name: f.name.trim(),
+            value: f.value.trim()
+          })),
+        // Extract number and unit from the mileage string
+
+
         status: parseInt(formData.get("status") as string) || 0,
         customProperties: {},
         forceUpdate: customPropertiesChanged // Set the forceUpdate flag when custom properties have changed
@@ -1067,7 +1125,7 @@ const VehicleManagement = () => {
           _id: editingVehicle._id,
           vehicleData: vehicleDataWithTitle,
         });
-        
+
         // Clear the custom properties changed flag after submitting
         localStorage.removeItem("custom-properties-changed");
       } else {
@@ -1129,17 +1187,17 @@ const VehicleManagement = () => {
   // Update the form initialization
   const initializeForm = (vehicle: Vehicle) => {
     setEditingVehicle(vehicle);
-      setSelectedFuelTypes(vehicle.fuelTypeIds || []);
-      setSelectedBadges(vehicle.bagIds || []);
+    setSelectedFuelTypes(vehicle.fuelTypeIds || []);
+    setSelectedBadges(vehicle.bagIds || []);
     setModelInput(vehicle.model || "");
 
     // Initialize features
-    if (vehicle.features && vehicle.features.length > 0) {
+    if (vehicle && vehicle.features && vehicle.features.length > 0) {
       setFeatures(vehicle.features);
-    } else {
+    } else if (!vehicle) {
       setFeatures([
-              { name: "", value: "" },
-              { name: "", value: "" },
+        { name: "", value: "" },
+        { name: "", value: "" },
       ]);
     }
 
@@ -1174,13 +1232,13 @@ const VehicleManagement = () => {
   // Add this function to handle image upload in edit mode
   const handleEditModeImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!editingVehicle) return;
-    
+
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
-    
+
     setIsUploading(true);
     setUploadedImagesCount(0);
-    
+
     files.forEach((image, index) => {
       uploadImagesMutation.mutate({
         vehicleId: editingVehicle._id,
@@ -1196,7 +1254,7 @@ const VehicleManagement = () => {
       // Check if all selected images are uploaded
       const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
       const fileCount = fileInput?.files?.length || 0;
-      
+
       if (uploadedImagesCount === fileCount) {
         // All images have been uploaded
         fetchVehicleImagesMutation.mutate(editingVehicle._id);
@@ -1206,7 +1264,7 @@ const VehicleManagement = () => {
         });
         setIsUploading(false);
         setUploadedImagesCount(0);
-        
+
         // Reset the file input
         if (fileInput) {
           fileInput.value = '';
@@ -1242,39 +1300,39 @@ const VehicleManagement = () => {
         orderedImageIds: items.map(img => img.id),
       });
     };
-    
+
     return (
       <div className="mt-6">
-      <div className="mt-6">
-        <h3 className="font-semibold text-lg mb-4">Manage Images</h3>
-        
-        <div className="mb-4">
-          <label className="block text-sm font-medium mb-2">
-            Add New Images
-          </label>
-          <input
-            type="file"
-            multiple
-            accept="image/*"
-            onChange={handleEditModeImageUpload}
-            className="w-full p-2 border rounded-md"
-          />
-          <p className="text-sm text-gray-500 mt-1">
-            Select multiple images to upload.
-          </p>
-          {isUploading && (
-            <div className="mt-2 text-blue-600">
-              Uploading... ({uploadedImagesCount} complete)
-            </div>
-          )}
-        </div>
+        <div className="mt-6">
+          <h3 className="font-semibold text-lg mb-4">Manage Images</h3>
+
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-2">
+              Add New Images
+            </label>
+            <input
+              type="file"
+              multiple
+              accept="image/*"
+              onChange={handleEditModeImageUpload}
+              className="w-full p-2 border rounded-md"
+            />
+            <p className="text-sm text-gray-500 mt-1">
+              Select multiple images to upload.
+            </p>
+            {isUploading && (
+              <div className="mt-2 text-blue-600">
+                Uploading... ({uploadedImagesCount} complete)
+              </div>
+            )}
           </div>
+        </div>
         <h3 className="font-semibold text-lg mb-4">Current Images</h3>
-          {isLoadingImages ? (
-            <div className="text-center py-4">Loading images...</div>
+        {isLoadingImages ? (
+          <div className="text-center py-4">Loading images...</div>
         ) : orderedImages.length === 0 ? (
-            <div className="text-center py-4 text-gray-500">No images available</div>
-          ) : (
+          <div className="text-center py-4 text-gray-500">No images available</div>
+        ) : (
           <DragDropContext onDragEnd={onDragEnd}>
             <Droppable droppableId="images" direction="horizontal">
               {(provided) => (
@@ -1299,58 +1357,57 @@ const VehicleManagement = () => {
                           <img
                             src={`${import.meta.env.VITE_MEDIA_URL}/${image.url}`}
                             alt={`Vehicle ${index + 1}`}
-                            className={`w-32 h-32 object-cover ${
-                              image.isPrimary ? 'ring-2 ring-blue-500' : ''
-                    }`}
-                  />
+                            className={`w-32 h-32 object-cover  ${image.isPrimary ? 'ring-2 ring-blue-500' : ''
+                              }`}
+                          />
                           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/0 hover:bg-black/40 transition-all">
-                           {!image.isPrimary && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                                className="bg-white text-xs h-8 opacity-0 hover:opacity-100 focus:opacity-100 transition-opacity"
-                        onClick={() => 
-                          setPrimaryImageMutation.mutate({
-                            vehicleId: editingVehicle._id,
+                            {!image.isPrimary && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="bg-white text-xs h-8 opacity-100 sm:opacity-0 sm:hover:opacity-100 sm:focus:opacity-100 transition-opacity"
+                                onClick={() =>
+                                  setPrimaryImageMutation.mutate({
+                                    vehicleId: editingVehicle._id,
                                     imageId: image.id,
-                          })
-                        }
-                      >
+                                  })
+                                }
+                              >
                                 Set Primary
-                      </Button>
-                            )} 
-                    <Button
-                      size="sm"
+                              </Button>
+                            )}
+                            <Button
+                              size="sm"
                               variant="destructive"
-                              className="text-xs h-8 opacity-0 hover:opacity-100 focus:opacity-100 transition-opacity text-white bg-black-500"
-                      onClick={() => {
+                              className="text-xs h-8 opacity-100 sm:opacity-0 sm:hover:opacity-100 sm:focus:opacity-100 transition-opacity text-white bg-black-500"
+                              onClick={() => {
                                 if (
                                   confirm(
                                     'Are you sure you want to delete this image?'
                                   )
                                 ) {
-                          deleteVehicleImageMutation.mutate(image.id);
-                        }
-                      }}
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                         {image.isPrimary && (
-                    <div className="absolute bottom-0 left-0 right-0 bg-blue-500 text-white text-xs text-center py-1">
-                      Primary
-                    </div>
-                          )} 
-                </div>
+                                  deleteVehicleImageMutation.mutate(image.id);
+                                }
+                              }}
+                            >
+                              Delete
+                            </Button>
+                          </div>
+                          {image.isPrimary && (
+                            <div className="absolute bottom-0 left-0 right-0 bg-blue-500 text-white text-xs text-center py-1">
+                              Primary
+                            </div>
+                          )}
+                        </div>
                       )}
                     </Draggable>
-              ))}
+                  ))}
                   {provided.placeholder}
-            </div>
+                </div>
               )}
             </Droppable>
           </DragDropContext>
-          )}
+        )}
       </div>
     );
   };
@@ -1361,7 +1418,7 @@ const VehicleManagement = () => {
     if (confirm("Are you sure you want to mark this vehicle as sold?")) {
       // Find the vehicle in the vehicles array
       const vehicle = vehicles?.find(v => v._id === vehicleId);
-      
+
       if (!vehicle) {
         toast({
           title: "Error",
@@ -1370,10 +1427,10 @@ const VehicleManagement = () => {
         });
         return;
       }
-      
+
       // Log the vehicle data to debug
       console.log("Marking vehicle as sold:", vehicle);
-      
+
       // Create update object with all required fields
       const updateData = {
         status: 3, // Sold status
@@ -1388,16 +1445,16 @@ const VehicleManagement = () => {
         color: vehicle.color || "",
         seats: vehicle.seats || 0,
         condition: vehicle.condition || 0,
-        mileage: vehicle.mileage || 0,
+        mileage: String(vehicle.mileage || ""),
         description: vehicle.description || "",
         city: vehicle.city || "",
         address: vehicle.address || "",
         typeId: vehicle.typeId || "",
         transmissionId: vehicle.transmissionId || "",
       };
-      
+
       console.log("Update data:", updateData);
-      
+
       updateVehicleMutation.mutate({
         _id: vehicleId,
         vehicleData: updateData
@@ -1405,50 +1462,49 @@ const VehicleManagement = () => {
     }
   };
 
-    // Update the mutation for reordering images
-    const reorderImagesMutation = useMutation({
-      mutationFn: async ({ vehicleId, orderedImageIds }: { vehicleId: string; orderedImageIds: string[] }) => {
-        const response = await fetch(
-          `${import.meta.env.VITE_API_URL}/cars/v1/reorder-images/${vehicleId}`,
-          {
-            method: "PATCH",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${JSON.parse(
-                localStorage.getItem("access_token") || ""
-              )}`,
-            },
-            body: JSON.stringify({ imageOrder: orderedImageIds }),
-          }
-        );
-        if (!response.ok) {
-          if (response.status === 401) {
-            // Clear token and redirect to login
-            localStorage.removeItem("access_token");
-            window.location.href = '/login';
-            return;
-          }
-          throw new Error("Failed to reorder images");
+  const reorderImagesMutation = useMutation({
+    mutationFn: async ({ vehicleId, orderedImageIds }: { vehicleId: string; orderedImageIds: string[] }) => {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/cars/v1/reorder-images/${vehicleId}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${JSON.parse(
+              localStorage.getItem("access_token") || ""
+            )}`,
+          },
+          body: JSON.stringify({ imageOrder: orderedImageIds }),
         }
-        return await response.json();
-      },
-      onSuccess: () => {
-        if (editingVehicle) {
-          fetchVehicleImagesMutation.mutate(editingVehicle._id);
+      );
+      if (!response.ok) {
+        if (response.status === 401) {
+          // Clear token and redirect to login
+          localStorage.removeItem("access_token");
+          window.location.href = '/login';
+          return;
         }
-        toast({
-          title: "Success",
-          description: "Image order updated successfully",
-        });
-      },
-      onError: (error) => {
-        toast({
-          title: "Error",
-          description: error.message || "Failed to reorder images",
-          variant: "destructive",
-        });
-      },
-    });
+        throw new Error("Failed to reorder images");
+      }
+      return await response.json();
+    },
+    onSuccess: () => {
+      if (editingVehicle) {
+        fetchVehicleImagesMutation.mutate(editingVehicle._id);
+      }
+      toast({
+        title: "Success",
+        description: "Image order updated successfully",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to reorder images",
+        variant: "destructive",
+      });
+    },
+  });
 
   if (isLoading || isLoadingDropdowns) return <div>Loading...</div>;
 
@@ -1482,11 +1538,15 @@ const VehicleManagement = () => {
           <div className="relative">
             <input
               type="text"
-              placeholder="Search by title, make, model, or serial number..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full p-2 pl-10 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50"
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
+              placeholder="Search vehicles..."
+              className="w-full p-2 border rounded"
             />
+
             <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
           </div>
         </div>
@@ -1514,38 +1574,47 @@ const VehicleManagement = () => {
                   </td>
                 </tr>
               )}
-              {filteredVehicles.map((vehicle) => (
+              {paginatedVehicles.map(vehicle => (
                 <tr key={vehicle._id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     {vehicle.serialNumber || 'N/A'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{vehicle.title}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {dropdowns?.makes?.find((make) => make._id === vehicle.makeId)?.name || 'N/A'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {dropdowns?.types?.find((type) => type._id === vehicle.typeId)?.name || 'N/A'}
-                    </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {dropdowns?.makes?.find((make) => make._id === vehicle.makeId)?.name || 'N/A'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {dropdowns?.types?.find((type) => type._id === vehicle.typeId)?.name || 'N/A'}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{vehicle.model || 'N/A'}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">AWG {vehicle.price}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{vehicle.year}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span
-                      className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        vehicle.status === 1
-                          ? "bg-green-100 text-green-800"
-                          : vehicle.status === 2
+                      className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${vehicle.status === 1
+                        ? "bg-green-100 text-green-800"
+                        : vehicle.status === 2
                           ? "bg-yellow-100 text-yellow-800"
                           : vehicle.status === 3
-                          ? "bg-purple-100 text-purple-800"
-                          : "bg-gray-100 text-gray-800"
-                      }`}
+                            ? "bg-purple-100 text-purple-800"
+                            : "bg-gray-100 text-gray-800"
+                        }`}
                     >
                       {statusMap[vehicle.status] || "Draft"}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <div className="flex items-center space-x-3">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-blue-600 hover:text-blue-900 border-blue-200 hover:border-blue-500"
+                        onClick={() => handleViewClick(vehicle.slug)}
+                      >
+                        <Eye className="h-4 w-4 mr-1" />
+                        View
+                      </Button>
+
                       <Button
                         variant="outline"
                         size="sm"
@@ -1581,17 +1650,22 @@ const VehicleManagement = () => {
             </tbody>
           </table>
         </div>
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={(page) => setCurrentPage(page)}
+        />
       </div>
 
       <Dialog open={showAddEditDialog} onOpenChange={setShowAddEditDialog}>
-          <DialogContent className="max-w-[90vw] w-[800px] h-[90vh] overflow-hidden flex flex-col" style={{transition: 'none'}} aria-describedby="vehicle-dialog-description">
+        <DialogContent className="max-w-[90vw] w-[800px] h-[90vh] overflow-hidden flex flex-col" style={{ transition: 'none' }} aria-describedby="vehicle-dialog-description">
           <DialogHeader>
             <DialogTitle>
               {editingVehicle ? "Edit Vehicle" : "Add New Vehicle"}
             </DialogTitle>
-              <DialogDescription id="vehicle-dialog-description">
-                {editingVehicle ? "Update vehicle details" : "Add a new vehicle to the inventory"}
-              </DialogDescription>
+            <DialogDescription id="vehicle-dialog-description">
+              {editingVehicle ? "Update vehicle details" : "Add a new vehicle to the inventory"}
+            </DialogDescription>
           </DialogHeader>
           <div className="overflow-y-auto flex-1 pr-2">
             {!editingVehicle && (
@@ -1655,16 +1729,26 @@ const VehicleManagement = () => {
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium mb-1">
-                            Mileage
-                          </label>
-                          <input
-                            name="mileage"
-                            type="number"
-                            className="w-full p-2 border rounded-md"
-                            required
-                          />
+                          <label className="block text-sm font-medium mb-1">Mileage</label>
+                          <div className="flex space-x-2">
+                            <input
+                              name="mileageValue"
+                              type="number"
+                              min={0}
+                              className="w-full p-2 border rounded-md"
+                              required
+                            />
+                            <select
+                              name="mileageUnit"
+                              className="p-2 border rounded-md"
+                              required
+                            >
+                              <option value="miles">Miles</option>
+                              <option value="km">Kilometers</option>
+                            </select>
+                          </div>
                         </div>
+
                         <h3 className="font-semibold text-lg">
                           Location & Details
                         </h3>
@@ -1976,19 +2060,19 @@ const VehicleManagement = () => {
                     </div>
 
                     <div className="mt-6">
-                        
-                        <PropertySection 
-                          properties={customProperties}
-                          onRemoveProperty={handleRemoveProperty}
-                          onAddProperty={() => setShowAddPropertyDialog(true)}
-                          onPropertyValueChange={handlePropertyValueChange}
-                          onEditOptions={(propertyId) => {
-                            const property = customProperties.find(p => p._id === propertyId);
-                            if (property) {
-                              setEditingPropertyOptions(property);
-                            }
-                          }}
-                        />
+
+                      <PropertySection
+                        properties={customProperties}
+                        onRemoveProperty={handleRemoveProperty}
+                        onAddProperty={() => setShowAddPropertyDialog(true)}
+                        onPropertyValueChange={handlePropertyValueChange}
+                        onEditOptions={(propertyId) => {
+                          const property = customProperties.find(p => p._id === propertyId);
+                          if (property) {
+                            setEditingPropertyOptions(property);
+                          }
+                        }}
+                      />
                     </div>
 
                     <div className="mt-4 text-sm text-gray-500">
@@ -2054,11 +2138,10 @@ const VehicleManagement = () => {
                                 <img
                                   src={URL.createObjectURL(file)}
                                   alt={`Preview ${index}`}
-                                  className={`w-24 h-24 object-cover rounded border-2 ${
-                                    index === 0
-                                      ? "border-blue-500"
-                                      : "border-transparent"
-                                  }`}
+                                  className={`w-24 h-24 object-cover rounded border-2 ${index === 0
+                                    ? "border-blue-500"
+                                    : "border-transparent"
+                                    }`}
                                 />
                                 <div className="absolute top-0 right-0 flex flex-col gap-1">
                                   <button
@@ -2175,29 +2258,81 @@ const VehicleManagement = () => {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-1">
-                        Mileage
-                      </label>
-                      <input
-                        name="mileage"
-                        type="number"
-                        defaultValue={editingVehicle.mileage}
-                        className="w-full p-2 border rounded-md"
-                        required
-                      />
+                      <label className="block text-sm font-medium mb-1">Mileage</label>
+                      <div className="flex space-x-2">
+                        <input
+                          name="mileageValue"
+                          type="number"
+                          min={0}
+                          defaultValue={mileageValueDefault || ""}
+                          className="w-full p-2 border rounded-md"
+                          required
+                        />
+                        <select
+                          name="mileageUnit"
+                          defaultValue={mileageUnitDefault === "km" ? "km" : "miles"}
+                          className="p-2 border rounded-md"
+                          required
+                        >
+                          <option value="miles">Miles</option>
+                          <option value="km">Kilometers</option>
+                        </select>
+                      </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-1">
-                        Description
-                      </label>
+                      <label className="block text-sm font-medium mb-1">Description</label>
+
+                      {/* Show inline textarea only on md+ screens */}
                       <textarea
                         name="description"
                         defaultValue={editingVehicle.description}
-                        className="w-full p-2 border rounded-md"
+                        className="w-full p-2 border rounded-md hidden md:block"
                         rows={3}
                         required
+                        onChange={(e) => setDescriptionInput(e.target.value)}
                       />
+
+                      {/* On small screens, show a button to open dialog */}
+                      <button
+                        type="button"
+                        className="md:hidden px-4 py-2 border rounded-md bg-gray-100"
+                        onClick={() => setShowDescriptionDialog(true)}
+                      >
+                        Edit Description
+                      </button>
+
+                      {/* Dialog popup */}
+                      <Dialog open={showDescriptionDialog} onOpenChange={setShowDescriptionDialog}>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Edit Description</DialogTitle>
+                          </DialogHeader>
+                          <textarea
+                            className="w-full p-2 border rounded-md"
+                            rows={6}
+                            value={descriptionInput}
+                            onChange={(e) => setDescriptionInput(e.target.value)}
+                          />
+                          <div className="flex justify-end mt-4 space-x-2">
+                            <Button variant="outline" onClick={() => setShowDescriptionDialog(false)}>
+                              Cancel
+                            </Button>
+                            <Button
+                              onClick={() => {
+                                setEditingVehicle({
+                                  ...editingVehicle,
+                                  description: descriptionInput,
+                                });
+                                setShowDescriptionDialog(false);
+                              }}
+                            >
+                              Save
+                            </Button>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
                     </div>
+
                   </div>
 
                   <div className="space-y-4">
@@ -2405,7 +2540,7 @@ const VehicleManagement = () => {
                           setShowBadgesDropdown(!showBadgesDropdown)
                         }
                       >
-                              <span>
+                        <span>
                           {selectedBadges.length === 0
                             ? "Select badges"
                             : `${selectedBadges.length} badge(s) selected`}
@@ -2420,7 +2555,7 @@ const VehicleManagement = () => {
                           strokeWidth="2"
                           strokeLinecap="round"
                           strokeLinejoin="round"
-                                className="h-4 w-4"
+                          className="h-4 w-4"
                           aria-hidden="true"
                         >
                           <path d="m6 9 6 6 6-6" />
@@ -2481,27 +2616,37 @@ const VehicleManagement = () => {
                       type="button"
                       variant="outline"
                       size="sm"
+                      className="hidden md:inline-flex"
                       onClick={addFeatureField}
                     >
                       Add Feature
                     </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="md:hidden"
+                      onClick={() => {
+                        setFeaturesInput([...features]);
+                        setShowFeaturesDialog(true);
+                      }}
+                    >
+                      Edit Features
+                    </Button>
+
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-2 hidden md:block">
                     {features.map((feature, index) => (
                       <div key={index} className="flex gap-2 mb-2 items-center">
                         <input
                           value={feature.name}
-                          onChange={(e) =>
-                            updateFeature(index, "name", e.target.value)
-                          }
+                          onChange={(e) => updateFeature(index, "name", e.target.value)}
                           placeholder="Feature Name"
                           className="w-1/2 p-2 border rounded-md"
                         />
                         <input
                           value={feature.value}
-                          onChange={(e) =>
-                            updateFeature(index, "value", e.target.value)
-                          }
+                          onChange={(e) => updateFeature(index, "value", e.target.value)}
                           placeholder="Feature Value"
                           className="w-1/2 p-2 border rounded-md"
                         />
@@ -2516,20 +2661,86 @@ const VehicleManagement = () => {
                     ))}
                   </div>
                 </div>
+                <Dialog open={showFeaturesDialog} onOpenChange={setShowFeaturesDialog}>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Edit Features</DialogTitle>
+                    </DialogHeader>
+
+                    <div className="space-y-2">
+                      {featuresInput.map((feature, index) => (
+                        <div key={index} className="flex flex-col gap-2 mb-2 items-center">
+                          <input
+                            value={feature.name}
+                            onChange={(e) => {
+                              const updated = [...featuresInput];
+                              updated[index].name = e.target.value;
+                              setFeaturesInput(updated);
+                            }}
+                            placeholder="Feature Name"
+                            className="w-full p-2 border rounded-md"
+                          />
+                          <input
+                            value={feature.value}
+                            onChange={(e) => {
+                              const updated = [...featuresInput];
+                              updated[index].value = e.target.value;
+                              setFeaturesInput(updated);
+                            }}
+                            placeholder="Feature Value"
+                            className="w-full p-2 border rounded-md"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = [...featuresInput];
+                              updated.splice(index, 1);
+                              setFeaturesInput(updated);
+                            }}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="flex justify-end mt-4 space-x-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setShowFeaturesDialog(false);
+                          setFeaturesInput(features);
+                        }}
+                      >
+                        Cancel
+                      </Button>
+
+                      <Button
+                        onClick={() => {
+                          setFeatures(featuresInput); // Save to main state
+                          setShowFeaturesDialog(false);
+                        }}
+                      >
+                        Save
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
 
                 <div className="mt-6">
-                    <PropertySection 
-                      properties={customProperties}
-                      onRemoveProperty={handleRemoveProperty}
-                      onAddProperty={() => setShowAddPropertyDialog(true)}
-                      onPropertyValueChange={handlePropertyValueChange}
-                      onEditOptions={(propertyId) => {
-                        const property = customProperties.find(p => p._id === propertyId);
-                        if (property) {
-                          setEditingPropertyOptions(property);
-                        }
-                      }}
-                    />
+                  <PropertySection
+                    properties={customProperties}
+                    onRemoveProperty={handleRemoveProperty}
+                    onAddProperty={() => setShowAddPropertyDialog(true)}
+                    onPropertyValueChange={handlePropertyValueChange}
+                    onEditOptions={(propertyId) => {
+                      const property = customProperties.find(p => p._id === propertyId);
+                      if (property) {
+                        setEditingPropertyOptions(property);
+                      }
+                    }}
+                  />
                 </div>
 
                 <div className="mt-4 text-sm text-gray-500">
@@ -2555,175 +2766,175 @@ const VehicleManagement = () => {
           </div>
         </DialogContent>
       </Dialog>
-        <AddPropertyDialog 
-          open={showAddPropertyDialog}
-          onOpenChange={setShowAddPropertyDialog}
-          newProperty={newProperty}
-          setNewProperty={setNewProperty}
-          onAddProperty={handleAddProperty}
+      <AddPropertyDialog
+        open={showAddPropertyDialog}
+        onOpenChange={setShowAddPropertyDialog}
+        newProperty={newProperty}
+        setNewProperty={setNewProperty}
+        onAddProperty={handleAddProperty}
+      />
+      {editingPropertyOptions && (
+        <PropertyOptionsDialog
+          property={editingPropertyOptions}
+          onClose={() => setEditingPropertyOptions(null)}
+          onSave={handleEditPropertyOptions}
         />
-        {editingPropertyOptions && (
-          <PropertyOptionsDialog
-            property={editingPropertyOptions}
-            onClose={() => setEditingPropertyOptions(null)}
-            onSave={handleEditPropertyOptions}
-          />
-        )}
+      )}
     </div>
   );
 };
 
 export default VehicleManagement;
 
-  // Define the PropertyOptionsDialog component after the AddPropertyDialog component around line 970
-  const PropertyOptionsDialog = ({ property, onClose, onSave }) => {
-    const [options, setOptions] = useState(property.options || []);
-    const [newOption, setNewOption] = useState("");
-    const [isDuplicateError, setIsDuplicateError] = useState(false);
+// Define the PropertyOptionsDialog component after the AddPropertyDialog component around line 970
+const PropertyOptionsDialog = ({ property, onClose, onSave }) => {
+  const [options, setOptions] = useState(property.options || []);
+  const [newOption, setNewOption] = useState("");
+  const [isDuplicateError, setIsDuplicateError] = useState(false);
 
-    const addOption = () => {
-      if (newOption.trim()) {
-        // Check for duplicate options
-        if (options.includes(newOption.trim())) {
-          setIsDuplicateError(true);
-          return;
-        }
-        
-        setOptions([...options, newOption.trim()]);
-        setNewOption("");
-        setIsDuplicateError(false);
+  const addOption = () => {
+    if (newOption.trim()) {
+      // Check for duplicate options
+      if (options.includes(newOption.trim())) {
+        setIsDuplicateError(true);
+        return;
       }
-    };
 
-    const removeOption = (index: number) => {
-      setOptions(options.filter((_, i) => i !== index));
-    };
-
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        addOption();
-      }
-    };
-
-    const onDragEnd = (result: DropResult) => {
-      // Dropped outside the list
-      if (!result.destination) return;
-      
-      const reorderedOptions = [...options];
-      const [movedItem] = reorderedOptions.splice(result.source.index, 1);
-      reorderedOptions.splice(result.destination.index, 0, movedItem);
-      
-      setOptions(reorderedOptions);
-    };
-
-    return (
-      <Dialog open={true} onOpenChange={onClose}>
-        <DialogContent className="sm:max-w-md" aria-describedby="options-dialog-description" style={{transition: 'none'}}>
-          <DialogHeader>
-            <DialogTitle>Edit Options for {property.name}</DialogTitle>
-            <DialogDescription id="options-dialog-description">
-              Add, edit, or remove dropdown options for this property. Drag to reorder.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="flex gap-2 mb-4">
-              <input
-                type="text"
-                value={newOption}
-                onChange={(e) => {
-                  setNewOption(e.target.value);
-                  setIsDuplicateError(false);
-                }}
-                onKeyDown={handleKeyDown}
-                placeholder="Add new option"
-                className={`flex-1 p-2 border rounded-md ${isDuplicateError ? 'border-red-500' : ''}`}
-                style={{transition: 'none'}}
-              />
-              <Button onClick={addOption} style={{transition: 'none'}}>Add</Button>
-            </div>
-            {isDuplicateError && (
-              <p className="text-red-500 text-sm mt-1">This option already exists</p>
-            )}
-            
-            <div className="max-h-[300px] overflow-y-auto border rounded-md p-2">
-              {options.length === 0 ? (
-                <p className="text-gray-500 text-center py-4">No options added yet</p>
-              ) : (
-                <DragDropContext onDragEnd={onDragEnd}>
-                  <Droppable droppableId="options-list">
-                    {(provided) => (
-                      <div
-                        {...provided.droppableProps}
-                        ref={provided.innerRef}
-                        className="space-y-2"
-                      >
-                        {options.map((option, index) => (
-                          <Draggable key={`${option}-${index}`} draggableId={`${option}-${index}`} index={index}>
-                            {(provided) => (
-                              <div
-                                ref={provided.innerRef}
-                                {...provided.draggableProps}
-                                {...provided.dragHandleProps}
-                                className="flex items-center gap-2 bg-white border rounded-md p-2 group hover:border-gray-400"
-                              >
-                                <div className="flex-shrink-0 text-gray-400">
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <line x1="21" y1="10" x2="3" y2="10"></line>
-                                    <line x1="21" y1="6" x2="3" y2="6"></line>
-                                    <line x1="21" y1="14" x2="3" y2="14"></line>
-                                    <line x1="21" y1="18" x2="3" y2="18"></line>
-                                  </svg>
-                                </div>
-                                <input
-                                  type="text"
-                                  value={option}
-                                  onChange={(e) => {
-                                    const newOptions = [...options];
-                                    newOptions[index] = e.target.value;
-                                    setOptions(newOptions);
-                                  }}
-                                  className="flex-1 p-1 border-none focus:ring-1 focus:ring-blue-500 rounded-md"
-                                  style={{transition: 'none'}}
-                                />
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => removeOption(index)}
-                                  className="text-red-500 opacity-0 group-hover:opacity-100"
-                                  style={{transition: 'none'}}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            )}
-                          </Draggable>
-                        ))}
-                        {provided.placeholder}
-                      </div>
-                    )}
-                  </Droppable>
-                </DragDropContext>
-              )}
-            </div>
-            
-            <div className="flex justify-end space-x-2 mt-4">
-              <Button variant="outline" onClick={onClose} style={{transition: 'none'}}>
-                Cancel
-              </Button>
-              <Button 
-                onClick={() => {
-                  onSave(property._id, options);
-                  onClose();
-                }}
-                style={{transition: 'none'}}
-                disabled={options.length === 0}
-              >
-                Save Options
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
+      setOptions([...options, newOption.trim()]);
+      setNewOption("");
+      setIsDuplicateError(false);
+    }
   };
+
+  const removeOption = (index: number) => {
+    setOptions(options.filter((_, i) => i !== index));
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addOption();
+    }
+  };
+
+  const onDragEnd = (result: DropResult) => {
+    // Dropped outside the list
+    if (!result.destination) return;
+
+    const reorderedOptions = [...options];
+    const [movedItem] = reorderedOptions.splice(result.source.index, 1);
+    reorderedOptions.splice(result.destination.index, 0, movedItem);
+
+    setOptions(reorderedOptions);
+  };
+
+  return (
+    <Dialog open={true} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-md" aria-describedby="options-dialog-description" style={{ transition: 'none' }}>
+        <DialogHeader>
+          <DialogTitle>Edit Options for {property.name}</DialogTitle>
+          <DialogDescription id="options-dialog-description">
+            Add, edit, or remove dropdown options for this property. Drag to reorder.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="flex gap-2 mb-4">
+            <input
+              type="text"
+              value={newOption}
+              onChange={(e) => {
+                setNewOption(e.target.value);
+                setIsDuplicateError(false);
+              }}
+              onKeyDown={handleKeyDown}
+              placeholder="Add new option"
+              className={`flex-1 p-2 border rounded-md ${isDuplicateError ? 'border-red-500' : ''}`}
+              style={{ transition: 'none' }}
+            />
+            <Button onClick={addOption} style={{ transition: 'none' }}>Add</Button>
+          </div>
+          {isDuplicateError && (
+            <p className="text-red-500 text-sm mt-1">This option already exists</p>
+          )}
+
+          <div className="max-h-[300px] overflow-y-auto border rounded-md p-2">
+            {options.length === 0 ? (
+              <p className="text-gray-500 text-center py-4">No options added yet</p>
+            ) : (
+              <DragDropContext onDragEnd={onDragEnd}>
+                <Droppable droppableId="options-list">
+                  {(provided) => (
+                    <div
+                      {...provided.droppableProps}
+                      ref={provided.innerRef}
+                      className="space-y-2"
+                    >
+                      {options.map((option, index) => (
+                        <Draggable key={`${option}-${index}`} draggableId={`${option}-${index}`} index={index}>
+                          {(provided) => (
+                            <div
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              {...provided.dragHandleProps}
+                              className="flex items-center gap-2 bg-white border rounded-md p-2 group hover:border-gray-400"
+                            >
+                              <div className="flex-shrink-0 text-gray-400">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <line x1="21" y1="10" x2="3" y2="10"></line>
+                                  <line x1="21" y1="6" x2="3" y2="6"></line>
+                                  <line x1="21" y1="14" x2="3" y2="14"></line>
+                                  <line x1="21" y1="18" x2="3" y2="18"></line>
+                                </svg>
+                              </div>
+                              <input
+                                type="text"
+                                value={option}
+                                onChange={(e) => {
+                                  const newOptions = [...options];
+                                  newOptions[index] = e.target.value;
+                                  setOptions(newOptions);
+                                }}
+                                className="flex-1 p-1 border-none focus:ring-1 focus:ring-blue-500 rounded-md"
+                                style={{ transition: 'none' }}
+                              />
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => removeOption(index)}
+                                className="text-red-500 opacity-0 group-hover:opacity-100"
+                                style={{ transition: 'none' }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          )}
+                        </Draggable>
+                      ))}
+                      {provided.placeholder}
+                    </div>
+                  )}
+                </Droppable>
+              </DragDropContext>
+            )}
+          </div>
+
+          <div className="flex justify-end space-x-2 mt-4">
+            <Button variant="outline" onClick={onClose} style={{ transition: 'none' }}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                onSave(property._id, options);
+                onClose();
+              }}
+              style={{ transition: 'none' }}
+              disabled={options.length === 0}
+            >
+              Save Options
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};

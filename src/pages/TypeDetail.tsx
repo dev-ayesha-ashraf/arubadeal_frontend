@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Pagination } from "@/components/common/Pagination";
 
 // Type definitions
 interface CarType {
@@ -43,22 +44,13 @@ interface Car {
 
 // Fetch functions
 const fetchAllTypes = async (): Promise<CarType[]> => {
-  const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/types/list-types`,
-    {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    }
-  );
+  const response = await fetch(`${import.meta.env.VITE_API_URL}/types/list-types`);
   if (!response.ok) throw new Error("Failed to fetch types");
   const res = await response.json();
   return res.data;
 };
 
-const fetchCars = async (params: URLSearchParams): Promise<Car[]> => {
-  // Get access token if available
+const fetchCars = async (params: URLSearchParams): Promise<{ data: Car[]; total: number }> => {
   const accessToken = localStorage.getItem("access_token")
     ? JSON.parse(localStorage.getItem("access_token") || "")
     : null;
@@ -67,23 +59,25 @@ const fetchCars = async (params: URLSearchParams): Promise<Car[]> => {
     "Content-Type": "application/json",
   };
 
-  // Add authorization header if we have a token
   if (accessToken) {
     headers["Authorization"] = `Bearer ${accessToken}`;
   }
 
   const response = await fetch(
-    `${
-      import.meta.env.VITE_API_URL
-    }/cars/list-cars-for-home-page?${params.toString()}`,
+    `${import.meta.env.VITE_API_URL}/cars/list-cars-for-home-page?${params.toString()}`,
     {
       method: "GET",
       headers,
     }
   );
+
   if (!response.ok) throw new Error("Failed to fetch cars");
+
   const res = await response.json();
-  return res.data;
+  return {
+    data: res.data.data,
+    total: res.data.pagination?.total || 0,
+  };
 };
 
 const TypeDetail = () => {
@@ -93,57 +87,54 @@ const TypeDetail = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [currentType, setCurrentType] = useState<CarType | null>(null);
 
-  // Fetch all types to find the current one by slug
+  const [currentPage, setCurrentPage] = useState(1);
+  const carsPerPage = 9;
+
   const { data: allTypes = [], isLoading: typesLoading } = useQuery({
     queryKey: ["allTypes"],
     queryFn: fetchAllTypes,
   });
 
-  // Find the current type from the list
   useEffect(() => {
     if (allTypes.length > 0 && typeSlug) {
       const type = allTypes.find((t) => t.slug === typeSlug);
       if (type) {
         setCurrentType(type);
       } else {
-        // If type not found, redirect to listings page
         navigate("/listings");
       }
     }
   }, [allTypes, typeSlug, navigate]);
 
-  // Clean up search params and ensure typeId is properly set
   useEffect(() => {
     if (currentType?._id) {
-      // Create new URLSearchParams to avoid duplicates
       const newSearchParams = new URLSearchParams();
-
-      // Add typeId and typeSlug
-      // newSearchParams.set("typeId", currentType._id);
       newSearchParams.set("slug", currentType.slug);
 
-      // Preserve other existing params (like sort, filters, etc.)
       searchParams.forEach((value, key) => {
         if (key !== "typeId" && key !== "slug") {
           newSearchParams.set(key, value);
         }
       });
 
-      // Only update if the params have actually changed
       if (newSearchParams.toString() !== searchParams.toString()) {
         setSearchParams(newSearchParams);
       }
     }
   }, [currentType, searchParams, setSearchParams]);
 
-  // Fetch cars filtered by this type
-  const { data: cars = [], isLoading: carsLoading } = useQuery({
-    queryKey: ["cars", searchParams.toString()],
-    queryFn: () => fetchCars(searchParams),
+  const { data: carResponse = { data: [], total: 0 }, isLoading: carsLoading } = useQuery({
+    queryKey: ["cars", searchParams.toString(), currentPage],
+    queryFn: () => {
+      const paginatedParams = new URLSearchParams(searchParams.toString());
+      paginatedParams.set("page", currentPage.toString());
+      paginatedParams.set("limit", carsPerPage.toString());
+      return fetchCars(paginatedParams);
+    },
     enabled: !!currentType?._id,
   });
 
-  const sortedCars = [...cars].sort((a, b) => {
+  const sortedCars = [...carResponse.data].sort((a, b) => {
     switch (sortBy) {
       case "price-asc":
         return Number(a.price) - Number(b.price);
@@ -157,6 +148,7 @@ const TypeDetail = () => {
     }
   });
 
+  const totalPages = Math.ceil(carResponse.total / carsPerPage);
   const isLoading = typesLoading || !currentType;
 
   return (
@@ -164,8 +156,6 @@ const TypeDetail = () => {
       <Header />
       <Navbar />
       <ListingsFilter />
-      {/* Type Banner */}
-      {isLoading ? <div></div> : <div></div>}
 
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-6 max-[600px]:flex-col">
@@ -178,9 +168,7 @@ const TypeDetail = () => {
               url={window.location.href}
               imageUrl={
                 currentType?.banner || currentType?.image
-                  ? `${import.meta.env.VITE_MEDIA_URL}/${
-                      currentType?.banner || currentType?.image
-                    }`
+                  ? `${import.meta.env.VITE_MEDIA_URL}/${currentType?.banner || currentType?.image}`
                   : undefined
               }
             />
@@ -197,6 +185,7 @@ const TypeDetail = () => {
             </Select>
           </div>
         </div>
+
         <div className="flex flex-col lg:flex-row gap-8">
           <div className="w-full">
             {carsLoading ? (
@@ -261,6 +250,14 @@ const TypeDetail = () => {
                   </Link>
                 ))}
               </div>
+            )}
+
+            {totalPages > 1 && (
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={(page) => setCurrentPage(page)}
+              />
             )}
           </div>
         </div>
