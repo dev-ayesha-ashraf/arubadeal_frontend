@@ -69,6 +69,7 @@ export const OurCars = () => {
     isLoading,
   } = useQuery({
     queryKey: ["cars", selectedFilter, currentPage, itemsPerPage],
+
     queryFn: async () => {
       let endpoint = "";
 
@@ -99,6 +100,8 @@ export const OurCars = () => {
 
       return [];
     },
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: true,
   });
 
   const handleFilterChange = (filter: string) => {
@@ -186,9 +189,19 @@ export const OurCars = () => {
 
         <div className="grid grid-cols-3 xs:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4">
           {isLoading ? (
-            <div className="col-span-full flex justify-center items-center py-8 sm:py-12">
-              <div className="text-xs sm:text-lg">Loading...</div>
-            </div>
+            Array.from({ length: itemsPerPage }).map((_, i) => (
+              <Card
+                key={i}
+                className="overflow-hidden animate-pulse rounded-sm sm:rounded-md"
+              >
+                <div className="w-full h-16 sm:h-48 bg-gray-200" />
+                <CardContent className="p-1 sm:p-4">
+                  <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                  <div className="h-3 bg-gray-200 rounded w-1/2 mb-2"></div>
+                  <div className="h-3 bg-gray-200 rounded w-1/3"></div>
+                </CardContent>
+              </Card>
+            ))
           ) : !filteredCars || filteredCars.length === 0 ? (
             <div className="col-span-full flex justify-center items-center py-8 sm:py-12">
               <div className="text-xs sm:text-lg">
@@ -260,11 +273,9 @@ export const OurCars = () => {
             })
           )}
         </div>
-
-        {/* Pagination controls */}
         <Pagination
           currentPage={currentPage}
-          totalPages={11} // Replace with real total from API
+          totalPages={11}
           onPageChange={(page) => setCurrentPage(page)}
         />
       </div>

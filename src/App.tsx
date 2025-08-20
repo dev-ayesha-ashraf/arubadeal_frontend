@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -14,23 +14,15 @@ import PrivateRoute from "./components/PrivateRoute";
 import NotFound from "./pages/NotFound";
 import AdminPortal from "./pages/AdminPortal";
 import { HelmetProvider } from "react-helmet-async";
-import { useLocation } from "react-router-dom";
-import { initGA, trackPageview } from "@/lib/analytics";
+import { initGA } from "@/lib/analytics";
 
 const queryClient = new QueryClient();
+initGA();
 
 const AppContent = () => {
   useScrollToTop();
   const location = useLocation();
-
-  useEffect(() => {
-    initGA();
-  }, []);
-
-  useEffect(() => {
-    trackPageview(location.pathname + location.search);
-  }, [location]);
-
+  useEffect(() => { }, [location]);
   return (
     <Routes>
       {/* Public routes */}

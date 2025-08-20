@@ -27,12 +27,8 @@ const fetchManufacturers = async (): Promise<Manufacturer[]> => {
 
   const res = await response.json();
   const data = Array.isArray(res.data) ? res.data : [];
-  // console.log("Fetched manufacturers:", data);
-
   return data;
 };
-
-
 
 export const BrowseByMake = () => {
   const [currentIndex, setCurrentIndex] = useState(0);

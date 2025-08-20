@@ -18,7 +18,6 @@ import {
 } from "@/components/ui/select";
 import { Pagination } from "@/components/common/Pagination";
 
-// Type definitions
 interface CarType {
   _id: string;
   name: string;
@@ -123,16 +122,16 @@ const TypeDetail = () => {
     }
   }, [currentType, searchParams, setSearchParams]);
 
-  const { data: carResponse = { data: [], total: 0 }, isLoading: carsLoading } = useQuery({
-    queryKey: ["cars", searchParams.toString(), currentPage],
-    queryFn: () => {
-      const paginatedParams = new URLSearchParams(searchParams.toString());
-      paginatedParams.set("page", currentPage.toString());
-      paginatedParams.set("limit", carsPerPage.toString());
-      return fetchCars(paginatedParams);
-    },
-    enabled: !!currentType?._id,
-  });
+const { data: carResponse = { data: [], total: 0 }, isLoading: carsLoading } = useQuery({
+  queryKey: ["cars", searchParams.toString(), currentPage],
+  queryFn: () => {
+    const paginatedParams = new URLSearchParams(searchParams.toString());
+    paginatedParams.set("page", currentPage.toString());
+    paginatedParams.set("limit", carsPerPage.toString());
+    return fetchCars(paginatedParams);
+  },
+  enabled: !!currentType?._id && searchParams.has("slug"), 
+});
 
   const sortedCars = [...carResponse.data].sort((a, b) => {
     switch (sortBy) {

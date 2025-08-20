@@ -15,9 +15,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { MapPin, Share2 } from "lucide-react";
 import { SharePreview } from "@/components/common/SharePreview";
 import { Car } from "@/types/car";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, ArrowLeft } from "lucide-react";
 import { useQuery } from '@tanstack/react-query';
 import { Pagination } from "@/components/common/Pagination";
+import { useEffect } from "react";
 
 interface CarDetail {
   _id: string;
@@ -39,34 +40,29 @@ interface CarType {
   name: string;
 }
 
-const fetchAllCars = async (makeId?: string): Promise<Car[]> => {
-  const allCars: Car[] = [];
-  let page = 1;
-  const limit = 10;
+const fetchCarsByPage = async ({
+  page,
+  makeId,
+  limit = 9
+}: { page: number; makeId?: string; limit?: number }): Promise<{
+  cars: Car[];
+  total: number;
+}> => {
+  const params = new URLSearchParams();
+  params.set("page", page.toString());
+  params.set("limit", limit.toString());
+  if (makeId) params.set("makeId", makeId);
 
-  while (true) {
-    const params = new URLSearchParams();
-    params.set("page", page.toString());
-    params.set("limit", limit.toString());
-    if (makeId) params.set("makeId", makeId);
+  const response = await fetch(
+    `${import.meta.env.VITE_API_URL}/cars/list-cars-for-home-page?${params.toString()}`
+  );
+  if (!response.ok) throw new Error("Failed to fetch cars");
 
-    const response = await fetch(
-      `${import.meta.env.VITE_API_URL}/cars/list-cars-for-home-page?${params.toString()}`
-    );
-    if (!response.ok) throw new Error("Failed to fetch cars");
-
-    const res = await response.json();
-    const cars: Car[] = res.data.data;
-    allCars.push(...cars);
-
-    const total = res.data.pagination?.total || cars.length;
-    const totalPages = Math.ceil(total / limit);
-
-    if (page >= totalPages) break;
-    page++;
-  }
-
-  return allCars;
+  const res = await response.json();
+  return {
+    cars: res.data.data,
+    total: res.data.pagination?.total || res.data.data.length
+  };
 };
 
 const fetchFullCars = async (): Promise<CarDetail[]> => {
@@ -100,22 +96,38 @@ const getPriceBadge = (price: number): string | null => {
 const Listings = () => {
   const [selectedCar, setSelectedCar] = useState<Car | null>(null);
   const [showSharePreview, setShowSharePreview] = useState(false);
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [sortBy, setSortBy] = useState(searchParams.get("sort") || "date-desc");
+  const handleSortChange = (value: string) => {
+    setSortBy(value);
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set("sort", value);
+    setSearchParams(newParams);
+  };
+
   const makeId = searchParams.get("makeId");
   const searchQuery = searchParams.get("search")?.toLowerCase() || "";
   const colorQuery = searchParams.get("color")?.toLowerCase() || "";
   const [currentPage, setCurrentPage] = useState(1);
   const carsPerPage = 9;
-
-  const { data: homeCars = [], isLoading } = useQuery({
-    queryKey: ['cars', makeId],
-    queryFn: () => fetchAllCars(makeId),
+  const { data: homeCarsData, isLoading } = useQuery({
+    queryKey: ["cars", makeId, currentPage, searchQuery],
+    queryFn: async () => {
+      if (searchQuery) {
+        const firstPage = await fetchCarsByPage({ page: 1, makeId, limit: 1 });
+        return fetchCarsByPage({ page: 1, makeId, limit: firstPage.total });
+      } else {
+        return fetchCarsByPage({ page: currentPage, makeId, limit: carsPerPage });
+      }
+    },
+    placeholderData: (prev) => prev,
   });
+
 
   const { data: fullCars = [] } = useQuery({
     queryKey: ['fullCars'],
     queryFn: fetchFullCars,
+    staleTime: 1000 * 60 * 5, 
   });
 
   const { data: makes = [] } = useQuery({
@@ -130,6 +142,8 @@ const Listings = () => {
   });
 
   const selectedMake = makes.find((make) => make._id === makeId);
+  const homeCars = homeCarsData?.cars || [];
+  const totalCars = homeCarsData?.total || 0;
 
   const mergedCars = homeCars.map((car) => {
     const fullCar = fullCars.find((c) => c._id === car._id);
@@ -164,9 +178,24 @@ const Listings = () => {
       default: return b._id.localeCompare(a._id);
     }
   });
+  let paginatedCars: typeof sortedCars = [];
+  let totalPages = 1;
 
-  const totalPages = Math.ceil(sortedCars.length / carsPerPage);
-  const paginatedCars = sortedCars.slice((currentPage - 1) * carsPerPage, currentPage * carsPerPage);
+  if (searchQuery) {
+    totalPages = Math.ceil(sortedCars.length / carsPerPage);
+    paginatedCars = sortedCars.slice(
+      (currentPage - 1) * carsPerPage,
+      currentPage * carsPerPage
+    );
+  } else {
+    totalPages = Math.ceil(totalCars / carsPerPage);
+    paginatedCars = sortedCars;
+  }
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, colorQuery, makeId]);
+
 
   const handleShare = (car: Car, e: React.MouseEvent) => {
     e.preventDefault();
@@ -182,12 +211,34 @@ const Listings = () => {
       <div className="container mx-auto px-4 py-8">
         <div className="flex flex-col gap-8">
           <ListingsFilter />
+          <div className="flex justify-end items-center gap-2 mb-4">
+            <button
+              disabled={currentPage <= 1}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+
+            <span className="text-sm font-medium">
+              Page {currentPage} of {totalPages}
+            </span>
+
+            <button
+              disabled={currentPage >= totalPages}
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+
           <div>
             <div className="flex justify-between items-center mb-6">
               <h1 className="text-2xl font-bold text-gray-800">
                 {searchQuery ? `Search Results for "${searchQuery}"` : makeId && selectedMake ? `All ${selectedMake.name} Vehicles` : "All Listings"}
               </h1>
-              <Select value={sortBy} onValueChange={setSortBy}>
+              <Select value={sortBy} onValueChange={handleSortChange}>
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
@@ -198,6 +249,7 @@ const Listings = () => {
                   <SelectItem value="price-desc">Price: High to Low</SelectItem>
                 </SelectContent>
               </Select>
+
             </div>
             {isLoading ? (
               <div className="text-center py-8">Loading...</div>
@@ -286,10 +338,11 @@ const Listings = () => {
             {totalPages > 1 && (
               <Pagination
                 currentPage={currentPage}
-                totalPages={totalPages}
+                totalPages={totalPages}   
                 onPageChange={setCurrentPage}
               />
             )}
+
           </div>
         </div>
       </div>

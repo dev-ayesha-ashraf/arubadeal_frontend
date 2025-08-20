@@ -264,114 +264,100 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
       },
     });
   };
+  const addFeature = () => {
+    if (!editableListing) return;
+    const newFeature: Feature = { _id: `new-${Date.now()}`, name: "", value: "" };
+    setEditableListing({
+      ...editableListing,
+      features: [...(editableListing.features ?? []), newFeature],
+    });
+  };
 
-const updateFeatureValue = (featureId: string, field: "name" | "value", value: string) => {
-  setEditableListing(prev => {
-    if (!prev) return prev;
-    return {
-      ...prev,
-      features: prev.features?.map(f =>
-        f._id === featureId ? { ...f, [field]: value } : f
-      ) ?? []
-    };
-  });
-};
-const removeFeature = (featureId: string) => {
-  setEditableListing(prev => {
-    if (!prev) return prev;
-    return {
-      ...prev,
-      features: prev.features?.filter(f => f._id !== featureId) ?? []
-    };
-  });
-};
+  const updateFeature = (id: string, field: "name" | "value", value: string) => {
+    if (!editableListing) return;
+    setEditableListing({
+      ...editableListing,
+      features: editableListing.features?.map((f) =>
+        f._id === id ? { ...f, [field]: value } : f
+      ) ?? [],
+    });
+  };
 
-const addFeature = () => {
-  if (!editableListing) return;
-  const tempId = `temp-${Date.now()}`;
-  setEditableListing(prev => ({
-    ...prev!,
-    features: [
-      ...(prev?.features ?? []),
-      { _id: tempId, name: "", value: "" }
-    ]
-  }));
-};
+  const deleteFeature = (id: string) => {
+    if (!editableListing) return;
+    setEditableListing({
+      ...editableListing,
+      features: editableListing.features?.filter((f) => f._id !== id) ?? [],
+    });
+  };
 
-const saveChanges = async () => {
-  if (!editableListing) return;
+  const saveChanges = async () => {
+    if (!editableListing) return;
+    try {
+      const modelValue =
+        editableListing.technicalSpecification?.type?.trim() ||
+        listing?.technicalSpecification?.type?.trim() ||
+        "";
 
-  try {
-    const modelValue =
-      editableListing.technicalSpecification?.type?.trim() ||
-      listing?.technicalSpecification?.type?.trim() ||
-      "";
-
-    if (!modelValue) {
-      alert("Model cannot be empty.");
-      return;
-    }
-
-    const finalMileage =
-      mileageValue !== "" ? `${mileageValue} ${mileageUnit}` : editableListing.mileage;
-
-    // ✅ Merge existing and new features
-    const featuresPayload = (editableListing.features ?? []).map(f => ({
-      _id: f._id.startsWith("temp-") ? undefined : f._id, // remove temp ID for new ones
-      name: f.name.trim(),
-      value: f.value.trim(),
-    }));
-
-    const payload = {
-      title: editableListing.title?.trim(),
-      model: modelValue,
-      description: editableListing.description?.trim(),
-      price: Number(editableListing.price || 0),
-      mileage: finalMileage,
-      images: (editableListing.images ?? []).map(({ _id, image, isPrimary }) => ({
-        _id,
-        image: image.trim(),
-        isPrimary,
-      })),
-      technicalSpecification: editableListing.technicalSpecification,
-      address: editableListing.address?.trim(),
-      features: featuresPayload, // send ALL features (existing + new)
-    };
-
-    const token = localStorage.getItem("access_token")?.replace(/(^"|"$)/g, "");
-    if (!token) {
-      alert("You need to login first.");
-      return;
-    }
-
-    const response = await fetch(
-      `${import.meta.env.VITE_API_URL}/cars/update-car/${editableListing._id}`,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
+      if (!modelValue) {
+        alert("Model cannot be empty.");
+        return;
       }
-    );
+      const finalMileage =
+        mileageValue !== "" ? `${mileageValue} ${mileageUnit}` : editableListing.mileage;
+      const payload = {
+        title: editableListing.title?.trim(),
+        model: modelValue,
+        description: editableListing.description?.trim(),
+        price: Number(editableListing.price || 0),
+        mileage: finalMileage,
+        images: (editableListing.images ?? []).map(({ _id, image, isPrimary }) => ({
+          _id,
+          image: image.trim(),
+          isPrimary,
+        })),
+        technicalSpecification: editableListing.technicalSpecification,
+        address: editableListing.address?.trim(),
+        features: (editableListing.features ?? [])
+          .filter(f => f.name?.trim() && f.value?.trim())
+          .map(f => ({
+            name: f.name.trim(),
+            value: f.value.trim(),
+          })),
+      };
+      if (!payload.features.length) {
+        payload.features = null;
+      }
+      const token = localStorage.getItem("access_token")?.replace(/(^"|"$)/g, "");
+      if (!token) {
+        alert("You need to login first.");
+        return;
+      }
 
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error("Server response:", errText);
-      throw new Error("Failed to save changes");
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/cars/update-car/${editableListing._id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
+        }
+      );
+      if (!response.ok) {
+        const errText = await response.text();
+        console.error("Server response:", errText);
+        throw new Error("Failed to save changes");
+      }
+
+      alert("Listing updated successfully!");
+      await refetch();
+    } catch (err) {
+      console.error(err);
+      alert("Error saving changes. Check console.");
     }
-
-    alert("Listing updated successfully!");
-    await refetch();
-  } catch (err) {
-    console.error(err);
-    alert("Error saving changes. Check console.");
-  }
-};
-
-
-
+  };
 
   if (isLoading) return <div>Loading...</div>;
   if (!listing && !editableListing) return <div>Listing not found</div>;
@@ -396,7 +382,9 @@ const saveChanges = async () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Main content */}
           <div className="lg:col-span-2 space-y-8">
+            {/* Image gallery */}
             <Card className="overflow-hidden relative">
               <div className="relative">
                 <div
@@ -607,38 +595,23 @@ const saveChanges = async () => {
 
                 <Card className="p-6">
                   <h2 className="text-xl font-semibold mb-4">Technical Specifications</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Engine */}
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
                       <p className="font-medium">Engine</p>
                       {isAdmin ? (
-                        <input
-                          type="text"
-                          value={display?.technicalSpecification?.engine ?? ""}
-                          onChange={(e) => updateTechnicalSpec("engine", e.target.value)}
-                          className="border rounded p-1 w-full"
-                        />
+                        <input type="text" value={display?.technicalSpecification?.engine ?? ""} onChange={(e) => updateTechnicalSpec("engine", e.target.value)} className="border rounded p-1 w-full" />
                       ) : (
                         <p className="text-gray-600">{display?.technicalSpecification?.engine}</p>
                       )}
                     </div>
-
-                    {/* Transmission */}
                     <div>
                       <p className="font-medium">Transmission</p>
                       {isAdmin ? (
-                        <input
-                          type="text"
-                          value={display?.technicalSpecification?.transmission ?? ""}
-                          onChange={(e) => updateTechnicalSpec("transmission", e.target.value)}
-                          className="border rounded p-1 w-full"
-                        />
+                        <input type="text" value={display?.technicalSpecification?.transmission ?? ""} onChange={(e) => updateTechnicalSpec("transmission", e.target.value)} className="border rounded p-1 w-full" />
                       ) : (
                         <p className="text-gray-600">{display?.technicalSpecification?.transmission}</p>
                       )}
                     </div>
-
-                    {/* Type */}
                     <div>
                       <p className="font-medium">Type</p>
                       {isAdmin ? (
@@ -663,24 +636,13 @@ const saveChanges = async () => {
                       )}
                     </div>
 
-                    {/* Mileage */}
+
                     <div>
                       <p className="font-medium">Mileage</p>
                       {isAdmin ? (
                         <div className="flex gap-2">
-                          <input
-                            type="number"
-                            className="border rounded p-1 w-full"
-                            value={mileageValue}
-                            onChange={(e) =>
-                              setMileageValue(e.target.value === "" ? "" : Number(e.target.value))
-                            }
-                          />
-                          <select
-                            className="border rounded p-1"
-                            value={mileageUnit}
-                            onChange={(e) => setMileageUnit(e.target.value as "miles" | "km")}
-                          >
+                          <input type="number" className="border rounded p-1 w-full" value={mileageValue} onChange={(e) => setMileageValue(e.target.value === "" ? "" : Number(e.target.value))} />
+                          <select className="border rounded p-1" value={mileageUnit} onChange={(e) => setMileageUnit(e.target.value as "miles" | "km")}>
                             <option value="miles">Miles</option>
                             <option value="km">Kilometers</option>
                           </select>
@@ -694,85 +656,62 @@ const saveChanges = async () => {
                       )}
                     </div>
 
-                    {/* Fuel Types */}
                     <div className="md:col-span-2">
                       <p className="font-medium">Fuel Types</p>
                       {isAdmin ? (
-                        <input
-                          type="text"
-                          className="border rounded p-1 w-full"
-                          value={(display?.technicalSpecification?.fuelTypes ?? []).join(", ")}
-                          onChange={(e) =>
-                            updateTechnicalSpec(
-                              "fuelTypes",
-                              e.target.value.split(",").map((s) => s.trim())
-                            )
-                          }
-                          placeholder="Comma separated"
-                        />
+                        <input type="text" className="border rounded p-1 w-full" value={(display?.technicalSpecification?.fuelTypes ?? []).join(", ")} onChange={(e) => updateTechnicalSpec("fuelTypes", e.target.value.split(",").map(s => s.trim()))} placeholder="Comma separated" />
                       ) : (
-                        <p className="text-gray-600">
-                          {(display?.technicalSpecification?.fuelTypes ?? []).join(", ")}
-                        </p>
+                        <p className="text-gray-600">{(display?.technicalSpecification?.fuelTypes ?? []).join(", ")}</p>
                       )}
                     </div>
-
-                    {/* Issues */}
-                    <div className="md:col-span-2">
-                     {isAdmin && <p className="font-medium">Features</p>}
-
-                      {isAdmin ? (
-                        <div className="space-y-2">
-                          {(display?.features ?? []).map((feature, idx) => (
-                            <div key={feature._id || idx} className="flex gap-2">
-                              {/* Name Field */}
-                              <input
-                                type="text"
-                                className="border rounded p-1 w-1/2"
-                                value={feature.name || ""}
-                                onChange={(e) => {
-                                  const updatedFeatures = [...(editableListing?.features ?? [])];
-                                  updatedFeatures[idx] = {
-                                    ...feature,
-                                    name: e.target.value,
-                                  };
-                                  setEditableListing({ ...editableListing!, features: updatedFeatures });
-                                }}
-                                placeholder="Feature name"
-                              />
-
-                              {/* Value Field */}
-                              <input
-                                type="text"
-                                className="border rounded p-1 w-1/2"
-                                value={feature.value || ""}
-                                onChange={(e) => {
-                                  const updatedFeatures = [...(editableListing?.features ?? [])];
-                                  updatedFeatures[idx] = {
-                                    ...feature,
-                                    value: e.target.value,
-                                  };
-                                  setEditableListing({ ...editableListing!, features: updatedFeatures });
-                                }}
-                                placeholder="Feature value"
-                              />
-                            </div>
-                          ))}
-
-                          {/* Add New Feature Button */}
-                          <Button onClick={addFeature}>+ Add Feature</Button>
-                        </div>
-                      ) : (
-                        <ul className="list-disc ml-5 text-gray-600">
-                          {(display?.features ?? []).map((f) => (
-                            <li key={f._id}>{`${f.name}: ${f.value}`}</li>
+                    {!isAdmin && (display?.features?.length ?? 0) > 0 && (
+                      <div className="md:col-span-2">
+                        <ul className="list-disc pl-4 text-gray-600">
+                          {display?.features?.map((f) => (
+                            <li key={f._id}>
+                              <span className="font-medium">{f.name}:</span> {f.value}
+                            </li>
                           ))}
                         </ul>
-                      )}
-                    </div>
-
+                      </div>
+                    )}
                   </div>
                 </Card>
+                {isAdmin && (
+                  <div className="md:col-span-2">
+                    <p className="font-medium mb-2">Features</p>
+                    <div className="space-y-2">
+                      {(display?.features ?? []).map((f) => (
+                        <div key={f._id} className="flex gap-2 items-center">
+                          <input
+                            type="text"
+                            value={f.name}
+                            onChange={(e) => updateFeature(f._id, "name", e.target.value)}
+                            placeholder="Feature name"
+                            className="border rounded p-1 w-1/3"
+                          />
+                          <input
+                            type="text"
+                            value={f.value}
+                            onChange={(e) => updateFeature(f._id, "value", e.target.value)}
+                            placeholder="Feature value"
+                            className="border rounded p-1 w-1/2"
+                          />
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => deleteFeature(f._id)}
+                          >
+                            Delete
+                          </Button>
+                        </div>
+                      ))}
+                      <Button onClick={addFeature} variant="secondary" size="sm">
+                        + Add Feature
+                      </Button>
+                    </div>
+                  </div>
+                )}
 
 
                 <Card className="p-6">
