@@ -15,14 +15,28 @@ import NotFound from "./pages/NotFound";
 import AdminPortal from "./pages/AdminPortal";
 import { HelmetProvider } from "react-helmet-async";
 import { initGA } from "@/lib/analytics";
+import { loadCarsPixel } from "./lib/init-pixel";
+import Profile from "./components/common/Profile";
+import CarAccessories from "./components/landing-page/CarAccessories";
+import AccessoriesDetails from "./pages/AccessoriesDetails";
 
 const queryClient = new QueryClient();
 initGA();
 
 const AppContent = () => {
+  useEffect(() => {
+    loadCarsPixel();
+  }, []);
+
   useScrollToTop();
+
   const location = useLocation();
-  useEffect(() => { }, [location]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.fbq) {
+      window.fbq("track", "PageView");
+    }
+  }, [location.pathname]);
   return (
     <Routes>
       {/* Public routes */}
@@ -31,16 +45,14 @@ const AppContent = () => {
       <Route path="/listings/:slug" element={<ListingDetail />} />
       <Route path="/dealers" element={<Dealers />} />
       <Route path="/types/:typeSlug" element={<TypeDetail />} />
-
-      {/* Protected routes */}
-      <Route
-        path="/admin/*"
-        element={
-          <PrivateRoute requiredRole={1}>
-            <AdminPortal />
-          </PrivateRoute>
-        }
-      />
+      <Route path="/profile" element={<Profile />} />
+      <Route path="/accessories" element={<CarAccessories />} />
+      <Route path="/accessories/accessorydetails" element={<AccessoriesDetails />} />
+      {/* <Route path="/admin/*" element={<AdminPortal />} /> */}
+      {/* Protected /admin */}
+      <Route element={<PrivateRoute />}>
+        <Route path="/admin/*" element={<AdminPortal />} />
+      </Route>
 
       <Route path="*" element={<NotFound />} />
     </Routes>

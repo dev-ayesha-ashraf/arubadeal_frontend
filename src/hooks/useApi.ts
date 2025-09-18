@@ -14,13 +14,14 @@ export function useApi() {
   const get = async <T>(endpoint: string, options: RequestInit = {}): Promise<T> => {
     const response = await apiClient(endpoint, {
       method: "GET",
+      skipAuth: true, 
       ...options,
     });
-    
+
     if (!response.ok) {
       throw new Error(`API error: ${response.statusText}`);
     }
-    
+
     return response.json();
   };
 
@@ -37,11 +38,11 @@ export function useApi() {
       body: JSON.stringify(data),
       ...options,
     });
-    
+
     if (!response.ok) {
       throw new Error(`API error: ${response.statusText}`);
     }
-    
+
     return response.json();
   };
 
@@ -58,11 +59,11 @@ export function useApi() {
       body: JSON.stringify(data),
       ...options,
     });
-    
+
     if (!response.ok) {
       throw new Error(`API error: ${response.statusText}`);
     }
-    
+
     return response.json();
   };
 
@@ -77,11 +78,11 @@ export function useApi() {
       method: "DELETE",
       ...options,
     });
-    
+
     if (!response.ok) {
       throw new Error(`API error: ${response.statusText}`);
     }
-    
+
     return response.json();
   };
 

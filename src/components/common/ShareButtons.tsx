@@ -1,6 +1,7 @@
 import { Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { trackCustomEvent } from "@/lib/init-pixel";
 
 interface ShareButtonsProps {
   title: string;
@@ -9,8 +10,9 @@ interface ShareButtonsProps {
 }
 
 export const ShareButtons = ({ title, url, imageUrl }: ShareButtonsProps) => {
+  
   const handleShare = async () => {
-    // Check if Web Share API is available
+     trackCustomEvent("share_click", { title, url, hasImage: !!imageUrl });
     if (navigator.share) {
       try {
         const shareData: ShareData = {
@@ -29,13 +31,16 @@ export const ShareButtons = ({ title, url, imageUrl }: ShareButtonsProps) => {
             
             // Add files to share data
             shareData.files = [file];
+            trackCustomEvent("share_image_included", { imageUrl });
           } catch (error) {
             console.error('Error preparing image for share:', error);
+            trackCustomEvent("share_image_failed", { imageUrl, error });
             // Continue with sharing without the image if there's an error
           }
         }
 
         await navigator.share(shareData);
+         trackCustomEvent("share_success", { method: "native", title, url });
       } catch (error) {
         // User may have canceled share operation or it failed
         if (error instanceof Error && error.name !== 'AbortError') {

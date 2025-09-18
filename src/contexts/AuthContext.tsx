@@ -1,10 +1,17 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { useApi } from "@/hooks/useApi";
 import { apiClient } from "@/lib/api-client";
 
-interface User {
+export interface UserRole {
+  role_id: string;
+  site_id?: string | null;
+  user_id: string;
+}
+
+
+export interface User {
   id: string;
   name: string;
   image: string | null;
@@ -12,7 +19,7 @@ interface User {
   phoneNo: string | null;
   city: string | null;
   address: string | null;
-  role: number;
+  role: string;
 }
 
 interface AuthContextType {
@@ -20,7 +27,11 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   forgotPassword: (email: string) => Promise<void>;
+  signup: (payload: any) => Promise<void>;
+  verify: (token: string) => Promise<void>;
+  resendVerification: (email: string) => Promise<void>;
 }
+
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
@@ -29,42 +40,135 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const api = useApi();
+  let inactivityTimer: NodeJS.Timeout;
 
+
+  const logout = useCallback(() => {
+    setUser(null);
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
+    localStorage.removeItem("user");
+    navigate("/");
+    toast.success("Logged out successfully");
+  }, [navigate]);
+
+  const resetInactivityTimer = useCallback(() => {
+    if (inactivityTimer) clearTimeout(inactivityTimer);
+    inactivityTimer = setTimeout(() => {
+      toast.info("Logged out due to inactivity");
+      logout();
+    }, 15 * 60 * 1000);
+  }, [logout]);
   useEffect(() => {
+    const events = ["mousemove", "keydown", "click", "scroll"];
+    events.forEach((event) => window.addEventListener(event, resetInactivityTimer));
+
+    resetInactivityTimer();
+
+    return () => {
+      events.forEach((event) => window.removeEventListener(event, resetInactivityTimer));
+      if (inactivityTimer) clearTimeout(inactivityTimer);
+    };
+  }, [resetInactivityTimer]);
+  useEffect(() => {
+    const accessToken = localStorage.getItem("access_token");
     const storedUser = localStorage.getItem("user");
 
-    if (storedUser) {
+    if (accessToken && storedUser) {
+      const parsedUser = JSON.parse(storedUser);
+      setUser(parsedUser);
+    }
+  }, []);
+
+  useEffect(() => {
+    const accessToken = localStorage.getItem("access_token");
+    const storedUser = localStorage.getItem("user");
+
+    if (accessToken && storedUser) {
       const parsedUser = JSON.parse(storedUser);
       setUser(parsedUser);
 
-      // Only redirect if on home page and not already in admin/dealer portal
-      // and if this is the main browser window (not opened from admin panel)
       const currentPath = window.location.pathname;
       const isOpenedFromAdminPanel = window.opener !== null;
 
-      if (
-        (currentPath === "/" || currentPath === "") &&
-        !isOpenedFromAdminPanel
-      ) {
-        if (parsedUser.role === 1) {
-          navigate("/admin");
-        } else if (parsedUser.role === 2) {
+      if ((currentPath === "/" || currentPath === "") && !isOpenedFromAdminPanel) {
+        if (parsedUser.role === "admin") {
+          navigate("/");
+        } else if (parsedUser.role === "dealer") {
           navigate("/dealer");
         }
       }
     }
   }, [navigate]);
 
+
+  const signup = async (payload: any) => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL1}/v1/auth/signup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.message || "Signup failed");
+      }
+
+      const data = await response.json();
+
+      await fetch(
+        `${import.meta.env.VITE_API_URL1}/v1/auth/resend-verification?email=${encodeURIComponent(payload.email)}`,
+        { method: "POST" }
+      );
+
+      toast.success("Account created! Please check your email for verification link.");
+      return data;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Signup failed");
+      throw error;
+    }
+  };
+
+
+  const verify = async (token: string) => {
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL1}/v1/auth/verify?token=${token}`
+      );
+      if (!response.ok) {
+        throw new Error("Verification failed");
+      }
+      toast.success("Email verified successfully! You can now login.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Verification failed");
+      throw error;
+    }
+  };
+
+  const resendVerification = async (email: string) => {
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL1}/v1/auth/resend-verification?email=${email}`,
+        { method: "POST" }
+      );
+      if (!response.ok) {
+        throw new Error("Failed to resend verification");
+      }
+      toast.success("Verification email sent again!");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Resend failed");
+      throw error;
+    }
+  };
+
   const login = async (email: string, password: string) => {
     try {
-      // Call actual login API using our api client which handles token expiration
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/users/sign-in`,
+        `${import.meta.env.VITE_API_URL1}/v1/auth/login`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, password }),
         }
       );
@@ -75,43 +179,34 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       const res = await response.json();
 
-      setUser(res.data.user);
-      localStorage.setItem(
-        "access_token",
-        JSON.stringify(res.data.access_token)
-      );
-      localStorage.setItem(
-        "refresh_token",
-        JSON.stringify(res.data.refresh_token)
-      );
-      localStorage.setItem("user", JSON.stringify(res.data.user));
+      localStorage.setItem("access_token", res.access_token);
+      localStorage.setItem("refresh_token", res.refresh_token);
 
-      // Redirect based on role and previous location
-      const from = location.state?.from?.pathname || "/";
-      if (res.data.user.role === 1) {
-        // admin
-        navigate("/admin");
-      } else if (res.data.user.role === 2) {
-        // dealer
-        navigate("/dealer");
-      } else {
-        navigate(from);
+      const userResponse = await fetch(
+        `${import.meta.env.VITE_API_URL1}/me`,
+        {
+          headers: {
+            Authorization: `Bearer ${res.access_token}`,
+          },
+        }
+      );
+
+      if (!userResponse.ok) {
+        throw new Error("Failed to fetch user profile");
       }
+
+      const user = await userResponse.json();
+      setUser(user);
+      localStorage.setItem("user", JSON.stringify(user));
+      navigate("/profile");
+      toast.success("Logged in successfully");
+
 
       toast.success("Logged in successfully");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Login failed");
       throw error;
     }
-  };
-
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("refresh_token");
-    localStorage.removeItem("user");
-    navigate("/");
-    toast.success("Logged out successfully");
   };
 
   const forgotPassword = async (email: string) => {
@@ -125,9 +220,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, forgotPassword }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        login,
+        logout,
+        forgotPassword,
+        signup,
+        verify,
+        resendVerification
+      }}
+    >
       {children}
     </AuthContext.Provider>
+
   );
 };
 

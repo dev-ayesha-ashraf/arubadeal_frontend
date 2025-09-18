@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "../ui/button";
 import { Card, CardContent } from "../ui/card";
-import { ArrowLeft, ArrowRight, MapPin } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useApi } from "@/hooks/useApi";
@@ -13,36 +13,34 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { Pagination } from "../common/Pagination";
+import { trackCustomEvent } from "@/lib/init-pixel"; 
 
 const filters = ["All", "Best Seller", "New Arrival", "Popular", "Used Cars"];
 
 interface Car {
-  _id: string;
+  id: string;
   title: string;
-  price: string;
-  mileage: number;
-  make: string;
+  price: number;
+  mileage: string;
+  make: { id: string; name: string; slug: string };
   model?: string;
-  transmission: string;
-  type: string;
-  image: string;
-  address: string;
-  viewCount?: number;
-  listedAt?: string;
-  condition?: number;
-  status?: number;
-  slug?: string;
-  engine?: string;
+  transmission?: { id: string; name: string };
+  engine_type?: string;
+  vehical_id: string;
+  slug: string;
+  is_sold: boolean;
+  images: { id: string; image_url: string; is_primary: boolean }[];
+  badge?: { id: string; name: string };
 }
 
-interface FullCar {
-  _id: string;
-  engineId?: string;
-}
-
-interface Engine {
-  _id: string;
-  name: string;
+interface CarsAPIResponse {
+  cars: Car[];
+  pagination: {
+    total: number;
+    totalPages: number;
+    currentPage: number;
+    limit: number;
+  };
 }
 
 export const OurCars = () => {
@@ -65,41 +63,48 @@ export const OurCars = () => {
   }, []);
 
   const {
-    data: carsData = [],
+    data: carsData = {
+      cars: [],
+      pagination: {
+        total: 0,
+        totalPages: 1,
+        currentPage: 1,
+        limit: itemsPerPage,
+      },
+    },
     isLoading,
-  } = useQuery({
+  } = useQuery<CarsAPIResponse>({
     queryKey: ["cars", selectedFilter, currentPage, itemsPerPage],
-
     queryFn: async () => {
-      let endpoint = "";
+      const params = new URLSearchParams();
+      params.set("page", currentPage.toString());
+      params.set("size", itemsPerPage.toString());
 
-      switch (selectedFilter) {
-        case "Best Seller":
-          endpoint = "/cars/best-sellers";
-          break;
-        case "New Arrival":
-          endpoint = "/cars/new-arrivals";
-          break;
-        case "Popular":
-          endpoint = "/cars/popular-cars";
-          break;
-        case "Used Cars":
-          endpoint = "/cars/used-cars";
-          break;
-        case "All":
-        default:
-          endpoint = `/cars/list-cars-for-home-page?page=${currentPage}&limit=${itemsPerPage}`;
+      let endpoint = "/car_listing/listing";
+
+      if (selectedFilter === "New Arrival") {
+        endpoint = "/car_listing/latest_arrival";
       }
 
-      const response = await api.get(endpoint);
-      const result = response.data;
+      const result = await api.get<{
+        items: Car[];
+        total_items: number;
+        total_pages: number;
+        page: number;
+        size: number;
+      }>(`${endpoint}?${params.toString()}`, { skipAuth: true });
 
-      if (Array.isArray(result)) return result;
-      if (Array.isArray(result.data)) return result.data;
-      if (Array.isArray(result.data?.data)) return result.data.data;
-
-      return [];
+      return {
+        cars: result.items ?? [],
+        pagination: {
+          total: result.total_items,
+          totalPages: result.total_pages,
+          currentPage: result.page,
+          limit: result.size,
+        },
+      };
     },
+
     staleTime: 1000 * 60 * 5,
     refetchOnWindowFocus: true,
   });
@@ -107,23 +112,34 @@ export const OurCars = () => {
   const handleFilterChange = (filter: string) => {
     setSelectedFilter(filter);
     setCurrentPage(1);
+    trackCustomEvent("CarFilterSelected", { filter });
   };
 
-  const trackCarView = async (carId: string) => {
+  const trackCarView = async (car: Car) => {
     try {
       const ipAddress = "";
       const userAgent = navigator.userAgent;
       await api.patch(
-        `/cars/v1/track-car-view/${carId}?ip=${ipAddress}&ua=${encodeURIComponent(
+        `/cars/v1/track-car-view/${car.id}?ip=${ipAddress}&ua=${encodeURIComponent(
           userAgent
         )}`
       );
+
+      trackCustomEvent("CarViewed", {
+        carId: car.id,
+        title: car.title,
+        price: car.price,
+        make: car.make?.name,
+        model: car.model,
+        badge: car.badge?.name || null,
+      });
     } catch (error) {
       console.error("Error tracking car view:", error);
     }
   };
 
-  const filteredCars = Array.isArray(carsData) ? carsData : [];
+  const filteredCars = carsData.cars || [];
+  const totalPages = carsData.pagination?.totalPages || 1;
 
   return (
     <section className="pb-4 pt-2 sm:py-4 bg-dealership-silver">
@@ -136,14 +152,13 @@ export const OurCars = () => {
               {filters.map((filter) => (
                 <Button
                   key={filter}
-                  variant={
-                    selectedFilter === filter ? "default" : "destructive"
-                  }
+                  variant={selectedFilter === filter ? "default" : "destructive"}
                   onClick={() => handleFilterChange(filter)}
-                  className={`transition-colors ${selectedFilter === filter
-                    ? "bg-dealership-primary text-white hover:bg-dealership-primary/90"
-                    : ""
-                    }`}
+                  className={`transition-colors ${
+                    selectedFilter === filter
+                      ? "bg-dealership-primary text-white hover:bg-dealership-primary/90"
+                      : ""
+                  }`}
                 >
                   {filter}
                 </Button>
@@ -151,10 +166,7 @@ export const OurCars = () => {
             </div>
 
             <div className="md:hidden w-full">
-              <Select
-                onValueChange={handleFilterChange}
-                value={selectedFilter}
-              >
+              <Select onValueChange={handleFilterChange} value={selectedFilter}>
                 <SelectTrigger className="w-full px-4 text-[12px] h-[32px] rounded-md border text-gray-700 hover:bg-gray-100 font-medium">
                   <SelectValue placeholder="Select a filter" />
                 </SelectTrigger>
@@ -163,10 +175,11 @@ export const OurCars = () => {
                     <SelectItem
                       key={filter}
                       value={filter}
-                      className={`text-gray-700 hover:bg-[#EADDCA] hover:text-black font-medium ${selectedFilter === filter
-                        ? "bg-dealership-primary text-white"
-                        : ""
-                        }`}
+                      className={`text-gray-700 hover:bg-[#EADDCA] hover:text-black font-medium ${
+                        selectedFilter === filter
+                          ? "bg-dealership-primary text-white"
+                          : ""
+                      }`}
                     >
                       {filter}
                     </SelectItem>
@@ -210,20 +223,24 @@ export const OurCars = () => {
             </div>
           ) : (
             filteredCars.map((car) => {
+              const primaryImage =
+                car.images?.find((img) => img.is_primary)?.image_url ||
+                car.images?.[0]?.image_url;
+
               return (
                 <Link
-                  key={car._id}
+                  key={car.id}
                   to={`/listings/${car.slug}`}
-                  onClick={() => trackCarView(car._id)}
+                  onClick={() => trackCarView(car)}
                 >
                   <Card className="overflow-hidden hover:shadow-md transition-shadow rounded-sm sm:rounded-md">
                     <div className="relative w-full h-16 sm:h-48">
                       <img
-                        src={`${import.meta.env.VITE_MEDIA_URL}/${car.image}`}
-                        alt={car.make}
+                        src={`${import.meta.env.VITE_MEDIA_URL}${primaryImage}`}
+                        alt={car.make?.name}
                         className="w-full h-full object-cover"
                       />
-                      {car.status === 3 && (
+                      {car.is_sold && (
                         <div className="absolute top-0.5 right-0.5 bg-red-600 text-white px-1 rounded text-[9px] font-semibold z-10 sm:top-2 sm:right-2 sm:px-3 sm:py-1 sm:text-sm">
                           Sold
                         </div>
@@ -232,35 +249,33 @@ export const OurCars = () => {
                     <CardContent className="p-1 sm:p-4">
                       <div>
                         <h3 className="text-[11px] font-semibold text-dealership-navy truncate sm:text-xl">
-                          {car.title}
+                          {car.title.toUpperCase()}
                         </h3>
                         <p className="text-xs font-bold text-dealership-primary mt-0.5 sm:text-2xl sm:mt-2">
                           AWG {Number(car.price).toLocaleString()}
                         </p>
                         <div className="flex items-center text-[9px] text-gray-600 mt-0.5 truncate sm:text-sm">
-                          <div className="flex flex-wrap items-center text-sm">
-                            <h1 className="font-bold text-[9px] sm:text-[15px] mr-1">
-                              Engine:
-                            </h1>
-                            <span className="text-[9px] sm:text-[15px]">
-                              {car.engine || "Engine N/A"}
-                            </span>
-                          </div>
+                          <h1 className="font-bold text-[9px] sm:text-[15px] mr-1">
+                            Engine:
+                          </h1>
+                          <span className="text-[9px] sm:text-[15px]">
+                            {car.engine_type || "N/A"}
+                          </span>
                         </div>
                         <div className="mt-1 flex flex-wrap gap-0.5 text-[8px] text-gray-700 sm:gap-2 sm:text-sm">
-                          <span className="px-1 py-0.5 bg-gray-100 rounded">
-                            {car.transmission}
+                          <span className="px-1 py-0.5 bg-blue-100 rounded, capitalize">
+                            {car.transmission?.name}
                           </span>
-                          <span className="px-1 py-0.5 bg-gray-100 rounded">
-                            {typeof car.mileage === "number"
-                              ? `${car.mileage.toLocaleString()} miles`
-                              : car.mileage.toLowerCase().includes("km") || car.mileage.toLowerCase().includes("miles")
-                                ? car.mileage
-                                : `${car.mileage} miles`}
+                          <span className="px-1 py-0.5 bg-blue-100 rounded">
+                            {car.mileage}
                           </span>
-
+                          {car.badge?.name && (
+                            <span className="px-1 py-0.5 bg-blue-100 rounded, capitalize">
+                              {car.badge.name}
+                            </span>
+                          )}
                           {car.model && (
-                            <span className="px-1 py-0.5 bg-gray-100 rounded">
+                            <span className="px-1 py-0.5 bg-blue-100 rounded capitalize">
                               {car.model}
                             </span>
                           )}
@@ -275,7 +290,7 @@ export const OurCars = () => {
         </div>
         <Pagination
           currentPage={currentPage}
-          totalPages={11}
+          totalPages={totalPages}
           onPageChange={(page) => setCurrentPage(page)}
         />
       </div>

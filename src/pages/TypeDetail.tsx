@@ -1,13 +1,11 @@
 import { useState, useEffect } from "react";
-import { useParams, useSearchParams, useNavigate } from "react-router-dom";
+import { useParams, useSearchParams, useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Header } from "@/components/common/Header";
 import { Navbar } from "@/components/common/Navbar";
 import { Footer } from "@/components/common/Footer";
-import { ListingsFilter } from "@/components/common/ListingsFilter";
 import { Card, CardContent } from "@/components/ui/card";
 import { MapPin } from "lucide-react";
-import { Link } from "react-router-dom";
 import { ShareButtons } from "@/components/common/ShareButtons";
 import {
   Select,
@@ -17,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Pagination } from "@/components/common/Pagination";
+import { trackCustomEvent } from "@/lib/init-pixel";
 
 interface CarType {
   _id: string;
@@ -30,8 +29,8 @@ interface CarType {
 interface Car {
   _id: string;
   title: string;
-  price: string;
-  mileage: number;
+  price: number;
+  mileage: string | number;
   make: string;
   transmission: string;
   type: string;
@@ -40,44 +39,59 @@ interface Car {
   status: number;
   slug: string;
 }
-
-// Fetch functions
 const fetchAllTypes = async (): Promise<CarType[]> => {
-  const response = await fetch(`${import.meta.env.VITE_API_URL}/types/list-types`);
+  const response = await fetch(`${import.meta.env.VITE_API_URL}/bodytype/get_all`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+  });
+
   if (!response.ok) throw new Error("Failed to fetch types");
+
   const res = await response.json();
-  return res.data;
+  if (!Array.isArray(res)) return [];
+  return res.map((item: any) => ({
+    _id: item.id,
+    name: item.name,
+    image: item.image_url,
+    banner: item.banner_url || undefined,
+    slug: item.slug,
+    totalCars: item.total_cars || undefined,
+  }));
 };
 
-const fetchCars = async (params: URLSearchParams): Promise<{ data: Car[]; total: number }> => {
-  const accessToken = localStorage.getItem("access_token")
-    ? JSON.parse(localStorage.getItem("access_token") || "")
-    : null;
-
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-
-  if (accessToken) {
-    headers["Authorization"] = `Bearer ${accessToken}`;
-  }
-
+const fetchCarsBySlug = async (
+  slug: string,
+  page: number,
+  size: number
+): Promise<{ data: Car[]; total: number }> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/cars/list-cars-for-home-page?${params.toString()}`,
-    {
-      method: "GET",
-      headers,
-    }
+    `${import.meta.env.VITE_API_URL}/bodytype/list_by_bodytype/${slug}?page=${page}&size=${size}`,
+    { method: "GET", headers: { "Content-Type": "application/json" } }
   );
 
-  if (!response.ok) throw new Error("Failed to fetch cars");
-
+  if (!response.ok) throw new Error(`Failed to fetch cars: ${response.status}`);
   const res = await response.json();
+
   return {
-    data: res.data.data,
-    total: res.data.pagination?.total || 0,
+    data: Array.isArray(res.items)
+      ? res.items.map((car: any) => ({
+        _id: car.id,
+        title: car.title,
+        price: Number(car.price),
+        mileage: isNaN(Number(car.mileage)) ? car.mileage : Number(car.mileage),
+        make: car.make?.name,
+        transmission: car.transmission?.name,
+        type: car.body_type?.name,
+        image: car.images?.[0]?.image_url || "",
+        address: car.location,
+        status: car.is_sold ? 3 : 1,
+        slug: car.slug,
+      }))
+      : [],
+    total: res.total_items || 0,
   };
 };
+
 
 const TypeDetail = () => {
   const navigate = useNavigate();
@@ -85,7 +99,6 @@ const TypeDetail = () => {
   const [sortBy, setSortBy] = useState("date-desc");
   const [searchParams, setSearchParams] = useSearchParams();
   const [currentType, setCurrentType] = useState<CarType | null>(null);
-
   const [currentPage, setCurrentPage] = useState(1);
   const carsPerPage = 9;
 
@@ -93,7 +106,6 @@ const TypeDetail = () => {
     queryKey: ["allTypes"],
     queryFn: fetchAllTypes,
   });
-
   useEffect(() => {
     if (allTypes.length > 0 && typeSlug) {
       const type = allTypes.find((t) => t.slug === typeSlug);
@@ -104,34 +116,17 @@ const TypeDetail = () => {
       }
     }
   }, [allTypes, typeSlug, navigate]);
-
   useEffect(() => {
-    if (currentType?._id) {
-      const newSearchParams = new URLSearchParams();
-      newSearchParams.set("slug", currentType.slug);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [currentPage]);
 
-      searchParams.forEach((value, key) => {
-        if (key !== "typeId" && key !== "slug") {
-          newSearchParams.set(key, value);
-        }
-      });
 
-      if (newSearchParams.toString() !== searchParams.toString()) {
-        setSearchParams(newSearchParams);
-      }
-    }
-  }, [currentType, searchParams, setSearchParams]);
+  const { data: carResponse = { data: [], total: 0 }, isLoading: carsLoading } = useQuery({
+    queryKey: ["cars", typeSlug, currentPage],
+    queryFn: () => fetchCarsBySlug(typeSlug!, currentPage, carsPerPage),
+    enabled: !!typeSlug,
+  });
 
-const { data: carResponse = { data: [], total: 0 }, isLoading: carsLoading } = useQuery({
-  queryKey: ["cars", searchParams.toString(), currentPage],
-  queryFn: () => {
-    const paginatedParams = new URLSearchParams(searchParams.toString());
-    paginatedParams.set("page", currentPage.toString());
-    paginatedParams.set("limit", carsPerPage.toString());
-    return fetchCars(paginatedParams);
-  },
-  enabled: !!currentType?._id && searchParams.has("slug"), 
-});
 
   const sortedCars = [...carResponse.data].sort((a, b) => {
     switch (sortBy) {
@@ -146,7 +141,17 @@ const { data: carResponse = { data: [], total: 0 }, isLoading: carsLoading } = u
         return b._id.localeCompare(a._id);
     }
   });
-
+  useEffect(() => {
+    if (currentType) {
+      trackCustomEvent("TypeDetailPageViewed", {
+        type_id: currentType._id,
+        type_name: currentType.name,
+        type_slug: currentType.slug,
+        total_cars: carResponse.total,
+        current_page: currentPage,
+      });
+    }
+  }, [currentType, carResponse.total, currentPage]);
   const totalPages = Math.ceil(carResponse.total / carsPerPage);
   const isLoading = typesLoading || !currentType;
 
@@ -154,7 +159,6 @@ const { data: carResponse = { data: [], total: 0 }, isLoading: carsLoading } = u
     <div className="min-h-screen bg-gray-50 max-[800px]:mt-[20vh]">
       <Header />
       <Navbar />
-      <ListingsFilter />
 
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-6 max-[600px]:flex-col">
@@ -238,7 +242,9 @@ const { data: carResponse = { data: [], total: 0 }, isLoading: carsLoading } = u
                             {car.transmission}
                           </span>
                           <span className="px-2 py-1 bg-gray-100 rounded">
-                            {car.mileage.toLocaleString()} mi
+                            {typeof car.mileage === "number"
+                              ? car.mileage.toLocaleString() + " mi"
+                              : car.mileage}
                           </span>
                           <span className="px-2 py-1 bg-gray-100 text-sm rounded">
                             {car.make}

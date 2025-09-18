@@ -13,253 +13,238 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 
-// Define Zod schema for bag validation
-const bagSchema = z.object({
+const badgeSchema = z.object({
   name: z.string().min(1, "Name is required"),
 });
 
-type BagFormData = z.infer<typeof bagSchema>;
+type BadgeFormData = z.infer<typeof badgeSchema>;
 
-interface Bag {
-  _id: string;
+interface Badge {
+  id: string;
   name: string;
 }
 
-// API functions
-const fetchBags = async (): Promise<Bag[]> => {
+const fetchBadges = async (): Promise<Badge[]> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/bags/list-bags`,
+    `${import.meta.env.VITE_API_URL}/badge/get_all`,
     {
       method: "GET",
       headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${JSON.parse(
-          localStorage.getItem("access_token") || ""
-        )}`,
+        Authorization: `Bearer ${localStorage.getItem("access_token") || ""}`
       },
     }
   );
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch bags: ${response.status}`);
+    throw new Error(`Failed to fetch badges: ${response.status}`);
   }
-  const res = await response.json();
-  return res.data;
+  return await response.json();
 };
 
-const createBag = async (data: BagFormData): Promise<Bag> => {
+const createBadge = async (data: BadgeFormData): Promise<Badge> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/bags/add-bag`,
+    `${import.meta.env.VITE_API_URL}/badge/create?name=${encodeURIComponent(
+      data.name
+    )}`,
     {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${JSON.parse(
-          localStorage.getItem("access_token") || ""
-        )}`,
+        Authorization: `Bearer ${localStorage.getItem("access_token") || ""}`
       },
-      body: JSON.stringify(data),
     }
   );
 
   if (!response.ok) {
-    throw new Error(`Failed to create bag: ${response.status}`);
+    throw new Error(`Failed to create badge: ${response.status}`);
   }
-  const res = await response.json();
-  return res.data;
+  return await response.json();
 };
 
-const updateBag = async ({
-  _id,
+const updateBadge = async ({
+  id,
   data,
 }: {
-  _id: string;
-  data: BagFormData;
-}): Promise<Bag> => {
+  id: string;
+  data: BadgeFormData;
+}): Promise<Badge> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/bags/update-bag/${_id}`,
+    `${import.meta.env.VITE_API_URL}/badge/update?id=${encodeURIComponent(
+      id
+    )}&name=${encodeURIComponent(data.name)}`,
     {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${JSON.parse(
-          localStorage.getItem("access_token") || ""
-        )}`,
+      method: "PUT",
+       headers: {
+        Authorization: `Bearer ${localStorage.getItem("access_token") || ""}`
       },
-      body: JSON.stringify(data),
     }
   );
 
   if (!response.ok) {
-    throw new Error(`Failed to update bag: ${response.status}`);
+    throw new Error(`Failed to update badge: ${response.status}`);
   }
-  const res = await response.json();
-  return res.data;
+  return await response.json();
 };
 
-const deleteBag = async (_id: string): Promise<void> => {
+const deleteBadge = async (id: string): Promise<void> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/bags/delete-bag/${_id}`,
+    `${import.meta.env.VITE_API_URL}/badge/delete?id=${encodeURIComponent(
+      id
+    )}`,
     {
       method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${JSON.parse(
-          localStorage.getItem("access_token") || ""
-        )}`,
+     headers: {
+        Authorization: `Bearer ${localStorage.getItem("access_token") || ""}`
       },
     }
   );
 
   if (!response.ok) {
-    throw new Error(`Failed to delete bag: ${response.status}`);
+    throw new Error(`Failed to delete badge: ${response.status}`);
   }
-  const res = await response.json();
-  return res.data;
+  return await response.json();
 };
 
-const BagsManagement = () => {
+const BadgesManagement = () => {
   const [showAddEditDialog, setShowAddEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [bagToDelete, setBagToDelete] = useState<string | null>(null);
-  const [editingBag, setEditingBag] = useState<Bag | null>(null);
+  const [badgeToDelete, setBadgeToDelete] = useState<string | null>(null);
+  const [editingBadge, setEditingBadge] = useState<Badge | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // React Query hooks
-  const { data: bags = [], isLoading } = useQuery({
-    queryKey: ["bags"],
-    queryFn: fetchBags,
+  const { data: badges = [], isLoading } = useQuery({
+    queryKey: ["badges"],
+    queryFn: fetchBadges,
   });
 
   const createMutation = useMutation({
-    mutationFn: createBag,
+    mutationFn: createBadge,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["bags"] });
+      queryClient.invalidateQueries({ queryKey: ["badges"] });
       toast({
         title: "Success",
-        description: "Bag added successfully",
+        description: "Badge added successfully",
       });
       setShowAddEditDialog(false);
     },
-    onError: (error) => {
+    onError: () => {
       toast({
         title: "Error",
-        description: "Failed to add bag",
+        description: "Failed to add badge",
         variant: "destructive",
       });
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: updateBag,
+    mutationFn: updateBadge,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["bags"] });
+      queryClient.invalidateQueries({ queryKey: ["badges"] });
       toast({
         title: "Success",
-        description: "Bag updated successfully",
+        description: "Badge updated successfully",
       });
       setShowAddEditDialog(false);
     },
-    onError: (error) => {
+    onError: () => {
       toast({
         title: "Error",
-        description: "Failed to update bag",
+        description: "Failed to update badge",
         variant: "destructive",
       });
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: deleteBag,
+    mutationFn: deleteBadge,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["bags"] });
+      queryClient.invalidateQueries({ queryKey: ["badges"] });
       toast({
         title: "Success",
-        description: "Bag deleted successfully",
+        description: "Badge deleted successfully",
       });
     },
-    onError: (error) => {
+    onError: () => {
       toast({
         title: "Error",
-        description: "Failed to delete bag",
+        description: "Failed to delete badge",
         variant: "destructive",
       });
     },
   });
 
-  // React Hook Form setup
   const {
     register,
     handleSubmit,
     formState: { errors },
     reset,
-  } = useForm<BagFormData>({
-    resolver: zodResolver(bagSchema),
+  } = useForm<BadgeFormData>({
+    resolver: zodResolver(badgeSchema),
     defaultValues: {
-      name: editingBag?.name || "",
+      name: editingBadge?.name || "",
     },
   });
 
-  const onSubmit = (data: BagFormData) => {
-    if (editingBag?._id) {
-      updateMutation.mutate({ _id: editingBag._id, data });
+  const onSubmit = (data: BadgeFormData) => {
+    if (editingBadge?.id) {
+      updateMutation.mutate({ id: editingBadge.id, data });
     } else {
       createMutation.mutate(data);
     }
   };
 
-  const handleDelete = (_id: string) => {
-    setBagToDelete(_id);
+  const handleDelete = (id: string) => {
+    setBadgeToDelete(id);
     setShowDeleteDialog(true);
   };
 
   const confirmDelete = () => {
-    if (bagToDelete) {
-      deleteMutation.mutate(bagToDelete);
+    if (badgeToDelete) {
+      deleteMutation.mutate(badgeToDelete);
       setShowDeleteDialog(false);
-      setBagToDelete(null);
+      setBadgeToDelete(null);
     }
   };
 
   const openAddDialog = () => {
-    setEditingBag(null);
+    setEditingBadge(null);
     reset({ name: "" });
     setShowAddEditDialog(true);
   };
 
-  const openEditDialog = (bag: Bag) => {
-    setEditingBag(bag);
-    reset({ name: bag.name });
+  const openEditDialog = (badge: Badge) => {
+    setEditingBadge(badge);
+    reset({ name: badge.name });
     setShowAddEditDialog(true);
   };
 
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Bag Management</h1>
-        <Button onClick={openAddDialog}>Add New Bag</Button>
+        <h1 className="text-2xl font-bold">Badge Management</h1>
+        <Button onClick={openAddDialog}>Add New Badge</Button>
       </div>
 
       {isLoading ? (
-        <div className="text-center py-4">Loading bags...</div>
+        <div className="text-center py-4">Loading badges...</div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {bags.map((bag) => (
-            <div key={bag._id} className="bg-white p-4 rounded-lg shadow-md">
+          {badges.map((badge) => (
+            <div key={badge.id} className="bg-white p-4 rounded-lg shadow-md">
               <div className="flex justify-between items-center">
-                <span className="font-medium">{bag.name}</span>
+                <span className="font-medium">{badge.name}</span>
                 <div className="space-x-2">
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => openEditDialog(bag)}
+                    onClick={() => openEditDialog(badge)}
                   >
                     Edit
                   </Button>
                   <Button
                     variant="destructive"
                     size="sm"
-                    onClick={() => handleDelete(bag._id)}
+                    onClick={() => handleDelete(badge.id)}
                     disabled={deleteMutation.isPending}
                   >
                     {deleteMutation.isPending ? "Deleting..." : "Delete"}
@@ -274,7 +259,9 @@ const BagsManagement = () => {
       <Dialog open={showAddEditDialog} onOpenChange={setShowAddEditDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingBag ? "Edit Bag" : "Add New Bag"}</DialogTitle>
+            <DialogTitle>
+              {editingBadge ? "Edit Badge" : "Add New Badge"}
+            </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)}>
             <div className="space-y-4">
@@ -293,13 +280,11 @@ const BagsManagement = () => {
               <div className="flex justify-end gap-2">
                 <Button
                   type="submit"
-                  disabled={
-                    createMutation.isPending || updateMutation.isPending
-                  }
+                  disabled={createMutation.isPending || updateMutation.isPending}
                 >
                   {createMutation.isPending || updateMutation.isPending
                     ? "Saving..."
-                    : editingBag
+                    : editingBadge
                     ? "Save"
                     : "Add"}
                 </Button>
@@ -323,7 +308,7 @@ const BagsManagement = () => {
         open={showDeleteDialog}
         onOpenChange={setShowDeleteDialog}
         title="Confirm Deletion"
-        description="Are you sure you want to delete this bag? This action cannot be undone."
+        description="Are you sure you want to delete this badge? This action cannot be undone."
         confirmText="Delete"
         onConfirm={confirmDelete}
         isLoading={deleteMutation.isPending}
@@ -333,4 +318,4 @@ const BagsManagement = () => {
   );
 };
 
-export default BagsManagement;
+export default BadgesManagement;

@@ -7,7 +7,7 @@ import DealerManagement from "@/components/admin-panel/DealerManagement";
 import EnginesManagement from "@/components/admin-panel/Engines";
 import FuelTypesManagement from "@/components/admin-panel/FuelTypes";
 import Messages from "@/components/admin-panel/Messages";
-import Profile from "@/components/admin-panel/Profile";
+import Profile from "@/components/common/Profile";
 import SubscriptionsManagement from "@/components/admin-panel/SubscriptionsManagement";
 import TransmissionsManagement from "@/components/admin-panel/Transmissions";
 import VehicleManagement from "@/components/admin-panel/VehicleManagment";
@@ -50,6 +50,7 @@ import {
   useLocation,
   useNavigate,
 } from "react-router-dom";
+import VehicleManager from "@/components/admin-panel/VehicleManagment";
 
 const Sidebar = ({
   isOpen,
@@ -159,9 +160,9 @@ const AdminPortal = () => {
     localStorage.setItem('sidebar-collapsed', isCollapsed.toString());
   }, [isCollapsed]);
 
-  if (!user || user.role !== 1) {
-    return <Navigate to="/" />;
-  }
+  // if (!user || user.role !== 1) {
+  //   return <Navigate to="/" />;
+  // }
 
   const toggleSidebar = () => {
     setIsCollapsed(!isCollapsed);
@@ -179,7 +180,7 @@ const AdminPortal = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       <div className="bg-white shadow-md fixed top-0 right-0 left-0 z-10">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center">
@@ -251,7 +252,6 @@ const AdminPortal = () => {
             <Route path="/vehicles" element={<VehicleManagement />} />
             <Route path="/vehicle-properties" element={<VehicleProperties />} />
             <Route path="/messages" element={<Messages />} />
-            <Route path="/profile" element={<Profile />} />
             <Route path="/subscriptions" element={<SubscriptionsManagement />} />
             <Route path="/listings/:slug" element={<ListingDetail isAdmin />} />
           </Routes>

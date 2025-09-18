@@ -4,12 +4,14 @@ import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { MapPin, Mail, Phone, ChevronLeft, ChevronRight, } from "lucide-react";
+import { MapPin, Mail, Phone, ChevronLeft, ChevronRight, Trash2, Upload, Move, Check, Star } from "lucide-react";
 import { Header } from "@/components/common/Header";
 import { Navbar } from "@/components/common/Navbar";
 import { Footer } from "@/components/common/Footer";
 import { ImageZoom } from "@/components/common/ImageZoom";
 import { ShareButtons } from "@/components/common/ShareButtons";
+import { trackCustomEvent } from "@/lib/init-pixel";
+
 interface Feature {
   _id: string;
   name: string;
@@ -29,6 +31,7 @@ interface ImageItem {
   _id: string;
   image: string;
   isPrimary?: boolean;
+  isDisplay?: boolean;
 }
 
 interface TechnicalSpecification {
@@ -53,6 +56,7 @@ interface CarListing {
   address?: string;
   technicalSpecification?: TechnicalSpecification;
   slug?: string;
+  vehicleId?: string;
 }
 
 interface CarType {
@@ -63,7 +67,7 @@ interface CarType {
 
 const fetchCarDetail = async (slug: string): Promise<CarListing> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/cars/get-car-by-slug/${slug}`,
+    `${import.meta.env.VITE_API_URL}/car_listing/get_car/${slug}`,
     {
       method: "GET",
       headers: {
@@ -73,9 +77,46 @@ const fetchCarDetail = async (slug: string): Promise<CarListing> => {
   );
   if (!response.ok) throw new Error("Failed to fetch car detail");
   const res = await response.json();
-  return res.data;
 
+  const mapped: CarListing = {
+    _id: res.id,
+    title: res.title,
+    description: res.condition,
+    price: res.price,
+    mileage: res.mileage,
+    vehicleId: res.vehical_id,
+    dealer: {
+      _id: res.dealer?.id,
+      name: [res.dealer?.first_name, res.dealer?.last_name].filter(Boolean).join(" "),
+      address: res.location,
+    },
+    address: res.location,
+    features: (res.features ?? []).map((f: any, i: number) => ({
+      _id: `${i}`,
+      name: f.name,
+      value: f.reason ?? "",
+    })),
+    images: (res.images ?? [])
+      .filter((img: any) => img.is_display !== false)
+      .map((img: any) => ({
+        _id: img.id,
+        image: img.image_url,
+        isPrimary: img.is_primary,
+        isDisplay: img.is_display,
+      })),
+    technicalSpecification: {
+      make: res.make?.name,
+      type: res.body_type?.name,
+      engine: res.engine_type,
+      transmission: res.transmission?.name,
+      fuelTypes: res.fuel_type?.name ? [res.fuel_type.name] : [],
+    },
+    slug: res.slug,
+  };
+
+  return mapped;
 };
+
 interface ListingDetailProps {
   isAdmin?: boolean;
 }
@@ -102,10 +143,14 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
   const { data: carTypes = [], isLoading: typesLoading } = useQuery<CarType[]>({
     queryKey: ["carTypes"],
     queryFn: async () => {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/types/list-types`);
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/bodytype/get_all`);
       if (!res.ok) throw new Error("Failed to fetch car types");
       const json = await res.json();
-      return json.data;
+      return json.map((item: any) => ({
+        _id: item.id,
+        name: item.name,
+        slug: item.slug,
+      }));
     },
   });
 
@@ -114,12 +159,61 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
   const [isZoomOpen, setIsZoomOpen] = useState(false);
   const [mileageValue, setMileageValue] = useState<number | "">("");
   const [mileageUnit, setMileageUnit] = useState<"miles" | "km">("miles");
+  const [selectedImages, setSelectedImages] = useState<string[]>([]);
+  const [isReordering, setIsReordering] = useState(false);
 
   const { data: listing, isLoading, refetch } = useQuery({
     queryKey: ["carDetail", slug],
     queryFn: () => fetchCarDetail(slug!),
     enabled: !!slug,
   });
+
+  const [lookupData, setLookupData] = useState({
+    makes: [] as any[],
+    bodytypes: [] as any[],
+    fueltypes: [] as any[],
+    transmissions: [] as any[],
+  });
+  useEffect(() => {
+    if (listing) {
+      trackCustomEvent("ListingDetailViewed", {
+        listing_id: listing._id,
+        listing_title: listing.title,
+        price: listing.price,
+        make: listing.technicalSpecification?.make,
+        vehicle_id: listing.vehicleId,
+      });
+    }
+  }, [listing]);
+  useEffect(() => {
+    const fetchLookupData = async () => {
+      try {
+        const endpoints = [
+          '/make/get_all',
+          '/bodytype/get_all',
+          '/fueltype/get_all',
+          '/transmission/get_all'
+        ];
+
+        const responses = await Promise.all(
+          endpoints.map(endpoint =>
+            fetch(`${import.meta.env.VITE_API_URL}${endpoint}`).then(res => res.json())
+          )
+        );
+
+        setLookupData({
+          makes: responses[0] || [],
+          bodytypes: responses[1] || [],
+          fueltypes: responses[2] || [],
+          transmissions: responses[3] || [],
+        });
+      } catch (error) {
+        console.error("Failed to fetch lookup data:", error);
+      }
+    };
+
+    fetchLookupData();
+  }, []);
 
   useEffect(() => {
     if (listing) {
@@ -128,7 +222,6 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
   }, [listing]);
 
   useEffect(() => {
-
     if (!listing) return;
 
     setEditableListing((prev) => {
@@ -155,6 +248,7 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
         },
       };
     });
+
     const parsed = parseMileage(listing.mileage);
     setMileageValue((old) => (old === "" ? parsed.value : old));
     setMileageUnit((old) => (old ? old : parsed.unit));
@@ -163,6 +257,11 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
       setSelectedImageIndex(0);
     }
   }, [listing]);
+
+  const displayImages = useMemo(() => {
+    const images = (editableListing?.images ?? listing?.images ?? []);
+    return images.filter(img => img.isDisplay !== false);
+  }, [editableListing?.images, listing?.images]);
 
   const formattedImages = useMemo(() => {
     const imgs = (editableListing ?? listing)?.images ?? [];
@@ -180,7 +279,6 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
     return base?.dealer ?? base?.dear;
   }, [editableListing, listing]);
 
-
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "ArrowLeft") navigatePrevious();
@@ -196,6 +294,7 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
   const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
     touchStartX.current = e.touches[0].clientX;
   };
+
   const handleTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
     if (touchStartX.current === null) return;
     const touchEndX = e.changedTouches[0].clientX;
@@ -209,43 +308,168 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
   };
 
   const navigatePrevious = () => {
-    const imgs = (editableListing ?? listing)?.images ?? [];
-    if (!imgs.length) return;
+    if (!displayImages.length) return;
     setSelectedImageIndex((prev) =>
-      prev !== null ? (prev > 0 ? prev - 1 : imgs.length - 1) : 0
+      prev !== null ? (prev > 0 ? prev - 1 : displayImages.length - 1) : 0
     );
   };
+
   const navigateNext = () => {
-    const imgs = (editableListing ?? listing)?.images ?? [];
-    if (!imgs.length) return;
-    setSelectedImageIndex((prev) =>
-      prev !== null ? (prev < imgs.length - 1 ? prev + 1 : 0) : 0
+    if (!displayImages.length) return;
+    setSelectedImageIndex((prev) => {
+      const newIndex = prev !== null ? (prev < displayImages.length - 1 ? prev + 1 : 0) : 0;
+      trackCustomEvent("ImageNavigation", {
+        listing_id: listing?._id,
+        direction: "next",
+        new_index: newIndex,
+      });
+      return newIndex;
+    });
+  };
+
+  const handleImageSelect = (imageId: string) => {
+    setSelectedImages(prev =>
+      prev.includes(imageId)
+        ? prev.filter(id => id !== imageId)
+        : [...prev, imageId]
     );
   };
 
-  const setPrimaryImage = (imageId: string) => {
-    if (!editableListing) return;
-    const updatedImages = (editableListing.images ?? []).map((img) => ({ ...img, isPrimary: img._id === imageId }));
-    setEditableListing({ ...editableListing, images: updatedImages });
-    const newIndex = updatedImages.findIndex((i) => i.isPrimary);
-    if (newIndex !== -1) setSelectedImageIndex(newIndex);
+  const handleSelectAll = () => {
+    if (!editableListing?.images) return;
+
+    if (selectedImages.length === editableListing.images.length) {
+      setSelectedImages([]);
+    } else {
+      setSelectedImages(editableListing.images.map(img => img._id));
+    }
   };
 
-  const deleteImage = (imageId: string) => {
-    if (!editableListing) return;
-    const updatedImages = (editableListing.images ?? []).filter((img) => img._id !== imageId);
-    setEditableListing({ ...editableListing, images: updatedImages });
-    setSelectedImageIndex(0);
+  const setImageAsPrimary = async (imageId: string) => {
+    if (!editableListing || !editableListing.images) return;
+    try {
+      const token = localStorage.getItem("access_token")?.replace(/(^"|"$)/g, "");
+      if (!token) throw new Error("Login required");
+
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/car_listing/update_images?image_id=${imageId}&make_primary=true`,
+        {
+          method: "PUT",
+          headers: {
+            "accept": "application/json",
+            "Authorization": `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!res.ok) throw new Error("Failed to set primary image");
+
+      // update local state after successful API call
+      const imageIndex = editableListing.images.findIndex(img => img._id === imageId);
+      if (imageIndex === -1) return;
+
+      const newImages = [...editableListing.images];
+      const [movedImage] = newImages.splice(imageIndex, 1);
+      newImages.unshift(movedImage);
+
+      setEditableListing({
+        ...editableListing,
+        images: newImages
+      });
+
+      if (selectedImageIndex === imageIndex) {
+        setSelectedImageIndex(0);
+      } else if (selectedImageIndex !== null && selectedImageIndex < imageIndex) {
+        setSelectedImageIndex(selectedImageIndex + 1);
+      }
+
+      alert("Primary image updated successfully!");
+    } catch (error) {
+      console.error("Error setting primary image:", error);
+      alert("Failed to set primary image");
+    }
+  };
+
+
+  const deleteSelectedImages = async () => {
+    if (!editableListing || selectedImages.length === 0) return;
+
+    try {
+      const token = localStorage.getItem("access_token")?.replace(/(^"|"$)/g, "");
+      if (!token) throw new Error("Login required");
+
+      const deletePromises = selectedImages.map(imageId =>
+        fetch(
+          `${import.meta.env.VITE_API_URL}/car_listing/update_images?image_id=${imageId}&mark_not_to_show=true&make_primary=false`,
+          {
+            method: "PUT",
+            headers: {
+              'accept': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+          }
+        )
+      );
+
+      const responses = await Promise.all(deletePromises);
+      const failedDeletes = responses.filter(response => !response.ok);
+
+      if (failedDeletes.length > 0) {
+        throw new Error(`Failed to delete ${failedDeletes.length} images`);
+      }
+      const updatedImages = editableListing.images.filter(img => !selectedImages.includes(img._id));
+      setEditableListing({ ...editableListing, images: updatedImages });
+
+      setSelectedImages([]);
+      if (selectedImageIndex !== null && selectedImages.includes(editableListing.images[selectedImageIndex]._id)) {
+        setSelectedImageIndex(updatedImages.length > 0 ? 0 : null);
+      }
+
+      alert("Selected images deleted successfully!");
+    } catch (err) {
+      console.error("Error deleting images:", err);
+      alert("Failed to delete some images. Check console for details.");
+    }
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!editableListing) return;
-    if (!e.target.files?.length) return;
+    if (!editableListing || !e.target.files?.length) return;
+
     const file = e.target.files[0];
-    const fakeId = `new-${Date.now()}`;
-    const fakeUrl = URL.createObjectURL(file);
-    const newImage: ImageItem = { _id: fakeId, image: fakeUrl, isPrimary: false };
-    setEditableListing({ ...editableListing, images: [...(editableListing.images ?? []), newImage] });
+    const formData = new FormData();
+    formData.append("image", file);
+
+    try {
+      const token = localStorage.getItem("access_token")?.replace(/(^"|"$)/g, "");
+      if (!token) throw new Error("Login required");
+
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/car_listing/upload_image/${editableListing._id}`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData,
+        }
+      );
+
+      if (!response.ok) throw new Error("Failed to upload image");
+      const resData = await response.json();
+      const newImage: ImageItem = {
+        _id: resData.id,
+        image: resData.image_url,
+        isPrimary: resData.is_primary ?? false,
+      };
+
+      setEditableListing({
+        ...editableListing,
+        images: [...(editableListing.images ?? []), newImage],
+      });
+
+    } catch (err) {
+      console.error(err);
+      alert("Failed to upload image.");
+    }
+
     e.target.value = "";
   };
 
@@ -264,6 +488,7 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
       },
     });
   };
+
   const addFeature = () => {
     if (!editableListing) return;
     const newFeature: Feature = { _id: `new-${Date.now()}`, name: "", value: "" };
@@ -294,40 +519,41 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
   const saveChanges = async () => {
     if (!editableListing) return;
     try {
-      const modelValue =
-        editableListing.technicalSpecification?.type?.trim() ||
-        listing?.technicalSpecification?.type?.trim() ||
-        "";
+      const findIdByName = (items: any[], name: string | undefined) => {
+        if (!name) return null;
+        const item = items.find(item => item.name.toLowerCase() === name.toLowerCase());
+        return item?._id || null;
+      };
 
-      if (!modelValue) {
-        alert("Model cannot be empty.");
-        return;
-      }
-      const finalMileage =
-        mileageValue !== "" ? `${mileageValue} ${mileageUnit}` : editableListing.mileage;
       const payload = {
-        title: editableListing.title?.trim(),
-        model: modelValue,
-        description: editableListing.description?.trim(),
+        make_id: findIdByName(lookupData.makes, editableListing.technicalSpecification?.make),
+        model: editableListing.technicalSpecification?.type?.trim() || null,
+        fuel_type_id: findIdByName(lookupData.fueltypes, editableListing.technicalSpecification?.fuelTypes?.[0]),
+        transmission_id: findIdByName(lookupData.transmissions, editableListing.technicalSpecification?.transmission),
+        engine_type: editableListing.technicalSpecification?.engine || null,
+        body_type_id: findIdByName(lookupData.bodytypes, editableListing.technicalSpecification?.type),
+        badge_id: null,
+        color: null,
+        mileage: mileageValue !== "" ? `${mileageValue} ${mileageUnit}` : null,
         price: Number(editableListing.price || 0),
-        mileage: finalMileage,
-        images: (editableListing.images ?? []).map(({ _id, image, isPrimary }) => ({
-          _id,
-          image: image.trim(),
-          isPrimary,
-        })),
-        technicalSpecification: editableListing.technicalSpecification,
-        address: editableListing.address?.trim(),
+        description: editableListing.description?.trim() || null,
+        location: editableListing.address?.trim() || null,
+        seats: null,
+        condition: "used",
         features: (editableListing.features ?? [])
           .filter(f => f.name?.trim() && f.value?.trim())
           .map(f => ({
             name: f.name.trim(),
-            value: f.value.trim(),
+            reason: f.value.trim(),
           })),
       };
-      if (!payload.features.length) {
-        payload.features = null;
-      }
+
+      const cleanPayload = Object.fromEntries(
+        Object.entries(payload).filter(([_, v]) => v !== null && v !== undefined)
+      );
+
+      console.log("Sending payload:", cleanPayload);
+
       const token = localStorage.getItem("access_token")?.replace(/(^"|"$)/g, "");
       if (!token) {
         alert("You need to login first.");
@@ -335,16 +561,17 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
       }
 
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/cars/update-car/${editableListing._id}`,
+        `${import.meta.env.VITE_API_URL}/car_listing/update/${editableListing._id}`,
         {
-          method: "PATCH",
+          method: "PUT",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer ${token}`
           },
-          body: JSON.stringify(payload),
+          body: JSON.stringify(cleanPayload),
         }
       );
+
       if (!response.ok) {
         const errText = await response.text();
         console.error("Server response:", errText);
@@ -359,14 +586,15 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
     }
   };
 
+  useEffect(() => {
+    console.log("Lookup data loaded:", lookupData);
+  }, [lookupData]);
+
   if (isLoading) return <div>Loading...</div>;
   if (!listing && !editableListing) return <div>Listing not found</div>;
 
-  // use editableListing if admin editing, otherwise show fetched listing
   const display = isAdmin ? editableListing ?? listing : listing ?? editableListing;
   const listingUrl = `${window.location.origin}/listings/${slug}`;
-  const primaryImageId = (editableListing ?? listing)?.images?.find(img => img.isPrimary)?._id ?? null;
-
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -382,29 +610,31 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main content */}
           <div className="lg:col-span-2 space-y-8">
-            {/* Image gallery */}
             <Card className="overflow-hidden relative">
               <div className="relative">
-                <div
-                  className="relative h-[300px] md:h-[400px] bg-gray-100 flex items-center justify-center overflow-hidden group"
+                <div className="relative h-[300px] md:h-[400px] bg-gray-100 flex items-center justify-center overflow-hidden group"
                   onTouchStart={handleTouchStart}
                   onTouchEnd={handleTouchEnd}
                 >
-                  {display?.images?.length ? (
+                  {displayImages.length ? (
                     <>
                       <img
-                        src={getImageUrl(display.images[selectedImageIndex ?? 0]?.image ?? display.images[0]?.image)}
+                        src={getImageUrl(displayImages[selectedImageIndex ?? 0]?.image)}
                         alt={display?.title}
                         className="w-full h-full object-contain cursor-pointer"
                         onClick={() => {
                           setSelectedImageIndex(selectedImageIndex ?? 0);
                           setIsZoomOpen(true);
+                          trackCustomEvent("ImageZoomOpened", {
+                            listing_id: listing?._id,
+                            image_index: selectedImageIndex ?? 0,
+                            total_images: displayImages.length,
+                          });
                         }}
                       />
 
-                      {display.images.length > 1 && (
+                      {displayImages.length > 1 && (
                         <>
                           <button
                             onClick={(e) => {
@@ -412,15 +642,7 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
                               navigatePrevious();
                             }}
                             aria-label="Previous image"
-                            className="
-                  absolute top-1/2 left-4 -translate-y-1/2
-                  bg-black/40 text-white p-3 rounded-full
-                  opacity-0 group-hover:opacity-100
-                  transition-opacity duration-300
-                  hover:bg-black/70
-                  z-10
-                  flex items-center justify-center
-                "
+                            className="absolute top-1/2 left-4 -translate-y-1/2 bg-black/40 text-white p-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 hover:bg-black/70 z-10 flex items-center justify-center"
                           >
                             <ChevronLeft size={24} />
                           </button>
@@ -431,21 +653,13 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
                               navigateNext();
                             }}
                             aria-label="Next image"
-                            className="
-                  absolute top-1/2 right-4 -translate-y-1/2
-                  bg-black/40 text-white p-3 rounded-full
-                  opacity-0 group-hover:opacity-100
-                  transition-opacity duration-300
-                  hover:bg-black/70
-                  z-10
-                  flex items-center justify-center
-                "
+                            className="absolute top-1/2 right-4 -translate-y-1/2 bg-black/40 text-white p-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 hover:bg-black/70 z-10 flex items-center justify-center"
                           >
                             <ChevronRight size={24} />
                           </button>
 
                           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 text-white text-sm px-3 py-1 rounded-full select-none">
-                            {(selectedImageIndex ?? 0) + 1} / {display.images.length}
+                            {(selectedImageIndex ?? 0) + 1} / {displayImages.length}
                           </div>
                         </>
                       )}
@@ -455,17 +669,106 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
                   )}
                 </div>
 
-                {/* Thumbnails */}
+                {isAdmin && editableListing?.images && editableListing.images.length > 0 && (
+                  <div className="p-3 bg-gray-100 border-t flex justify-between items-center flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="select-all-images"
+                        checked={selectedImages.length === editableListing.images.length}
+                        onChange={handleSelectAll}
+                        className="h-4 w-4 rounded border-gray-300 text-dealership-primary focus:ring-dealership-primary"
+                      />
+                      <label htmlFor="select-all-images" className="text-sm text-gray-700">
+                        Select all ({selectedImages.length}/{editableListing.images.length})
+                      </label>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button
+                        variant={isReordering ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setIsReordering(!isReordering)}
+                        className="flex items-center gap-1"
+                      >
+                        <Move size={16} />
+                        {isReordering ? "Done Rearranging" : "Rearrange Images"}
+                      </Button>
+
+                      {selectedImages.length > 0 && (
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={deleteSelectedImages}
+                          className="flex items-center gap-1"
+                        >
+                          <Trash2 size={16} />
+                          Delete Selected ({selectedImages.length})
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {display?.images?.length > 1 && (
                   <div className="flex overflow-x-auto p-2 gap-2 bg-gray-50">
-                    {display.images.map((img, index) => {
-                      const isPrimary = img._id === primaryImageId;
+                    {displayImages.map((img, index) => {
+                      const isSelected = selectedImages.includes(img._id);
+                      const isPrimary = index === 0;
 
                       return (
                         <div
                           key={img._id}
-                          className={`relative w-20 h-20 flex-shrink-0 cursor-pointer ${selectedImageIndex === index ? "ring-2 ring-primary" : ""}`}
-                          onClick={() => setSelectedImageIndex(index)}
+                          className={`relative w-20 h-20 flex-shrink-0 cursor-pointer ${selectedImageIndex === index ? "ring-2 ring-primary" : ""} ${isReordering ? "cursor-move" : ""}`}
+                          onClick={() => {
+                            if (isReordering) return;
+                            setSelectedImageIndex(index);
+                          }}
+                          draggable={isReordering}
+                          onDragStart={(e) => {
+                            if (!isReordering) return;
+                            e.dataTransfer.setData("text/plain", index.toString());
+                          }}
+                          onDragOver={(e) => {
+                            if (!isReordering) return;
+                            e.preventDefault();
+                          }}
+                          onDrop={async (e) => {
+                            if (!isReordering) return;
+                            e.preventDefault();
+
+                            const fromIndex = parseInt(e.dataTransfer.getData("text/plain"));
+                            const newImages = [...displayImages];
+                            const [movedImage] = newImages.splice(fromIndex, 1);
+                            newImages.splice(index, 0, movedImage);
+
+                            if (editableListing) {
+                              setEditableListing({
+                                ...editableListing,
+                                images: newImages
+                              });
+                            }
+
+                            try {
+                              const token = localStorage.getItem("access_token")?.replace(/(^"|"$)/g, "");
+                              if (!token) throw new Error("Login required");
+
+                              await fetch(
+                                `${import.meta.env.VITE_API_URL}/car_listing/update_images?image_id=${movedImage._id}&new_position=${index}`,
+                                {
+                                  method: "PUT",
+                                  headers: {
+                                    "accept": "application/json",
+                                    "Authorization": `Bearer ${token}`,
+                                  },
+                                }
+                              );
+                            } catch (err) {
+                              console.error("Failed to update image position:", err);
+                              alert("Failed to save image order on server");
+                            }
+                          }}
+
                         >
                           <img
                             src={getImageUrl(img.image)}
@@ -475,32 +778,46 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
 
                           {isAdmin && (
                             <>
-                              <div className="absolute inset-0 bg-black/30 opacity-0 hover:opacity-100 md:opacity-0 md:hover:opacity-100 flex flex-col justify-center items-center gap-1 transition-opacity duration-300
-                sm:opacity-100 sm:flex">
-                                <button
-                                  className={`text-xs px-3 py-1 rounded ${isPrimary ? "bg-green-600" : "bg-gray-700"
-                                    } text-white hover:bg-green-700 transition w-full`}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setPrimaryImage(img._id);
-                                  }}
-                                >
-                                  Primary
-                                </button>
-                                <button
-                                  className="text-xs px-3 py-1 rounded bg-red-600 text-white hover:bg-red-700 transition w-full"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    deleteImage(img._id);
-                                  }}
-                                >
-                                  Delete
-                                </button>
-                              </div>
                               {isPrimary && (
                                 <div className="absolute top-1 left-1 bg-green-600 text-white text-[10px] font-semibold px-1 rounded select-none pointer-events-none">
                                   PRIMARY
                                 </div>
+                              )}
+
+                              {isReordering ? (
+                                <div className="absolute inset-0 bg-black/50 flex items-center justify-center text-white">
+                                  <Move size={16} />
+                                </div>
+                              ) : (
+                                <>
+                                  <div className="absolute top-1 right-1">
+                                    <input
+                                      type="checkbox"
+                                      checked={isSelected}
+                                      onChange={() => handleImageSelect(img._id)}
+                                      className="h-4 w-4 rounded border-gray-300 text-dealership-primary focus:ring-dealership-primary"
+                                    />
+                                  </div>
+
+                                  {isSelected && (
+                                    <div className="absolute inset-0 bg-blue-500/20 border-2 border-blue-500 flex items-center justify-center">
+                                      <Check className="text-white bg-blue-500 rounded-full p-0.5" size={16} />
+                                    </div>
+                                  )}
+
+                                  {!isPrimary && (
+                                    <button
+                                      className="absolute bottom-1 right-1 bg-yellow-500 text-white p-1 rounded-full"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setImageAsPrimary(img._id);
+                                      }}
+                                      title="Set as primary image"
+                                    >
+                                      <Star size={12} fill="currentColor" />
+                                    </button>
+                                  )}
+                                </>
                               )}
                             </>
                           )}
@@ -508,12 +825,12 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
                       );
                     })}
 
-                    {isAdmin && (
+                    {isAdmin && !isReordering && (
                       <label
                         htmlFor="image-upload"
                         className="flex items-center justify-center w-24 h-16 cursor-pointer border-2 border-dashed border-gray-400 text-gray-600 rounded"
                       >
-                        +
+                        <Upload size={20} />
                         <input
                           id="image-upload"
                           type="file"
@@ -529,7 +846,6 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
               </div>
             </Card>
 
-            {/* Vehicle details */}
             <div className="space-y-6">
               <div className="justify-between items-start">
                 <div>
@@ -550,8 +866,6 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
                         className="w-full border border-gray-300 focus:border-dealership-navy focus:ring-2 focus:ring-dealership-navy/20 rounded-lg px-4 py-2 text-dealership-navy font-bold text-lg sm:text-2xl transition-colors duration-200"
                       />
                     </div>
-
-
 
                   ) : (
                     <h1 className="text-3xl font-bold text-dealership-navy">{display?.title}</h1>
@@ -586,6 +900,9 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
               <div className="space-y-6">
                 <Card className="p-6">
                   <h2 className="text-xl font-semibold mb-4">Overview</h2>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Vehicle ID: {display?.vehicleId || "N/A"}
+                  </p>
                   {isAdmin ? (
                     <textarea rows={5} className="w-full border rounded p-2" value={display?.description ?? ""} onChange={(e) => updateField("description", e.target.value)} />
                   ) : (
@@ -635,7 +952,6 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
                         <p className="text-gray-600">{display?.technicalSpecification?.type}</p>
                       )}
                     </div>
-
 
                     <div>
                       <p className="font-medium">Mileage</p>
@@ -713,7 +1029,6 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
                   </div>
                 )}
 
-
                 <Card className="p-6">
                   <h2 className="text-xl font-semibold mb-4">Vehicle Location</h2>
                   <div className="flex items-center gap-2">
@@ -740,12 +1055,33 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
 
                 <div className="space-y-2">
                   {dealer?.phoneNo && (
-                    <Button className="w-full flex items-center gap-2">
+                    <Button
+                      className="w-full flex items-center gap-2"
+                      onClick={() => {
+                        trackCustomEvent("DealerContactClicked", {
+                          contact_method: "phone",
+                          dealer_name: dealer?.name,
+                          listing_id: listing?._id,
+                          listing_title: listing?.title,
+                        });
+                      }}
+                    >
                       <Phone className="w-4 h-4" />
                       {dealer.phoneNo}
                     </Button>
                   )}
-                  <Button variant="outline" className="w-full flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    className="w-full flex items-center gap-2"
+                    onClick={() => {
+                      trackCustomEvent("DealerContactClicked", {
+                        contact_method: "email",
+                        dealer_name: dealer?.name,
+                        listing_id: listing?._id,
+                        listing_title: listing?.title,
+                      });
+                    }}
+                  >
                     <Mail className="w-4 h-4" /> Email Dealer
                   </Button>
                 </div>
@@ -754,7 +1090,15 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
 
             <Card className="p-6">
               <h2 className="text-xl font-semibold mb-4">Contact Form</h2>
-              <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); alert("Message sent (demo)."); }}>
+              <form className="space-y-4" onSubmit={(e) => {
+                e.preventDefault();
+                trackCustomEvent("ContactFormSubmitted", {
+                  listing_id: listing?._id,
+                  listing_title: listing?.title,
+                  dealer_name: dealer?.name,
+                });
+                alert("Message sent (demo).");
+              }}>
                 <div>
                   <label className="block text-sm font-medium mb-1">Name</label>
                   <input type="text" className="w-full p-2 border rounded-md" name="name" />
@@ -778,14 +1122,17 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
         </div>
       </div>
       <Footer />
-
       {isZoomOpen && (selectedImageIndex !== null) && (
         <ImageZoom
           isOpen={isZoomOpen}
           onClose={() => setIsZoomOpen(false)}
-          imageUrl={formattedImages[selectedImageIndex]?.url || ""}
-          alt={formattedImages[selectedImageIndex]?.alt || ""}
-          images={formattedImages}
+          imageUrl={getImageUrl(displayImages[selectedImageIndex]?.image || "")}
+          alt={display?.title || ""}
+          images={displayImages.map(img => ({
+            url: getImageUrl(img.image),
+            alt: display?.title || "Vehicle image",
+            _id: img._id,
+          }))}
           currentIndex={selectedImageIndex}
         />
       )}

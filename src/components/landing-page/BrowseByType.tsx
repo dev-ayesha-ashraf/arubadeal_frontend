@@ -1,21 +1,22 @@
 import { ArrowRight } from "lucide-react";
 import { Button } from "../ui/button";
-import { Card, CardContent } from "../ui/card";
+import { CardContent } from "../ui/card";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { trackCustomEvent } from "@/lib/init-pixel";
+import { useEffect } from "react";
 
-// Define the type interface
 interface CarType {
-  _id: string;
+  id: string;
   name: string;
   slug: string;
-  totalCars: number;
-  logo: string;
+  image_url: string;
+  count: number;
 }
 
 const fetchCarTypes = async (): Promise<CarType[]> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/types/list-types`,
+    `${import.meta.env.VITE_API_URL}/bodytype/count_by_bodytype`,
     {
       method: "GET",
       headers: {
@@ -25,7 +26,7 @@ const fetchCarTypes = async (): Promise<CarType[]> => {
   );
   if (!response.ok) throw new Error("Failed to fetch car types");
   const res = await response.json();
-  return res.data ?? [];
+  return res;
 };
 
 export const BrowseByType = () => {
@@ -35,6 +36,18 @@ export const BrowseByType = () => {
   });
 
   const mediaUrl = import.meta.env.VITE_MEDIA_URL;
+  useEffect(() => {
+    trackCustomEvent("BrowseByTypeSectionViewed");
+  }, []);
+
+  const handleTypeClick = (item: CarType) => {
+    trackCustomEvent("CarTypeSelected", {
+      id: item.id,
+      name: item.name,
+      slug: item.slug,
+      count: item.count,
+    });
+  };
 
   return (
     <section className="py-16 bg-white">
@@ -56,10 +69,14 @@ export const BrowseByType = () => {
             <div>Loading...</div>
           ) : carTypes && carTypes.length > 0 ? (
             carTypes.map((item) => {
-              const imagePath = item.logo;
-              const fullImageUrl = `${mediaUrl}/${imagePath}`;
+              const fullImageUrl = `${mediaUrl}${item.image_url}`;
               return (
-                <Link key={item._id} to={`/types/${item.slug}`} className="group">
+                <Link
+                  key={item.id}
+                  to={`/types/${item.slug}`}
+                  className="group"
+                  onClick={() => handleTypeClick(item)} 
+                >
                   <div>
                     <img
                       src={fullImageUrl}
@@ -69,7 +86,7 @@ export const BrowseByType = () => {
                   </div>
                   <CardContent className="p-1 md:p-2">
                     <p className="font-bold text-center mb-1 text-dealership-navy group-hover:text-dealership-primary">
-                      {item.name} ({item.totalCars})
+                      {item.name.toUpperCase()} ({item.count})
                     </p>
                   </CardContent>
                 </Link>
@@ -78,13 +95,16 @@ export const BrowseByType = () => {
           ) : (
             <div>No car types found.</div>
           )}
-
         </div>
+
         <div className="flex justify-center mt-8 lg:hidden">
           <Link to="/listings">
             <Button
               variant="default"
               className="gap-2 bg-gradient-to-r from-dealership-primary/80 to-dealership-primary/100"
+              onClick={() =>
+                trackCustomEvent("BrowseByTypeSeeAllClicked")
+              }
             >
               See All Types
               <ArrowRight className="w-4 h-4" />

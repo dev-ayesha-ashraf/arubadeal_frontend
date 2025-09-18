@@ -13,7 +13,6 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 
-// Define Zod schema for transmission validation
 const transmissionSchema = z.object({
   name: z.string().min(1, "Name is required"),
 });
@@ -21,97 +20,83 @@ const transmissionSchema = z.object({
 type TransmissionFormData = z.infer<typeof transmissionSchema>;
 
 interface Transmission {
-  _id: string;
+  id: string;
   name: string;
+  created_at: string;
+  updated_at: string;
 }
 
-// API functions
 const fetchTransmissions = async (): Promise<Transmission[]> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/transmissions/list-transmissions`,
+    `${import.meta.env.VITE_API_URL}/transmission/get_all`,
     {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${JSON.parse(
-          localStorage.getItem("access_token") || ""
-        )}`,
+        Authorization: `Bearer ${localStorage.getItem("access_token") || ""}`,
       },
     }
   );
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch Transmissions: ${response.status}`);
+    throw new Error(`Failed to fetch transmissions: ${response.status}`);
   }
-  const res = await response.json();
-  return res.data;
+  return response.json();
 };
 
 const createTransmission = async (
   data: TransmissionFormData
-): Promise<Transmission> => {
+): Promise<string> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/transmissions/add-transmission`,
+    `${import.meta.env.VITE_API_URL}/transmission/create?name=${encodeURIComponent(
+      data.name
+    )}`,
     {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${JSON.parse(
-          localStorage.getItem("access_token") || ""
-        )}`,
+        Authorization: `Bearer ${localStorage.getItem("access_token") || ""}`,
       },
-      body: JSON.stringify(data),
     }
   );
 
   if (!response.ok) {
     throw new Error(`Failed to create transmission: ${response.status}`);
   }
-  const res = await response.json();
-  return res.data;
+  return response.json();
 };
 
 const updateTransmission = async ({
-  _id,
+  id,
   data,
 }: {
-  _id: string;
+  id: string;
   data: TransmissionFormData;
-}): Promise<Transmission> => {
+}): Promise<string> => {
   const response = await fetch(
-    `${
-      import.meta.env.VITE_API_URL
-    }/transmissions/v1/update-transmission/${_id}`,
+    `${import.meta.env.VITE_API_URL}/transmission/update?id=${id}&name=${encodeURIComponent(
+      data.name
+    )}`,
     {
-      method: "PATCH",
+      method: "PUT",
       headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${JSON.parse(
-          localStorage.getItem("access_token") || ""
-        )}`,
+        Authorization: `Bearer ${localStorage.getItem("access_token") || ""}`,
       },
-      body: JSON.stringify(data),
     }
   );
 
   if (!response.ok) {
     throw new Error(`Failed to update transmission: ${response.status}`);
   }
-  const res = await response.json();
-  return res.data;
+  return response.json();
 };
 
-const deleteTransmission = async (_id: string): Promise<void> => {
+const deleteTransmission = async (id: string): Promise<string> => {
   const response = await fetch(
-    `${
-      import.meta.env.VITE_API_URL
-    }/transmissions/delete-transmission/${_id}`,
+    `${import.meta.env.VITE_API_URL}/transmission/delete?id=${id}`,
     {
       method: "DELETE",
       headers: {
-        Authorization: `Bearer ${JSON.parse(
-          localStorage.getItem("access_token") || ""
-        )}`,
+        Authorization: `Bearer ${localStorage.getItem("access_token") || ""}`,
       },
     }
   );
@@ -119,22 +104,18 @@ const deleteTransmission = async (_id: string): Promise<void> => {
   if (!response.ok) {
     throw new Error(`Failed to delete transmission: ${response.status}`);
   }
-  const res = await response.json();
-  return res.data;
+  return response.json();
 };
 
 const TransmissionsManagement = () => {
   const [showAddEditDialog, setShowAddEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [transmissionToDelete, setTransmissionToDelete] = useState<
-    string | null
-  >(null);
+  const [transmissionToDelete, setTransmissionToDelete] = useState<string | null>(null);
   const [editingTransmission, setEditingTransmission] =
     useState<Transmission | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // React Query hooks
   const { data: transmissions = [], isLoading } = useQuery({
     queryKey: ["transmissions"],
     queryFn: fetchTransmissions,
@@ -144,13 +125,10 @@ const TransmissionsManagement = () => {
     mutationFn: createTransmission,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transmissions"] });
-      toast({
-        title: "Success",
-        description: "Transmission added successfully",
-      });
+      toast({ title: "Success", description: "Transmission added successfully" });
       setShowAddEditDialog(false);
     },
-    onError: (error) => {
+    onError: () => {
       toast({
         title: "Error",
         description: "Failed to add transmission",
@@ -163,13 +141,10 @@ const TransmissionsManagement = () => {
     mutationFn: updateTransmission,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transmissions"] });
-      toast({
-        title: "Success",
-        description: "Transmission updated successfully",
-      });
+      toast({ title: "Success", description: "Transmission updated successfully" });
       setShowAddEditDialog(false);
     },
-    onError: (error) => {
+    onError: () => {
       toast({
         title: "Error",
         description: "Failed to update transmission",
@@ -182,12 +157,9 @@ const TransmissionsManagement = () => {
     mutationFn: deleteTransmission,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transmissions"] });
-      toast({
-        title: "Success",
-        description: "transmission deleted successfully",
-      });
+      toast({ title: "Success", description: "Transmission deleted successfully" });
     },
-    onError: (error) => {
+    onError: () => {
       toast({
         title: "Error",
         description: "Failed to delete transmission",
@@ -196,7 +168,6 @@ const TransmissionsManagement = () => {
     },
   });
 
-  // React Hook Form setup
   const {
     register,
     handleSubmit,
@@ -204,21 +175,19 @@ const TransmissionsManagement = () => {
     reset,
   } = useForm<TransmissionFormData>({
     resolver: zodResolver(transmissionSchema),
-    defaultValues: {
-      name: editingTransmission?.name || "",
-    },
+    defaultValues: { name: editingTransmission?.name || "" },
   });
 
   const onSubmit = (data: TransmissionFormData) => {
-    if (editingTransmission?._id) {
-      updateMutation.mutate({ _id: editingTransmission._id, data });
+    if (editingTransmission?.id) {
+      updateMutation.mutate({ id: editingTransmission.id, data });
     } else {
       createMutation.mutate(data);
     }
   };
 
-  const handleDelete = (_id: string) => {
-    setTransmissionToDelete(_id);
+  const handleDelete = (id: string) => {
+    setTransmissionToDelete(id);
     setShowDeleteDialog(true);
   };
 
@@ -255,7 +224,7 @@ const TransmissionsManagement = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {transmissions.map((transmission) => (
             <div
-              key={transmission._id}
+              key={transmission.id}
               className="bg-white p-4 rounded-lg shadow-md"
             >
               <div className="flex justify-between items-center">
@@ -271,7 +240,7 @@ const TransmissionsManagement = () => {
                   <Button
                     variant="destructive"
                     size="sm"
-                    onClick={() => handleDelete(transmission._id)}
+                    onClick={() => handleDelete(transmission.id)}
                     disabled={deleteMutation.isPending}
                   >
                     {deleteMutation.isPending ? "Deleting..." : "Delete"}
@@ -283,13 +252,12 @@ const TransmissionsManagement = () => {
         </div>
       )}
 
+      {/* Add/Edit Dialog */}
       <Dialog open={showAddEditDialog} onOpenChange={setShowAddEditDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {editingTransmission
-                ? "Edit Transmission"
-                : "Add New Transmission"}
+              {editingTransmission ? "Edit Transmission" : "Add New Transmission"}
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)}>
@@ -301,17 +269,13 @@ const TransmissionsManagement = () => {
                   className="w-full p-2 border rounded-md"
                 />
                 {errors.name && (
-                  <p className="text-red-500 text-sm mt-1">
-                    {errors.name.message}
-                  </p>
+                  <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>
                 )}
               </div>
               <div className="flex justify-end gap-2">
                 <Button
                   type="submit"
-                  disabled={
-                    createMutation.isPending || updateMutation.isPending
-                  }
+                  disabled={createMutation.isPending || updateMutation.isPending}
                 >
                   {createMutation.isPending || updateMutation.isPending
                     ? "Saving..."
@@ -335,11 +299,12 @@ const TransmissionsManagement = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Delete Confirmation */}
       <ConfirmationDialog
         open={showDeleteDialog}
         onOpenChange={setShowDeleteDialog}
         title="Confirm Deletion"
-        description="Are you sure you want to delete this Transmission? This action cannot be undone."
+        description="Are you sure you want to delete this transmission? This action cannot be undone."
         confirmText="Delete"
         onConfirm={confirmDelete}
         isLoading={deleteMutation.isPending}

@@ -3,15 +3,15 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 
 interface BannerImage {
-  _id: string;
-  image: string;
+  id: string;
+  image_url: string;
   name: string;
-  priority: number;
+  is_display: number;
 }
 
 const fetchBannerImages = async (): Promise<BannerImage[]> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/banners/list-banners`,
+    `${import.meta.env.VITE_API_URL}/banner/get_all`,
     {
       method: "GET",
       headers: {
@@ -19,14 +19,14 @@ const fetchBannerImages = async (): Promise<BannerImage[]> => {
       },
     }
   );
-  if (!response.ok) throw new Error("Failed to fetch banner images");
-  const res = await response.json();
 
-  // Sort by priority (low to high)
-  return res.data.sort(
-    (a: BannerImage, b: BannerImage) => a.priority - b.priority
-  );
+  if (!response.ok) throw new Error("Failed to fetch banner images");
+
+  const res: BannerImage[] = await response.json();
+
+  return res.sort((a, b) => a.is_display - b.is_display);
 };
+
 
 export const Hero = () => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -66,11 +66,11 @@ export const Hero = () => {
         ) : (
           <div className="w-full h-full relative">
             <img
-              src={`${import.meta.env.VITE_MEDIA_URL}/${bannerImages[currentImageIndex].image
-                }`}
+              src={`${import.meta.env.VITE_MEDIA_URL}${bannerImages[currentImageIndex].image_url}`}
               alt={bannerImages[currentImageIndex].name}
               className="w-full h-full object-cover"
             />
+
             <div className="absolute inset-0 bg-black/50" />
           </div>
         )}

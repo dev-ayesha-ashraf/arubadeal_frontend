@@ -1,26 +1,20 @@
-import { Navigate, useLocation } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
+import { Navigate, Outlet } from "react-router-dom";
 
-interface PrivateRouteProps {
-  children: React.ReactNode;
-  requiredRole?: number;
+const PrivateRoute = () => {
+  const accessToken = localStorage.getItem("access_token");
+  const userStr = localStorage.getItem("user");
+  const user = userStr ? JSON.parse(userStr) : null;
+
+  if (!accessToken) {
+    return <Navigate to="/" replace />;
+  }
+if (window.location.pathname.startsWith("/admin")) {
+  if (!user || user.role !== "admin") {
+    return <Navigate to="/" replace />;
+  }
 }
 
-const PrivateRoute = ({ children, requiredRole }: PrivateRouteProps) => {
-  const { user } = useAuth();
-  const location = useLocation();
-
-  // If no user is logged in and trying to access a protected route
-  if (!user && requiredRole) {
-    return <Navigate to="/" state={{ from: location }} replace />;
-  }
-
-  // If user is logged in but doesn't have the required role
-  if (user && requiredRole && user.role !== requiredRole) {
-    return <Navigate to="/" state={{ from: location }} replace />;
-  }
-
-  return <>{children}</>;
+  return <Outlet />;
 };
 
-export default PrivateRoute; 
+export default PrivateRoute;

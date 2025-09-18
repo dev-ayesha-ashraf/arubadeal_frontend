@@ -13,7 +13,6 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import ConfirmationDialog from "@/components/ui/confirmation-dialog";
 
-// Define Zod schema for fuelType validation
 const fuelTypeSchema = z.object({
   name: z.string().min(1, "Name is required"),
 });
@@ -21,100 +20,76 @@ const fuelTypeSchema = z.object({
 type FuelTypeFormData = z.infer<typeof fuelTypeSchema>;
 
 interface FuelType {
-  _id: string;
+  id: string;
   name: string;
+  created_at: string;
+  updated_at: string;
 }
 
-// API functions
+const API_URL = import.meta.env.VITE_API_URL;
+
 const fetchFuelTypes = async (): Promise<FuelType[]> => {
-  const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/fuel-types/list-fuel-types`,
-    {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${JSON.parse(
-          localStorage.getItem("access_token") || ""
-        )}`,
-      },
-    }
-  );
+  const response = await fetch(`${API_URL}/fueltype/get_all`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${localStorage.getItem("access_token") || ""}`,
+    },
+  });
 
   if (!response.ok) {
     throw new Error(`Failed to fetch FuelTypes: ${response.status}`);
   }
-  const res = await response.json();
-  return res.data;
+  return response.json();
 };
 
 const createFuelType = async (data: FuelTypeFormData): Promise<FuelType> => {
-  const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/fuel-types/add-fuel-type`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${JSON.parse(
-          localStorage.getItem("access_token") || ""
-        )}`,
-      },
-      body: JSON.stringify(data),
-    }
-  );
+  const params = new URLSearchParams({ name: data.name });
+  const response = await fetch(`${API_URL}/fueltype/create?${params}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem("access_token") || ""}`,
+    },
+  });
 
   if (!response.ok) {
     throw new Error(`Failed to create fuel-type: ${response.status}`);
   }
-  const res = await response.json();
-  return res.data;
+  return response.json();
 };
-
 const updateFuelType = async ({
-  _id,
+  id,
   data,
 }: {
-  _id: string;
+  id: string;
   data: FuelTypeFormData;
 }): Promise<FuelType> => {
-  const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/fuel-types/update-fuel-type/${_id}`,
-    {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${JSON.parse(
-          localStorage.getItem("access_token") || ""
-        )}`,
-      },
-      body: JSON.stringify(data),
-    }
-  );
+  const params = new URLSearchParams({ id, name: data.name });
+  const response = await fetch(`${API_URL}/fueltype/update?${params}`, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem("access_token") || ""}`,
+    },
+  });
 
   if (!response.ok) {
     throw new Error(`Failed to update fuel-type: ${response.status}`);
   }
-  const res = await response.json();
-  return res.data;
+  return response.json();
 };
-
-const deleteFuelType = async (_id: string): Promise<void> => {
-  const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/fuel-types/delete-fuel-type/${_id}`,
-    {
-      method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${JSON.parse(
-          localStorage.getItem("access_token") || ""
-        )}`,
-      },
-    }
-  );
+const deleteFuelType = async (id: string): Promise<void> => {
+  const params = new URLSearchParams({ id });
+  const response = await fetch(`${API_URL}/fueltype/delete?${params}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem("access_token") || ""}`,
+    },
+  });
 
   if (!response.ok) {
     throw new Error(`Failed to delete fuel-type: ${response.status}`);
   }
-  const res = await response.json();
-  return res.data;
+  return response.json();
 };
 
 const FuelTypesManagement = () => {
@@ -125,7 +100,6 @@ const FuelTypesManagement = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // React Query hooks
   const { data: fuelTypes = [], isLoading } = useQuery({
     queryKey: ["fuelTypes"],
     queryFn: fetchFuelTypes,
@@ -135,13 +109,10 @@ const FuelTypesManagement = () => {
     mutationFn: createFuelType,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["fuelTypes"] });
-      toast({
-        title: "Success",
-        description: "FuelType added successfully",
-      });
+      toast({ title: "Success", description: "FuelType added successfully" });
       setShowAddEditDialog(false);
     },
-    onError: (error) => {
+    onError: () => {
       toast({
         title: "Error",
         description: "Failed to add fuelType",
@@ -154,13 +125,10 @@ const FuelTypesManagement = () => {
     mutationFn: updateFuelType,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["fuelTypes"] });
-      toast({
-        title: "Success",
-        description: "Fuel Type updated successfully",
-      });
+      toast({ title: "Success", description: "Fuel Type updated successfully" });
       setShowAddEditDialog(false);
     },
-    onError: (error) => {
+    onError: () => {
       toast({
         title: "Error",
         description: "Failed to update fuel Type",
@@ -173,12 +141,9 @@ const FuelTypesManagement = () => {
     mutationFn: deleteFuelType,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["fuelTypes"] });
-      toast({
-        title: "Success",
-        description: "Fuel Type deleted successfully",
-      });
+      toast({ title: "Success", description: "Fuel Type deleted successfully" });
     },
-    onError: (error) => {
+    onError: () => {
       toast({
         title: "Error",
         description: "Failed to delete Fuel Type",
@@ -187,7 +152,6 @@ const FuelTypesManagement = () => {
     },
   });
 
-  // React Hook Form setup
   const {
     register,
     handleSubmit,
@@ -201,15 +165,15 @@ const FuelTypesManagement = () => {
   });
 
   const onSubmit = (data: FuelTypeFormData) => {
-    if (editingFuelType?._id) {
-      updateMutation.mutate({ _id: editingFuelType._id, data });
+    if (editingFuelType?.id) {
+      updateMutation.mutate({ id: editingFuelType.id, data });
     } else {
       createMutation.mutate(data);
     }
   };
 
-  const handleDelete = (_id: string) => {
-    setFuelTypeToDelete(_id);
+  const handleDelete = (id: string) => {
+    setFuelTypeToDelete(id);
     setShowDeleteDialog(true);
   };
 
@@ -246,7 +210,7 @@ const FuelTypesManagement = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {fuelTypes.map((fuelType) => (
             <div
-              key={fuelType._id}
+              key={fuelType.id}
               className="bg-white p-4 rounded-lg shadow-md"
             >
               <div className="flex justify-between items-center">
@@ -262,7 +226,7 @@ const FuelTypesManagement = () => {
                   <Button
                     variant="destructive"
                     size="sm"
-                    onClick={() => handleDelete(fuelType._id)}
+                    onClick={() => handleDelete(fuelType.id)}
                     disabled={deleteMutation.isPending}
                   >
                     {deleteMutation.isPending ? "Deleting..." : "Delete"}
@@ -298,9 +262,7 @@ const FuelTypesManagement = () => {
               <div className="flex justify-end gap-2">
                 <Button
                   type="submit"
-                  disabled={
-                    createMutation.isPending || updateMutation.isPending
-                  }
+                  disabled={createMutation.isPending || updateMutation.isPending}
                 >
                   {createMutation.isPending || updateMutation.isPending
                     ? "Saving..."

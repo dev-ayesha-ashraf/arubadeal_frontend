@@ -19,81 +19,68 @@ const makeSchema = z.object({
 type MakeFormData = z.infer<typeof makeSchema>;
 
 interface Make {
-  _id: string;
+  id: string;
   name: string;
-  image: string;
+  image_url: string;
 }
 
 const fetchMakes = async (): Promise<Make[]> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/makes/list-makes`,
+    `${import.meta.env.VITE_API_URL}/make/get_all`,
     {
       method: "GET",
       headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${JSON.parse(
-          localStorage.getItem("access_token") || ""
-        )}`,
+        Authorization: `Bearer ${localStorage.getItem("access_token") || ""}`
       },
     }
   );
   if (!response.ok) throw new Error("Failed to fetch makes");
-  const res = await response.json();
-  return res.data;
+  return await response.json();
 };
 
 const addMake = async (formData: FormData): Promise<Make> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/makes/add-make`,
+    `${import.meta.env.VITE_API_URL}/make/create`,
     {
       method: "POST",
       body: formData,
       headers: {
-        Authorization: `Bearer ${JSON.parse(
-          localStorage.getItem("access_token") || ""
-        )}`,
+        Authorization: `Bearer ${localStorage.getItem("access_token") || ""}`
       },
     }
   );
   if (!response.ok) throw new Error("Failed to add make");
-  const res = await response.json();
-  return res.data;
+  return await response.json();
 };
 
 const updateMake = async ({
-  _id,
+  id,
   formData,
 }: {
-  _id: string;
+  id: string;
   formData: FormData;
 }): Promise<Make> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/makes/update-make/${_id}`,
+    `${import.meta.env.VITE_API_URL}/make/update?id=${id}`,
     {
-      method: "PATCH",
+      method: "PUT",
       body: formData,
       headers: {
-        Authorization: `Bearer ${JSON.parse(
-          localStorage.getItem("access_token") || ""
-        )}`,
+        Authorization: `Bearer ${localStorage.getItem("access_token") || ""}`
       },
     }
   );
   if (!response.ok) throw new Error("Failed to update make");
-  const res = await response.json();
-  return res.data;
+  return await response.json();
 };
 
-const deleteMake = async (_id: string) => {
+const deleteMake = async (id: string) => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/makes/delete-make/${_id}`,
+    `${import.meta.env.VITE_API_URL}/make/delete?id=${id}`,
     {
       method: "DELETE",
       headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${JSON.parse(
-          localStorage.getItem("access_token") || ""
-        )}`,
+        Authorization: `Bearer ${localStorage.getItem("access_token") || ""}`
       },
     }
   );
@@ -119,7 +106,7 @@ const CarMake = () => {
       toast({ title: "Success", description: "Car Make added successfully" });
       setShowAddEditDialog(false);
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
         title: "Error",
         description: error.message || "Failed to add car make",
@@ -135,7 +122,7 @@ const CarMake = () => {
       toast({ title: "Success", description: "Car Make updated successfully" });
       setShowAddEditDialog(false);
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
         title: "Error",
         description: error.message || "Failed to update car make",
@@ -150,7 +137,7 @@ const CarMake = () => {
       queryClient.invalidateQueries({ queryKey: ["makes"] });
       toast({ title: "Success", description: "Car Make deleted successfully" });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
         title: "Error",
         description: error.message || "Failed to delete car make",
@@ -159,49 +146,46 @@ const CarMake = () => {
     },
   });
 
-  const handleAddEdit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+ const handleAddEdit = (e: React.FormEvent<HTMLFormElement>) => {
+  e.preventDefault();
 
-    const formData = new FormData(e.currentTarget);
+  const rawForm = new FormData(e.currentTarget);
+  const formData = new FormData();
 
-    try {
-      // Validate the form data
-      const name = formData.get("name") as string;
+  try {
+    const name = rawForm.get("name") as string;
+    makeSchema.parse({ name });
 
-      makeSchema.parse({ name });
+    formData.append("name", name);
 
-      // If editing, we need to handle the file differently
-      if (editingMake?._id) {
-        // If a new file is selected, add it to formData
-        if (selectedFile) {
-          formData.set("logo", selectedFile);
-        }
-
-        updateMutation.mutate({
-          _id: editingMake._id,
-          formData,
-        });
-      } else {
-        // For new make, ensure we have a file
-        if (!selectedFile) {
-          throw new Error("Image is required");
-        }
-
-        formData.set("logo", selectedFile);
-        addMutation.mutate(formData);
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description:
-          error.errors?.[0]?.message || error.message || "Validation failed",
-        variant: "destructive",
-      });
+    if (selectedFile) {
+      formData.append("image", selectedFile);
     }
-  };
 
-  const handleDelete = (_id: string) => {
-    deleteMutation.mutate(_id);
+    if (editingMake?.id) {
+      updateMutation.mutate({
+        id: editingMake.id,
+        formData,
+      });
+    } else {
+      if (!selectedFile) {
+        throw new Error("Image is required");
+      }
+      addMutation.mutate(formData);
+    }
+  } catch (error: any) {
+    toast({
+      title: "Error",
+      description:
+        error.errors?.[0]?.message || error.message || "Validation failed",
+      variant: "destructive",
+    });
+  }
+};
+
+
+  const handleDelete = (id: string) => {
+    deleteMutation.mutate(id);
   };
 
   const openAddDialog = () => {
@@ -226,14 +210,16 @@ const CarMake = () => {
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {makes.map((make) => (
-          <Card key={make._id} className="bg-white p-4 rounded-lg shadow-md">
+          <Card key={make.id} className="bg-white p-4 rounded-lg shadow-md">
             <CardContent className="p-6 flex flex-col items-center justify-center">
               <div className="w-24 h-24 flex items-center justify-center overflow-hidden mb-3">
                 <img
-                  src={`${import.meta.env.VITE_MEDIA_URL}/${make.image}`}
+                  src={`${import.meta.env.VITE_MEDIA_URL}${make.image_url}`}
                   alt={make.name}
                   className="max-w-full max-h-full object-contain"
                 />
+
+
               </div>
               <div>
                 <h3 className="font-medium text-lg">{make.name}</h3>
@@ -251,7 +237,7 @@ const CarMake = () => {
                 <Button
                   variant="destructive"
                   size="sm"
-                  onClick={() => handleDelete(make._id)}
+                  onClick={() => handleDelete(make.id)}
                   disabled={deleteMutation.isPending}
                 >
                   {deleteMutation.isPending ? "Deleting..." : "Delete"}
@@ -285,17 +271,16 @@ const CarMake = () => {
                 {editingMake && (
                   <div className="mb-2">
                     <img
-                      src={`${import.meta.env.VITE_MEDIA_URL}/${
-                        editingMake.image
-                      }`}
+                      src={`${import.meta.env.VITE_MEDIA_URL}${editingMake.image_url}`}
                       alt={editingMake.name}
                       className="h-24 object-cover rounded"
                     />
+
                   </div>
                 )}
                 <input
                   type="file"
-                  name="logo"
+                  name="image"
                   accept="image/*"
                   onChange={(e) => {
                     const file = e.target.files?.[0];
@@ -315,8 +300,8 @@ const CarMake = () => {
                   {addMutation.isPending || updateMutation.isPending
                     ? "Saving..."
                     : editingMake
-                    ? "Save"
-                    : "Add"}
+                      ? "Save"
+                      : "Add"}
                 </Button>
                 <Button
                   type="button"

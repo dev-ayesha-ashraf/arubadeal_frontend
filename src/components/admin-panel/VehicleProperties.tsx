@@ -33,13 +33,7 @@ const VehicleProperties = () => {
       icon: Fuel,
       path: "/admin/fuel-types",
     },
-    {
-      id: "engines",
-      name: "Engines",
-      description: "Manage engine types and specifications.",
-      icon: Zap,
-      path: "/admin/engines",
-    },
+  
     {
       id: "transmissions",
       name: "Transmissions",

@@ -11,93 +11,120 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 
 const bannerSchema = z.object({
-  name: z.string().min(1, "Title is required"),
-  priority: z.number().optional(),
+  name: z.string().min(1, "Name is required"),
+  position: z.number().optional(),
 });
 
 type BannerFormData = z.infer<typeof bannerSchema>;
 
 interface Banner {
-  _id: string;
+  id: string;
   name: string;
-  image: string;
-  priority: number;
+  image_url: string;
+  is_display: number;
+  details: Record<string, any>;
+  position?: number;
 }
 
 const fetchBanners = async (): Promise<Banner[]> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/banners/list-banners`,
+    `${import.meta.env.VITE_API_URL}/banner/get_all`,
     {
       method: "GET",
       headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${JSON.parse(
-          localStorage.getItem("access_token") || ""
-        )}`,
+        Authorization: `Bearer ${localStorage.getItem("access_token") || ""}`
       },
     }
   );
   if (!response.ok) throw new Error("Failed to fetch banners");
-  const res = await response.json();
-  return res.data;
+  return await response.json();
 };
 
 const addBanner = async (formData: FormData): Promise<Banner> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/banners/add-banner`,
+    `${import.meta.env.VITE_API_URL}/banner/create`,
     {
       method: "POST",
       body: formData,
       headers: {
-        Authorization: `Bearer ${JSON.parse(
-          localStorage.getItem("access_token") || ""
-        )}`,
+        Authorization: `Bearer ${localStorage.getItem("access_token") || ""}`
       },
     }
   );
   if (!response.ok) throw new Error("Failed to add banner");
-  const res = await response.json();
-  return res.data;
+  return await response.json();
 };
 
-const updateBanner = async ({
-  _id,
-  formData,
-}: {
-  _id: string;
-  formData: FormData;
-}): Promise<Banner> => {
-  const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/banners/update-banner/${_id}`,
-    {
-      method: "PATCH",
-      body: formData,
-      headers: {
-        Authorization: `Bearer ${JSON.parse(
-          localStorage.getItem("access_token") || ""
-        )}`,
-      },
-    }
-  );
-  if (!response.ok) throw new Error("Failed to update banner");
-  const res = await response.json();
-  return res.data;
+const updateBanner = async (
+  { id, name, position, details, image }: 
+  { id: string; name: string; position?: number; details?: any; image?: File | null }
+): Promise<Banner> => {
+  let response: Response;
+
+  if (image) {
+    const formData = new FormData();
+    formData.append(
+      "data",
+      JSON.stringify({
+        name,
+        position,
+        details: details ?? {},
+      })
+    );
+    formData.append("image", image);
+
+    response = await fetch(
+      `${import.meta.env.VITE_API_URL}/banner/update?id=${id}`,
+      {
+        method: "PUT",
+        body: formData,
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("access_token") || ""}`,
+        },
+      }
+    );
+  } else {
+    response = await fetch(
+      `${import.meta.env.VITE_API_URL}/banner/update?id=${id}`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("access_token") || ""}`,
+        },
+        body: JSON.stringify({
+          name,
+          position,
+          details: details ?? {},
+        }),
+      }
+    );
+  }
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({}));
+    throw new Error(errorBody.detail?.[0]?.msg || "Failed to update banner");
+  }
+
+  return await response.json();
 };
 
-const deleteBanner = async (_id: string) => {
+const deleteBanner = async (id: string) => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/banners/delete-banner/${_id}`,
+    `${import.meta.env.VITE_API_URL}/banner/delete?id=${id}`,
     {
       method: "DELETE",
       headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${JSON.parse(
-          localStorage.getItem("access_token") || ""
-        )}`,
+        Authorization: `Bearer ${localStorage.getItem("access_token") || ""}`,
       },
     }
   );
-  if (!response.ok) throw new Error("Failed to delete banner");
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({}));
+    throw new Error(errorBody.detail?.[0]?.msg || "Failed to delete banner");
+  }
+
   return await response.json();
 };
 
@@ -107,7 +134,8 @@ const BannerManagement = () => {
     queryKey: ["banners"],
     queryFn: fetchBanners,
   });
-  const [showAddEditDialog, setShowAddEditDialog] = useState(false);
+
+  const [showDialog, setShowDialog] = useState(false);
   const [editingBanner, setEditingBanner] = useState<Banner | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const { toast } = useToast();
@@ -117,32 +145,38 @@ const BannerManagement = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["banners"] });
       toast({ title: "Success", description: "Banner added successfully" });
-      setShowAddEditDialog(false);
+      setShowDialog(false);
     },
-    onError: (error) => {
+    onError: (error: any) =>
       toast({
         title: "Error",
         description: error.message || "Failed to add banner",
         variant: "destructive",
-      });
-    },
+      }),
   });
 
-  const updateMutation = useMutation({
-    mutationFn: updateBanner,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["banners"] });
-      toast({ title: "Success", description: "Banner updated successfully" });
-      setShowAddEditDialog(false);
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update banner",
-        variant: "destructive",
-      });
-    },
-  });
+const updateMutation = useMutation({
+  mutationFn: (banner: {
+    id: string;
+    name: string;
+    position?: number;
+    details?: any;
+    image?: File | null;
+  }) => updateBanner(banner),
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ["banners"] });
+    toast({ title: "Success", description: "Banner updated successfully" });
+    setShowDialog(false);
+  },
+  onError: (error: any) =>
+    toast({
+      title: "Error",
+      description: error.message || "Failed to update banner",
+      variant: "destructive",
+    }),
+});
+
+
 
   const deleteMutation = useMutation({
     mutationFn: deleteBanner,
@@ -150,50 +184,56 @@ const BannerManagement = () => {
       queryClient.invalidateQueries({ queryKey: ["banners"] });
       toast({ title: "Success", description: "Banner deleted successfully" });
     },
-    onError: (error) => {
+    onError: (error: any) =>
       toast({
         title: "Error",
         description: error.message || "Failed to delete banner",
         variant: "destructive",
-      });
-    },
+      }),
   });
 
   const handleAddEdit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
-    const formData = new FormData(e.currentTarget);
+    const formData = new FormData();
 
     try {
-      // Validate the form data
-      const name = formData.get("name") as string;
-      const priority = formData.get("priority")
-        ? Number(formData.get("priority"))
-        : undefined;
+      const target = e.currentTarget;
+      const name = (target.elements.namedItem("name") as HTMLInputElement).value;
+      const positionValue = (target.elements.namedItem("position") as HTMLInputElement).value;
+      const position = positionValue ? Number(positionValue) : undefined;
 
-      bannerSchema.parse({ name, priority });
+      bannerSchema.parse({ name, position });
 
-      // If editing, we need to handle the file differently
-      if (editingBanner?._id) {
-        // If a new file is selected, add it to formData
-        if (selectedFile) {
-          formData.set("banner", selectedFile);
-        }
+if (editingBanner?.id) {
+  updateMutation.mutate({
+    id: editingBanner.id,
+    name,
+    position,
+    details: editingBanner.details ?? {},
+    image: selectedFile, 
+  });
+}
 
-        updateMutation.mutate({
-          _id: editingBanner._id,
-          formData,
-        });
-      } else {
-        // For new banner, ensure we have a file
-        if (!selectedFile) {
+      else {
+        if (!selectedFile || selectedFile.size === 0) {
           throw new Error("Image is required");
         }
 
-        formData.set("banner", selectedFile);
+        formData.append("name", name);
+        if (typeof position !== "undefined") {
+          formData.append("position", position.toString());
+        }
+        formData.append("image", selectedFile);
+        formData.append("details", "{}");
+
+        console.log("➕ Adding new banner with data:");
+        for (let pair of formData.entries()) {
+          console.log(pair[0], pair[1]);
+        }
+
         addMutation.mutate(formData);
       }
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Error",
         description:
@@ -202,21 +242,20 @@ const BannerManagement = () => {
       });
     }
   };
-
-  const handleDelete = (_id: string) => {
-    deleteMutation.mutate(_id);
+  const handleDelete = (id: string) => {
+    deleteMutation.mutate(id);
   };
 
   const openAddDialog = () => {
     setEditingBanner(null);
     setSelectedFile(null);
-    setShowAddEditDialog(true);
+    setShowDialog(true);
   };
 
   const openEditDialog = (banner: Banner) => {
     setEditingBanner(banner);
     setSelectedFile(null);
-    setShowAddEditDialog(true);
+    setShowDialog(true);
   };
 
   if (isLoading) return <div>Loading...</div>;
@@ -229,12 +268,13 @@ const BannerManagement = () => {
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {banners.map((banner) => (
-          <div key={banner._id} className="bg-white p-4 rounded-lg shadow-md">
+          <div key={banner.id} className="bg-white p-4 rounded-lg shadow-md">
             <img
-              src={`${import.meta.env.VITE_MEDIA_URL}/${banner.image}`}
+              src={`${import.meta.env.VITE_MEDIA_URL}${banner.image_url}`}
               alt={banner.name}
               className="w-full h-48 object-cover rounded mb-4"
             />
+
             <div className="flex justify-between items-center">
               <span className="font-medium">{banner.name}</span>
               <div className="space-x-2">
@@ -248,7 +288,7 @@ const BannerManagement = () => {
                 <Button
                   variant="destructive"
                   size="sm"
-                  onClick={() => handleDelete(banner._id)}
+                  onClick={() => handleDelete(banner.id)}
                   disabled={deleteMutation.isPending}
                 >
                   {deleteMutation.isPending ? "Deleting..." : "Delete"}
@@ -258,8 +298,7 @@ const BannerManagement = () => {
           </div>
         ))}
       </div>
-
-      <Dialog open={showAddEditDialog} onOpenChange={setShowAddEditDialog}>
+      <Dialog open={showDialog} onOpenChange={setShowDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
@@ -282,23 +321,20 @@ const BannerManagement = () => {
                 {editingBanner && (
                   <div className="mb-2">
                     <img
-                      src={`${import.meta.env.VITE_MEDIA_URL}/${
-                        editingBanner.image
-                      }`}
+                      src={`${import.meta.env.VITE_MEDIA_URL}${editingBanner.image_url}`}
                       alt={editingBanner.name}
                       className="h-24 object-cover rounded"
                     />
+
                   </div>
                 )}
                 <input
                   type="file"
-                  name="banner"
+                  name="image"
                   accept="image/*"
                   onChange={(e) => {
                     const file = e.target.files?.[0];
-                    if (file) {
-                      setSelectedFile(file);
-                    }
+                    if (file) setSelectedFile(file);
                   }}
                   className="w-full p-2 border rounded-md"
                   required={!editingBanner}
@@ -306,12 +342,12 @@ const BannerManagement = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">
-                  Priority
+                  Position
                 </label>
                 <input
                   type="number"
-                  name="priority"
-                  defaultValue={editingBanner?.priority || ""}
+                  name="position"
+                  defaultValue={editingBanner?.position || ""}
                   className="w-full p-2 border rounded-md"
                 />
               </div>
@@ -323,14 +359,14 @@ const BannerManagement = () => {
                   {addMutation.isPending || updateMutation.isPending
                     ? "Saving..."
                     : editingBanner
-                    ? "Save"
-                    : "Add"}
+                      ? "Save"
+                      : "Add"}
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => {
-                    setShowAddEditDialog(false);
+                    setShowDialog(false);
                     setEditingBanner(null);
                     setSelectedFile(null);
                   }}
