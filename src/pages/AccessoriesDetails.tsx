@@ -59,130 +59,82 @@ const AccessoriesDetails = () => {
     <div className="min-h-screen bg-white text-black">
       <Header />
       <Navbar />
-      
-      {/* Mobile Layout */}
-      <div className="block md:hidden">
-        {/* Product Image */}
-        <div className="w-full h-64 bg-gray-200 flex items-center justify-center">
-          <span className="text-gray-500">Product Image</span>
+
+      {/* MOBILE LAYOUT (hidden on md+) */}
+      <div className="block md:hidden min-h-screen bg-gradient-to-b from-black to-dealership-primary flex flex-col">
+        {/* Back Button + Header */}
+        <div className="flex items-center justify-between px-4 py-3 mt-20 pt-20">
+          <h1 className="text-white font-semibold text-lg">Car Steering</h1>
+          <div className="w-6" />
         </div>
-        
-        {/* Product Info */}
-        <div className="p-4">
-          <div className="mb-3">
-            <h1 className="text-xl font-bold">Performance Steering Wheel</h1>
-            <p className="text-sm text-gray-600">PKDT Chemnty 630</p>
-          </div>
-          
-          {/* Price */}
-          <div className="mb-4">
-            <span className="text-xl font-bold">$300</span>
-          </div>
-          
-          {/* Add to Cart Button */}
-          <div className="mb-6">
-            <button className="w-full bg-black text-white py-3 px-4 rounded-md font-medium">
-              Add to Cart
+
+        {/* Product Image */}
+        <div className="flex justify-center items-center">
+          <img
+            className="w-60 h-60 object-contain drop-shadow-xl"
+            src="https://images.unsplash.com/photo-1557245526-45dc0f1a8745?q=80&w=870&auto=format&fit=crop"
+            alt="Steering wheel"
+          />
+        </div>
+
+        {/* Product Card */}
+        <div className="bg-black rounded-t-3xl p-6 mt-4 flex-1">
+          {/* Tabs */}
+          <div className="flex justify-between mb-4">
+            <button
+              className={`px-4 py-2 rounded-lg font-medium text-sm ${
+                activeTab === 'description'
+                  ? 'bg-dealership-primary text-white'
+                  : 'bg-gray-800 text-gray-400'
+              }`}
+              onClick={() => setActiveTab('description')}
+            >
+              Description
+            </button>
+            <button
+              className={`px-4 py-2 rounded-lg font-medium text-sm ${
+                activeTab === 'specs'
+                  ? 'bg-dealership-primary text-white'
+                  : 'bg-gray-800 text-gray-400'
+              }`}
+              onClick={() => setActiveTab('specs')}
+            >
+              Specification
             </button>
           </div>
-          
-          {/* Tabs */}
-          <div className="border-b border-gray-200 mb-4">
-            <nav className="flex">
-              <button
-                className={`flex-1 py-3 text-center font-medium text-sm ${
-                  activeTab === 'description'
-                    ? 'border-b-2 border-black text-black'
-                    : 'text-gray-500'
-                }`}
-                onClick={() => setActiveTab('description')}
-              >
-                Description
-              </button>
-              <button
-                className={`flex-1 py-3 text-center font-medium text-sm ${
-                  activeTab === 'specs'
-                    ? 'border-b-2 border-black text-black'
-                    : 'text-gray-500'
-                }`}
-                onClick={() => setActiveTab('specs')}
-              >
-                Specs
-              </button>
-              <button
-                className={`flex-1 py-3 text-center font-medium text-sm ${
-                  activeTab === 'reviews'
-                    ? 'border-b-2 border-black text-black'
-                    : 'text-gray-500'
-                }`}
-                onClick={() => setActiveTab('reviews')}
-              >
-                Reviews
-              </button>
-            </nav>
-          </div>
-          
+
           {/* Tab Content */}
-          <div className="mb-6">
-            {activeTab === 'description' && (
-              <div>
-                <h2 className="font-bold mb-2">Description</h2>
-                <p className="text-sm">
-                  The PKDT Chemnty 630 steering wheel is coupled for car enthusiasts seeking precision control and stylish design. Built with high-strength chromity steel and non-stigging, it ensures both durability and comfort. Used for high-performance vehicles or a sleek interior upgrade, this steering wheel delivers exceptional responsiveness on the road.
-                </p>
-              </div>
-            )}
-            {activeTab === 'specs' && (
-              <div>
-                <h2 className="font-bold mb-2">Specification</h2>
-                <p className="text-sm">Specifications would be listed here.</p>
-              </div>
-            )}
-            {activeTab === 'reviews' && (
-              <div>
-                <h2 className="font-bold mb-2">Reviews</h2>
-                <p className="text-sm">Product reviews would be displayed here.</p>
-              </div>
-            )}
-          </div>
-          
-          {/* Features */}
-          <div className="space-y-6 mb-8">
-            <div className="flex items-start">
-              <div className="bg-gray-100 rounded-full p-2 mr-3">
-                <span className="text-xs">🚚</span>
-              </div>
-              <div>
-                <h3 className="font-medium mb-1">Fast Shipping</h3>
-                <p className="text-xs text-gray-600">
-                  Integer matts ultricies augue, ac bloendum arcu viverra vel.
-                </p>
-              </div>
+          {activeTab === 'description' && (
+            <div className="text-white">
+              <h2 className="font-semibold mb-2 text-lg">
+                Performance Steering Wheel
+              </h2>
+              <p className="text-gray-300 text-sm leading-relaxed">
+                The PILOT Chromoly 520 steering wheel is crafted for car enthusiasts
+                seeking precision control and stylish design. Built with high-strength
+                chromoly steel and a non-slip grip, it ensures both durability and
+                comfort. Ideal for high-performance vehicles or a sleek interior
+                upgrade, this steering wheel delivers exceptional responsiveness on
+                the road.
+              </p>
             </div>
-            
-            <div className="flex items-start">
-              <div className="bg-gray-100 rounded-full p-2 mr-3">
-                <span className="text-xs">↩️</span>
-              </div>
-              <div>
-                <h3 className="font-medium mb-1">Easy Return</h3>
-                <p className="text-xs text-gray-600">
-                  Integer matts ultricies augue, ac bloendum arcu viverra vel.
-                </p>
-              </div>
+          )}
+
+          {activeTab === 'specs' && (
+            <div className="text-white">
+              <h2 className="font-semibold mb-2 text-lg">Specifications</h2>
+              <p className="text-gray-300 text-sm">
+                Specifications would be listed here.
+              </p>
             </div>
-            
-            <div className="flex items-start">
-              <div className="bg-gray-100 rounded-full p-2 mr-3">
-                <span className="text-xs">🔧</span>
-              </div>
-              <div>
-                <h3 className="font-medium mb-1">Warranty Policy</h3>
-                <p className="text-xs text-gray-600">
-                  Integer matts ultricies augue, ac bloendum arcu viverra vel.
-                </p>
-              </div>
-            </div>
+          )}
+
+          {/* Price + Add to Cart */}
+          <div className="flex items-center justify-between mt-6">
+            <span className="text-2xl font-bold text-white">$300</span>
+            <button className="bg-dealership-primary text-white px-6 py-3 rounded-2xl font-semibold shadow-lg">
+              Add to Cart
+            </button>
           </div>
         </div>
       </div>
@@ -194,10 +146,10 @@ const AccessoriesDetails = () => {
             {/* Product Image Section */}
             <div className="lg:w-1/2">
               <div className="bg-gray-100 h-96 flex items-center justify-center rounded-lg">
-                <span className="text-gray-500">Product Image</span>
+                <img src="https://images.unsplash.com/photo-1557245526-45dc0f1a8745?q=80&w=870&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" alt="" />
               </div>
             </div>
-            
+
             {/* Product Details Section */}
             <div className="lg:w-1/2">
               <div className="mb-6">
@@ -208,7 +160,7 @@ const AccessoriesDetails = () => {
                   <span className="text-gray-500 text-sm ml-3">SKU: UBWDEKISSI</span>
                 </div>
               </div>
-              
+
               <div className="mb-6">
                 <div className="flex items-center">
                   <span className="text-2xl font-bold">$33.43</span>
@@ -216,24 +168,24 @@ const AccessoriesDetails = () => {
                 </div>
                 <p className="text-sm text-gray-600 mt-1">This product has been added to 25 people's carts.</p>
               </div>
-              
+
               <div className="mb-6">
                 <p className="text-sm">
                   High-quality additives protect against leaks and won't harm gaskets, hoses, plastics or original vehicle finish
                 </p>
               </div>
-    
-              
+
+
               <div className="flex items-center mb-6">
                 <div className="flex items-center border border-gray-300 rounded-md mr-4">
-                  <button 
+                  <button
                     className="px-3 py-2 text-lg"
                     onClick={() => setQuantity(prev => Math.max(1, prev - 1))}
                   >
                     -
                   </button>
                   <span className="px-3 py-2">{quantity}</span>
-                  <button 
+                  <button
                     className="px-3 py-2 text-lg"
                     onClick={() => setQuantity(prev => prev + 1)}
                   >
@@ -243,11 +195,8 @@ const AccessoriesDetails = () => {
                 <button className="bg-black text-white py-2 px-6 rounded-md font-medium mr-3">
                   Add to cart
                 </button>
-                <button className="border border-gray-300 py-2 px-4 rounded-md">
-                  Wishlist
-                </button>
               </div>
-              
+
               <div className="border-t border-gray-200 pt-6 mb-6">
                 <div className="flex items-center text-sm">
                   <div className="mr-6">
@@ -264,20 +213,9 @@ const AccessoriesDetails = () => {
                   </p>
                 </div>
               </div>
-              
-              <div className="flex items-center text-gray-500 mb-6">
-                <span className="mr-4">Share:</span>
-                <div className="flex space-x-2">
-                  {[1, 2, 3, 4].map((item) => (
-                    <div key={item} className="w-8 h-8 border border-gray-300 rounded-full flex items-center justify-center">
-                      <span className="text-xs">Icon</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
             </div>
           </div>
-          
+
           {/* Product Tabs Section */}
           <div className="mt-12">
             <div className="border-b border-gray-200">
@@ -285,11 +223,10 @@ const AccessoriesDetails = () => {
                 {['description', 'specs', 'reviews'].map((tab) => (
                   <button
                     key={tab}
-                    className={`py-4 px-1 font-medium text-sm border-b-2 ${
-                      activeTab === tab
+                    className={`py-4 px-1 font-medium text-sm border-b-2 ${activeTab === tab
                         ? 'border-black text-black'
                         : 'border-transparent text-gray-500 hover:text-gray-700'
-                    }`}
+                      }`}
                     onClick={() => setActiveTab(tab)}
                   >
                     {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -297,7 +234,7 @@ const AccessoriesDetails = () => {
                 ))}
               </nav>
             </div>
-            
+
             <div className="py-6">
               {activeTab === 'description' && (
                 <div className="prose max-w-none">
@@ -309,7 +246,7 @@ const AccessoriesDetails = () => {
               )}
             </div>
           </div>
-          
+
           {/* Features Section */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-12">
             <div className="text-center">
@@ -323,7 +260,7 @@ const AccessoriesDetails = () => {
                 Integer matts ultricies augue, ac bloendum arcu viverra vel. Etiam eu facilisi svelt. Mauris auctor efficitur turpis feugiat boreet.
               </p>
             </div>
-            
+
             <div className="text-center">
               <div className="mb-4">
                 <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto">
@@ -335,7 +272,7 @@ const AccessoriesDetails = () => {
                 Integer matts ultricies augue, ac bloendum arcu viverra vel. Etiam eu facilisi svelt. Mauris auctor efficitur turpis feugiat boreet.
               </p>
             </div>
-            
+
             <div className="text-center">
               <div className="mb-4">
                 <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto">
@@ -358,7 +295,7 @@ const AccessoriesDetails = () => {
           {relatedProducts.map((product) => (
             <div key={product.id} className="border border-gray-200 rounded-lg p-4">
               <div className="bg-gray-100 h-40 mb-3 flex items-center justify-center rounded">
-                <span className="text-gray-500 text-sm">Product Image</span>
+                <img src="https://plus.unsplash.com/premium_photo-1672723447001-52a2e9f7f58d?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8OXx8Y2FyJTIwdGlyZXN8ZW58MHx8MHx8fDA%3D" alt="" />
               </div>
               <div className="mb-2">
                 <span className="bg-red-100 text-red-800 text-xs px-2 py-1 rounded">
@@ -371,11 +308,10 @@ const AccessoriesDetails = () => {
                   {[1, 2, 3, 4, 5].map((star) => (
                     <svg
                       key={star}
-                      className={`w-4 h-4 ${
-                        star <= Math.floor(product.rating)
+                      className={`w-4 h-4 ${star <= Math.floor(product.rating)
                           ? 'text-yellow-400'
                           : 'text-gray-300'
-                      }`}
+                        }`}
                       fill="currentColor"
                       viewBox="0 0 20 20"
                     >
@@ -400,8 +336,8 @@ const AccessoriesDetails = () => {
           ))}
         </div>
       </div>
-      
-      <Footer />
+
+      {/* <Footer /> */}
     </div>
   );
 };
