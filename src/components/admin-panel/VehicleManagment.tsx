@@ -630,7 +630,7 @@ function AddVehicleModal({ open, onOpenChange, onSaved, lookups }: {
                 <SelectTrigger>
                   <SelectValue placeholder="Select Make" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-white">
                   {lookups.makes.map((m: Option) => (
                     <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
                   ))}
@@ -647,16 +647,22 @@ function AddVehicleModal({ open, onOpenChange, onSaved, lookups }: {
             </div>
             <div className="space-y-2">
               <Label htmlFor="body_type_id">Type</Label>
-              <Select value={form.body_type_id} onValueChange={(v) => updateField("body_type_id", v)}>
+              <Select
+                value={form.body_type_id}
+                onValueChange={(v) => updateField("body_type_id", v)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select Type" />
                 </SelectTrigger>
-                <SelectContent className="bg-white">
+                <SelectContent className="bg-white max-h-48 overflow-y-auto">
                   {lookups.bodytypes.map((b: Option) => (
-                    <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                    <SelectItem key={b.id} value={b.id}>
+                      {b.name}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+
             </div>
             <div className="space-y-2">
               <Label htmlFor="engine_type">Engine Type</Label>
@@ -1029,7 +1035,7 @@ function EditVehicleModal({
               <SelectTrigger>
                 <SelectValue placeholder="Select Make" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white">
                 {lookups.makes.map((m: Option) => (
                   <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
                 ))}
@@ -1054,7 +1060,7 @@ function EditVehicleModal({
               <SelectTrigger>
                 <SelectValue placeholder="Select Fuel Type" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white">
                 {lookups.fueltypes.map((f: Option) => (
                   <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>
                 ))}
@@ -1069,7 +1075,7 @@ function EditVehicleModal({
               <SelectTrigger>
                 <SelectValue placeholder="Select Transmission" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white">
                 {lookups.transmissions.map((t: Option) => (
                   <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
                 ))}
@@ -1091,16 +1097,22 @@ function EditVehicleModal({
           {/* Body Type */}
           <div className="space-y-2">
             <Label htmlFor="edit-body-type">Body Type</Label>
-            <Select value={form.body_type_id} onValueChange={(v) => updateField("body_type_id", v)}>
+            <Select
+              value={form.body_type_id}
+              onValueChange={(v) => updateField("body_type_id", v)}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select Body Type" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white max-h-48 overflow-y-auto">
                 {lookups.bodytypes.map((b: Option) => (
-                  <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                  <SelectItem key={b.id} value={b.id}>
+                    {b.name}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+
           </div>
 
           {/* Badge */}
@@ -1110,7 +1122,7 @@ function EditVehicleModal({
               <SelectTrigger>
                 <SelectValue placeholder="Select Badge" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white">
                 {lookups.badges.map((b: Option) => (
                   <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
                 ))}

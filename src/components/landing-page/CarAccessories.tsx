@@ -392,7 +392,7 @@ const CarAccessories = () => {
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {paginatedAccessories.map((accessory) => (
-                                    <Link to={`/accessories/accessorydetails`}>
+                                    <Link to={`/accessorydetails`}>
                                         <div
                                             key={accessory.id}
                                             className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 transition-all duration-300 hover:shadow-md cursor-pointer"

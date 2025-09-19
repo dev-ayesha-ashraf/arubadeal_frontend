@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Search } from "lucide-react";
-import { trackCustomEvent } from "@/lib/init-pixel"; 
+import { trackCustomEvent } from "@/lib/init-pixel";
 
 interface DropdownItem {
   _id?: string;
@@ -125,11 +125,10 @@ export const CarFilter = () => {
         <div className="flex flex-wrap gap-4 mb-4 md:mb-0">
           <button
             onClick={() => setSelectedBadge("all")}
-            className={`text-xs px-3 py-2 rounded-full sm:text-sm capitalize ${
-              selectedBadge === "all"
-                ? "bg-dealership-primary text-white"
-                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-            }`}
+            className={`text-xs px-3 py-2 rounded-full sm:text-sm capitalize ${selectedBadge === "all"
+              ? "bg-dealership-primary text-white"
+              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
           >
             all
           </button>
@@ -137,11 +136,10 @@ export const CarFilter = () => {
             <button
               key={badge._id}
               onClick={() => setSelectedBadge(badge._id!)}
-              className={`text-xs px-3 py-2 rounded-full sm:text-sm capitalize ${
-                selectedBadge === badge._id
-                  ? "bg-dealership-primary text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
+              className={`text-xs px-3 py-2 rounded-full sm:text-sm capitalize ${selectedBadge === badge._id
+                ? "bg-dealership-primary text-white"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
             >
               {badge.name}
             </button>
@@ -257,6 +255,17 @@ export const CarFilter = () => {
                     {dropdowns.locations.map((loc) => (
                       <SelectItem key={loc} value={loc}>
                         {loc}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {/* BADGE */}
+                <Select value={filters.badge} onValueChange={v => setFilters({ ...filters, badge: v })}>
+                  <SelectTrigger className="w-full"><SelectValue placeholder="Select Badge" /></SelectTrigger>
+                  <SelectContent className="max-h-60 overflow-y-auto bg-white">
+                    {dropdowns.badges.map(badge => (
+                      <SelectItem key={badge.id} value={badge.id}>
+                        {badge.name}
                       </SelectItem>
                     ))}
                   </SelectContent>

@@ -57,6 +57,7 @@ interface CarListing {
   technicalSpecification?: TechnicalSpecification;
   slug?: string;
   vehicleId?: string;
+  badge?: { id: string; name: string };
 }
 
 interface CarType {
@@ -112,6 +113,8 @@ const fetchCarDetail = async (slug: string): Promise<CarListing> => {
       fuelTypes: res.fuel_type?.name ? [res.fuel_type.name] : [],
     },
     slug: res.slug,
+    badge: res.badge,
+    badges: res.badge ? [res.badge.name] : [],
   };
 
   return mapped;
@@ -173,6 +176,7 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
     bodytypes: [] as any[],
     fueltypes: [] as any[],
     transmissions: [] as any[],
+    badges: [] as any[]
   });
   useEffect(() => {
     if (listing) {
@@ -192,7 +196,8 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
           '/make/get_all',
           '/bodytype/get_all',
           '/fueltype/get_all',
-          '/transmission/get_all'
+          '/transmission/get_all',
+          '/badge/get_all'
         ];
 
         const responses = await Promise.all(
@@ -206,6 +211,7 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
           bodytypes: responses[1] || [],
           fueltypes: responses[2] || [],
           transmissions: responses[3] || [],
+          badges: responses[4] || [],
         });
       } catch (error) {
         console.error("Failed to fetch lookup data:", error);
@@ -532,7 +538,7 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
         transmission_id: findIdByName(lookupData.transmissions, editableListing.technicalSpecification?.transmission),
         engine_type: editableListing.technicalSpecification?.engine || null,
         body_type_id: findIdByName(lookupData.bodytypes, editableListing.technicalSpecification?.type),
-        badge_id: null,
+        badge_id: findIdByName(lookupData.badges, editableListing.badge?.name),
         color: null,
         mileage: mileageValue !== "" ? `${mileageValue} ${mileageUnit}` : null,
         price: Number(editableListing.price || 0),
@@ -898,16 +904,50 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
               </div>
 
               <div className="space-y-6">
+
                 <Card className="p-6">
                   <h2 className="text-xl font-semibold mb-4">Overview</h2>
                   <p className="text-sm text-gray-500 mt-1">
                     Vehicle ID: {display?.vehicleId || "N/A"}
                   </p>
-                  {isAdmin ? (
-                    <textarea rows={5} className="w-full border rounded p-2" value={display?.description ?? ""} onChange={(e) => updateField("description", e.target.value)} />
-                  ) : (
-                    <p className="text-gray-600">{display?.description}</p>
-                  )}
+                  <div className="flex items-center mt-5">
+                    {display?.badge && (
+                      <div>
+                        <span className="inline-block bg-dealership-primary text-white px-3 py-1 rounded-full text-sm font-medium">
+                          {display.badge.name.toUpperCase()}
+                        </span>
+                      </div>
+                    )}
+
+                    {isAdmin ? (
+                      <div className="mt-4">
+                        <label className="block text-sm font-medium mb-1">Badge</label>
+                        <select
+                          value={display?.badge?.id || ""}
+                          onChange={(e) => {
+                            const selectedBadge = lookupData.badges.find(b => b.id === e.target.value);
+                            setEditableListing({
+                              ...editableListing!,
+                              badge: selectedBadge ? { id: selectedBadge.id, name: selectedBadge.name } : undefined
+                            });
+                          }}
+                          className="w-full border rounded p-2"
+                        >
+                          <option value="">Select a badge</option>
+                          {lookupData.badges.map((badge) => (
+                            <option key={badge.id} value={badge.id}>
+                              {badge.name.toUpperCase()}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    ) : (
+                      <span className="inline-block bg-blue-300 text-white px-3 py-1 rounded-full text-sm text-blue-900 font-medium ml-3">
+                        {display?.description}
+                      </span>
+                    )}
+                  </div>
+
                 </Card>
 
                 <Card className="p-6">

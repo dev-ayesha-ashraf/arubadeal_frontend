@@ -31,7 +31,7 @@ interface CarAPI {
   slug: string;
   status?: number;
   listedAt?: string;
-  badges?: string[];
+  badge?: { id: string; name: string };
   vehicle_id?: string;
   location?: string;
 }
@@ -95,7 +95,9 @@ const Listings = () => {
       const location = searchParams.get("location");
       const min_price = searchParams.get("min_price");
       const max_price = searchParams.get("max_price");
+      const badge_id = searchParams.get("badge_id");
 
+      if (badge_id) newFilters.badge = badge_id;
       if (make_id) newFilters.make = make_id;
       if (model) newFilters.model = model;
       if (type) newFilters.type = type;
@@ -113,12 +115,17 @@ const Listings = () => {
     const fetchDropdownsAndCars = async () => {
       setIsLoading(true);
       try {
-        const [makesRes, typesRes] = await Promise.all([
+        const [makesRes, typesRes, badgesRes] = await Promise.all([
           fetch(`${import.meta.env.VITE_API_URL}/make/get_all`),
-          fetch(`${import.meta.env.VITE_API_URL}/bodytype/get_all`)
+          fetch(`${import.meta.env.VITE_API_URL}/bodytype/get_all`),
+          fetch(`${import.meta.env.VITE_API_URL}/badge/get_all`)
         ]);
 
-        const [makes, types] = await Promise.all([makesRes.json(), typesRes.json()]);
+        const [makes, types, badges] = await Promise.all([
+          makesRes.json(),
+          typesRes.json(),
+          badgesRes.json()
+        ]);
 
         const makeSlug = searchParams.get("makeSlug");
         const listingUrlBase = makeSlug
@@ -150,6 +157,7 @@ const Listings = () => {
             image: primaryImage ? `${import.meta.env.VITE_MEDIA_URL}${primaryImage.image_url}` : null,
             listedAt: car.created_at ?? null,
             badges: car.badge ? [car.badge.name] : [],
+            badge: car.badge,
             vehicle_id: car.vehical_id ?? "",
             location: car.location ?? ""
           };
@@ -162,7 +170,7 @@ const Listings = () => {
         setDropdowns({
           makes,
           types,
-          badges: [],
+          badges: badges || [],
           locations: uniqueLocations,
           prices: ["0-3000", "3000-12000", "12000-50000"],
           colors: uniqueColors,
@@ -188,6 +196,7 @@ const Listings = () => {
     if (filters.type) tempCars = tempCars.filter(c => c.body_type?.id === filters.type);
     if (filters.color) tempCars = tempCars.filter(c => c.color === filters.color);
     if (filters.location) tempCars = tempCars.filter(c => c.location === filters.location);
+    if (filters.badge) tempCars = tempCars.filter(c => c.badge?.id === filters.badge);
 
     if (filters.priceRange) {
       const [min, max] = filters.priceRange.split("-").map(Number);
@@ -203,7 +212,7 @@ const Listings = () => {
         c.color?.toLowerCase().includes(searchQuery) ||
         c.location?.toLowerCase().includes(searchQuery) ||
         (c.badges && c.badges.some(b => b.toLowerCase().includes(searchQuery))) ||
-        (c.year && c.year.toString().includes(searchQuery)) 
+        (c.year && c.year.toString().includes(searchQuery))
       );
     }
 
@@ -267,6 +276,7 @@ const Listings = () => {
     if (filters.type) params.set("body_type_id", filters.type);
     if (filters.color) params.set("color", filters.color);
     if (filters.location) params.set("location", filters.location);
+    if (filters.badge) params.set("badge_id", filters.badge);
     if (filters.priceRange) {
       const [min, max] = filters.priceRange.split("-");
       params.set("min_price", min);

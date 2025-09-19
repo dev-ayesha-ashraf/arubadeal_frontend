@@ -14,7 +14,7 @@ interface DropdownsData {
   types: DropdownItem[];
   badges: DropdownItem[];
   locations: string[];
-  prices: string[]; 
+  prices: string[];
   colors: string[];
   models?: string[];
 }
@@ -23,9 +23,9 @@ interface FilterState {
   make?: string;
   model?: string;
   type?: string;
-  priceRange?: string; 
-  minPrice?: string;   
-  maxPrice?: string;   
+  priceRange?: string;
+  minPrice?: string;
+  maxPrice?: string;
   location?: string;
   color?: string;
   badge?: string;
@@ -118,6 +118,18 @@ export const ListingsFilter = ({ dropdowns, filters, setFilters, onApply }: Prop
               {dropdowns.locations.map(loc => <SelectItem key={loc} value={loc}>{loc}</SelectItem>)}
             </SelectContent>
           </Select>
+          {/* badge */}
+          <Select value={filters.badge} onValueChange={v => setFilters({ ...filters, badge: v })}>
+            <SelectTrigger className="w-full"><SelectValue placeholder="Select Badge" /></SelectTrigger>
+            <SelectContent className="max-h-60 overflow-y-auto bg-white">
+              {dropdowns.badges.map(badge => (
+                <SelectItem key={badge.id} value={badge.id}>
+                  {badge.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
 
           {/* Color */}
           <Select value={filters.color} onValueChange={v => setFilters({ ...filters, color: v })}>

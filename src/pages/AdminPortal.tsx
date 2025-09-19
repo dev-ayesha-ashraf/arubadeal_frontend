@@ -170,7 +170,7 @@ const AdminPortal = () => {
 
   // Type the onClick event handler correctly
   const handleProfileClick = (e: MouseEvent<HTMLDivElement>) => {
-    navigate("/admin/profile");
+    navigate("/profile");
   };
 
   // Function to open the main website in a new tab

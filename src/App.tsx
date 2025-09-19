@@ -47,7 +47,7 @@ const AppContent = () => {
       <Route path="/types/:typeSlug" element={<TypeDetail />} />
       <Route path="/profile" element={<Profile />} />
       <Route path="/accessories" element={<CarAccessories />} />
-      <Route path="/accessories/accessorydetails" element={<AccessoriesDetails />} />
+      <Route path="/accessorydetails" element={<AccessoriesDetails />} />
       {/* <Route path="/admin/*" element={<AdminPortal />} /> */}
       {/* Protected /admin */}
       <Route element={<PrivateRoute />}>

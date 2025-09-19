@@ -45,11 +45,6 @@ const Profile = () => {
       .finally(() => setLoadingProfile(false));
   }, []);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files?.[0]) {
       const file = e.target.files[0];
@@ -96,9 +91,32 @@ const Profile = () => {
               <h2 className="text-2xl font-semibold text-gray-800">{formData.name}</h2>
               <p className="text-gray-500 text-sm">{formData.email}</p>
               <div className="flex gap-3 justify-center md:justify-start">
-                <Button variant="outline" className="hover:bg-gray-100" onClick={() => (user?.role === "admin" ? navigate("/admin") : navigate("/"))}>
-                  {user?.role === "admin" ? "Admin Panel" : "Home"}
-                </Button>
+                {user?.role === "admin" ? (
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      className="hover:bg-gray-100"
+                      onClick={() => navigate("/admin")}
+                    >
+                      Admin Panel
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="hover:bg-gray-100"
+                      onClick={() => navigate("/")}
+                    >
+                      Home
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    variant="outline"
+                    className="hover:bg-gray-100"
+                    onClick={() => navigate("/")}
+                  >
+                    Home
+                  </Button>
+                )}
                 <Button variant="destructive" className="flex items-center gap-2" onClick={handleLogout}>
                   <LogOut className="w-4 h-4" /> Logout
                 </Button>
