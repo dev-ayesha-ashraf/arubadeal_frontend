@@ -141,7 +141,7 @@ export const ImageZoom = ({
         )}
 
         <img
-          src={`${import.meta.env.VITE_MEDIA_URL}/${currentImageUrl}`}
+          src={currentImageUrl}
           alt={currentImageAlt}
           className="max-w-full max-h-full object-contain"
           onClick={(e) => e.stopPropagation()}

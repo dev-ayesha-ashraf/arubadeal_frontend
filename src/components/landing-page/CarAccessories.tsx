@@ -381,98 +381,69 @@ const CarAccessories = () => {
                     )}
 
                     {/* Main Product Grid */}
-                    <div className="w-full lg:w-3/4">
-                        {paginatedAccessories.length === 0 ? (
-                            <div className="bg-white rounded-xl shadow-sm p-8 text-center border border-gray-100">
-                                <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                                <p className="text-gray-600">No accessories found. Try adjusting your search or filters.</p>
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {paginatedAccessories.map((accessory) => (
-                                    <Link to={`/accessorydetails`}>
-                                        <div
-                                            key={accessory.id}
-                                            className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 transition-all duration-300 hover:shadow-md cursor-pointer"
-                                        >
-                                            <div className="relative overflow-hidden">
-                                                <img
-                                                    src={accessory.image}
-                                                    alt={accessory.name}
-                                                    className="w-full h-56 object-cover transform transition-transform duration-500 hover:scale-105"
-                                                />
-                                                {accessory.isFeatured && (
-                                                    <span className="absolute top-3 left-3 bg-gradient-to-r from-red-600 to-red-700 text-white text-xs font-bold px-3 py-1 rounded-full">
-                                                        Featured
-                                                    </span>
-                                                )}
-                                                <div className="absolute top-3 right-3 bg-white rounded-full p-1.5 shadow-md">
-                                                    <svg
-                                                        className="w-5 h-5 text-gray-400"
-                                                        fill="none"
-                                                        stroke="currentColor"
-                                                        viewBox="0 0 24 24"
-                                                        xmlns="http://www.w3.org/2000/svg"
-                                                    >
-                                                        <path
-                                                            strokeLinecap="round"
-                                                            strokeLinejoin="round"
-                                                            strokeWidth={2}
-                                                            d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                                                        />
-                                                    </svg>
-                                                </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
+                        {paginatedAccessories.map((accessory) => (
+                            <Link to={`/accessorydetails`} key={accessory.id}>
+                                <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 transition-all duration-300 hover:shadow-md cursor-pointer h-full flex flex-col">
+
+                                    {/* Image */}
+                                    <div className="relative overflow-hidden">
+                                        <img
+                                            src={accessory.image}
+                                            alt={accessory.name}
+                                            className="w-full h-56 object-cover transform transition-transform duration-500 hover:scale-105"
+                                        />
+                                        {accessory.isFeatured && (
+                                            <span className="absolute top-3 left-3 bg-gradient-to-r from-red-600 to-red-700 text-white text-xs font-bold px-3 py-1 rounded-full">
+                                                Featured
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    {/* Content */}
+                                    <div className="p-4 flex flex-col flex-grow">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div>
+                                                <h3 className="font-semibold text-gray-900 text-lg mb-1">{accessory.name}</h3>
+                                                <p className="text-gray-500 text-sm">{accessory.brand}</p>
                                             </div>
-
-                                            <div className="p-4">
-                                                <div className="flex justify-between items-start mb-2">
-                                                    <div>
-                                                        <h3 className="font-semibold text-gray-900 text-lg mb-1">{accessory.name}</h3>
-                                                        <p className="text-gray-500 text-sm">{accessory.brand}</p>
-                                                    </div>
-                                                    <span className="bg-blue-50 text-blue-700 text-xs font-medium px-2 py-1 rounded">
-                                                        {accessory.category.split(" ")[0]}
-                                                    </span>
-                                                </div>
-
-                                                <p className="text-gray-600 text-sm mb-4 line-clamp-2">{accessory.description}</p>
-
-                                                <div className="flex justify-between items-center mb-3">
-                                                    <div className="flex items-center">
-                                                        {renderStars(accessory.rating)}
-                                                        <span className="text-gray-500 text-sm ml-1">({accessory.rating})</span>
-                                                    </div>
-                                                    <span className="text-lg font-bold text-gray-900">
-                                                        AWG {accessory.price.toFixed(2)}
-                                                    </span>
-                                                </div>
-
-                                                <button className="w-full bg-dealership-primary hover:bg-dealership-primary/80 text-white py-2.5 rounded-lg font-medium transition-all duration-300 flex items-center justify-center">
-                                                    <svg
-                                                        className="w-5 h-5 mr-2"
-                                                        fill="none"
-                                                        stroke="currentColor"
-                                                        viewBox="0 0 24 24"
-                                                        xmlns="http://www.w3.org/2000/svg"
-                                                    >
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                                    </svg>
-                                                    Add to Cart
-                                                </button>
-                                            </div>
+                                            <span className="bg-blue-50 text-blue-700 text-xs font-medium px-2 py-1 rounded">
+                                                {accessory.category.split(" ")[0]}
+                                            </span>
                                         </div>
-                                    </Link>
-                                ))}
-                            </div>
-                        )}
 
-                        {/* Pagination */}
-                        <div className="mt-10">
-                            <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
-                        </div>
+                                        <p className="text-gray-600 text-sm mb-4 line-clamp-2">{accessory.description}</p>
+
+                                        <div className="mt-auto">
+                                            <div className="flex justify-between items-center mb-3">
+                                                <div className="flex items-center">
+                                                    {renderStars(accessory.rating)}
+                                                    <span className="text-gray-500 text-sm ml-1">({accessory.rating})</span>
+                                                </div>
+                                                <span className="text-lg font-bold text-gray-900">
+                                                    AWG {accessory.price.toFixed(2)}
+                                                </span>
+                                            </div>
+
+                                            <button className="w-full bg-dealership-primary hover:bg-dealership-primary/80 text-white py-2.5 rounded-lg font-medium transition-all duration-300 flex items-center justify-center">
+                                                <svg
+                                                    className="w-5 h-5 mr-2"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    viewBox="0 0 24 24"
+                                                    xmlns="http://www.w3.org/2000/svg"
+                                                >
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                                </svg>
+                                                Add to Cart
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </Link>
+                        ))}
                     </div>
+
                 </div>
             </div>
 
