@@ -22,14 +22,14 @@ const Index = () => {
 
         <meta property="og:title" content="Cars Arudeal" />
         <meta property="og:description" content="Find and buy your dream car with trusted dealers at Arudeal." />
-        <meta property="og:image" content="https://api.arudeal.com/static/banners/1a6df7db-0f2a-4bcd-a89f-953b4d02004e.jpg" /> 
-        <meta property="og:url" content="https://carsarubadeal.vercel.app/" />
+        <meta property="og:image" content="https://carsarubadeal.vercel.app/cars.png" /> 
+        <meta property="og:url" content="https://cars.arudeal.com/" />
         <meta property="og:type" content="website" />
 
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Cars Arudeal" />
         <meta name="twitter:description" content="Find and buy your dream car with trusted dealers at Arudeal." />
-        <meta name="twitter:image" content="https://api.arudeal.com/static/banners/1a6df7db-0f2a-4bcd-a89f-953b4d02004e.jpg" />
+        <meta name="twitter:image" content="https://carsarubadeal.vercel.app/cars.png" />
       </Helmet>
       <Header />
       <Navbar />
