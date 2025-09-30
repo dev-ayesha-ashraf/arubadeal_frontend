@@ -51,6 +51,8 @@ import {
   useNavigate,
 } from "react-router-dom";
 import VehicleManager from "@/components/admin-panel/VehicleManagment";
+import CarAccessory from "@/components/admin-panel/CarAccessories";
+import CategoryPage from "@/components/admin-panel/CategoryPage";
 
 const Sidebar = ({
   isOpen,
@@ -251,6 +253,8 @@ const AdminPortal = () => {
             <Route path="/car-types" element={<CarTypes />} />
             <Route path="/vehicles" element={<VehicleManagement />} />
             <Route path="/vehicle-properties" element={<VehicleProperties />} />
+            <Route path="/car-accessories" element={<CarAccessory />} />
+            <Route path="/category-management" element={<CategoryPage />} />
             <Route path="/messages" element={<Messages />} />
             <Route path="/subscriptions" element={<SubscriptionsManagement />} />
             <Route path="/listings/:slug" element={<ListingDetail isAdmin />} />

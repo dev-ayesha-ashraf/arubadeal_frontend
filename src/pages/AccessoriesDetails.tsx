@@ -130,7 +130,6 @@ const AccessoriesDetails = () => {
                 ))}
               </div>
 
-              {/* MOBILE IMAGE INDICATOR DOTS - Show only on small screens */}
               <div className="sm:hidden flex justify-center mt-4 space-x-2">
                 {productImages.map((_, idx) => (
                   <button
@@ -144,7 +143,6 @@ const AccessoriesDetails = () => {
             </div>
           </div>
 
-          {/* Product Details Section */}
           <div className="w-full lg:w-1/2">
             <div className="mb-4 md:mb-6">
               <span className="text-xs md:text-sm text-gray-500">Category: Oils and fluids</span>
@@ -209,7 +207,6 @@ const AccessoriesDetails = () => {
           </div>
         </div>
 
-        {/* Product Tabs Section */}
         <div className="mt-8 md:mt-12">
           <div className="border-b border-gray-200">
             <nav className="flex space-x-4 md:space-x-8 overflow-x-auto">
@@ -240,7 +237,6 @@ const AccessoriesDetails = () => {
           </div>
         </div>
 
-        {/* Features Section */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 mt-8 md:mt-12">
           <div className="text-center">
             <div className="mb-3 md:mb-4">

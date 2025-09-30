@@ -72,8 +72,8 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 });
 
 const vehicleService = {
-  list: (page = 1, size = 12, q = "") =>
-    api.get("/car_listing/listing", { params: { page, size, q } }),
+  list: (page = 1, size = 12) =>
+    api.get("/car_listing/listing", { params: { page, size } }),
   get: (slug: string) => api.get(`/car_listing/get_car/${slug}`),
   create: (formData: FormData) =>
     api.post(`/car_listing/create`, formData, {
@@ -91,6 +91,8 @@ const vehicleService = {
   }) => api.put(`/car_listing/status`, null, { params }),
   delete: (id: string) =>
     api.delete(`/car_listing/delete`, { params: { id } }),
+  batchDelete: (ids: string[]) =>
+    api.delete(`/car_listing/batch-delete`, { data: ids }),
 };
 
 const lookups = {
@@ -108,7 +110,8 @@ function formatPrice(num?: number) {
 
 export default function VehicleManager() {
   const navigate = useNavigate();
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [allVehicles, setAllVehicles] = useState<Vehicle[]>([]);
+  const [filteredVehicles, setFilteredVehicles] = useState<Vehicle[]>([]);
   const [page, setPage] = useState(1);
   const [size] = useState(12);
   const [totalPages, setTotalPages] = useState(1);
@@ -123,6 +126,8 @@ export default function VehicleManager() {
   const [showAdd, setShowAdd] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
+  const [selectedVehicles, setSelectedVehicles] = useState<Set<string>>(new Set());
+  const [showBatchDeleteConfirm, setShowBatchDeleteConfirm] = useState(false);
   const [notification, setNotification] = useState<{ message: string; visible: boolean }>({
     message: '',
     visible: false
@@ -134,15 +139,62 @@ export default function VehicleManager() {
 
   useEffect(() => {
     fetchVehicles();
-  }, [page]);
+  }, []);
 
+  // Filter vehicles based on search term
   useEffect(() => {
-    const t = setTimeout(() => {
-      setPage(1);
-      fetchVehicles(1, search);
-    }, 450);
-    return () => clearTimeout(t);
-  }, [search]);
+    if (!search.trim()) {
+      setFilteredVehicles(allVehicles);
+    } else {
+      const searchTerm = search.toLowerCase().trim();
+      const filtered = allVehicles.filter(vehicle => 
+        searchVehicle(vehicle, searchTerm)
+      );
+      setFilteredVehicles(filtered);
+    }
+    setPage(1); // Reset to first page when search changes
+  }, [search, allVehicles]);
+
+  // Update pagination when filtered vehicles change
+  useEffect(() => {
+    const startIndex = (page - 1) * size;
+    const endIndex = startIndex + size;
+    const paginatedVehicles = filteredVehicles.slice(startIndex, endIndex);
+    
+    setVehicles(paginatedVehicles);
+    setTotalPages(Math.ceil(filteredVehicles.length / size));
+    setTotalItems(filteredVehicles.length);
+  }, [filteredVehicles, page, size]);
+
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+
+  // Search function that checks all vehicle fields
+  const searchVehicle = (vehicle: Vehicle, searchTerm: string): boolean => {
+    const fieldsToSearch = [
+      vehicle.title,
+      vehicle.make?.name,
+      vehicle.model,
+      vehicle.year?.toString(),
+      vehicle.body_type?.name,
+      vehicle.price?.toString(),
+      vehicle.vehical_id,
+      vehicle.mileage,
+      vehicle.color,
+      vehicle.seats?.toString(),
+      vehicle.engine_type,
+      vehicle.transmission?.name,
+      vehicle.fuel_type?.name,
+      vehicle.badge?.name,
+      vehicle.location,
+      vehicle.condition,
+      ...(vehicle.features?.map(f => f.name) || []),
+      ...(vehicle.features?.map(f => f.reason).filter(Boolean) || [])
+    ];
+
+    return fieldsToSearch.some(field => 
+      field && field.toLowerCase().includes(searchTerm)
+    );
+  };
 
   async function fetchLookups() {
     try {
@@ -163,15 +215,14 @@ export default function VehicleManager() {
     }
   }
 
-  async function fetchVehicles(p = page, q = "") {
+  async function fetchVehicles() {
     setLoading(true);
     try {
-      const res = await vehicleService.list(p, size, q);
+      const res = await vehicleService.list(1, 1000); // Get all vehicles for frontend search
       const d = res.data;
-      setVehicles(d.items || []);
-      setTotalPages(d.total_pages || 1);
-      setTotalItems(d.total_items || 0);
-      setPage(d.page || p);
+      const allVehiclesData = d.items || [];
+      setAllVehicles(allVehiclesData);
+      setFilteredVehicles(allVehiclesData);
     } catch (err: any) {
       console.error("Fetch vehicles failed:", err?.response?.data || err);
     } finally {
@@ -187,7 +238,8 @@ export default function VehicleManager() {
     if (!confirm("Are you sure you want to delete this vehicle?")) return;
     try {
       await vehicleService.delete(id);
-      fetchVehicles(page, search);
+      // Refresh the vehicle list
+      fetchVehicles();
       setNotification({
         message: "Vehicle deleted successfully",
         visible: true
@@ -218,20 +270,81 @@ export default function VehicleManager() {
     if (!confirm("Mark this vehicle as sold?")) return;
     try {
       await vehicleService.setStatus({ id, is_sold: true });
-      fetchVehicles(page, search);
+      fetchVehicles();
     } catch (err: any) {
       console.error("Mark as sold failed:", err?.response?.data || err);
       alert("Failed to update status");
     }
   };
+
   const handleMarkAsUnsold = async (id: string) => {
     if (!confirm("Mark this vehicle as unsold?")) return;
     try {
       await vehicleService.setStatus({ id, is_sold: false });
-      fetchVehicles(page, search);
+      fetchVehicles();
     } catch (err: any) {
       console.error("Mark as unsold failed:", err?.response?.data || err);
       alert("Failed to update status");
+    }
+  };
+
+  const toggleVehicleSelection = (id: string) => {
+    setSelectedVehicles(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedVehicles.size === vehicles.length) {
+      setSelectedVehicles(new Set());
+    } else {
+      const allIds = new Set(vehicles.map(v => v.id));
+      setSelectedVehicles(allIds);
+    }
+  };
+
+  const handleBatchDelete = async () => {
+    if (selectedVehicles.size === 0) return;
+
+    try {
+      const ids = Array.from(selectedVehicles);
+      await vehicleService.batchDelete(ids);
+      fetchVehicles();
+      setSelectedVehicles(new Set());
+
+      setNotification({
+        message: `${ids.length} vehicle(s) deleted successfully`,
+        visible: true
+      });
+
+      setTimeout(() => {
+        setNotification({
+          message: '',
+          visible: false
+        });
+      }, 5000);
+
+    } catch (err: any) {
+      console.error("Batch delete failed:", err?.response?.data || err);
+      setNotification({
+        message: "Failed to delete vehicles",
+        visible: true
+      });
+
+      setTimeout(() => {
+        setNotification({
+          message: '',
+          visible: false
+        });
+      }, 5000);
+    } finally {
+      setShowBatchDeleteConfirm(false);
     }
   };
 
@@ -239,7 +352,7 @@ export default function VehicleManager() {
     setShowAdd(false);
     setShowEdit(false);
     setEditingVehicle(null);
-    fetchVehicles(1, "");
+    fetchVehicles();
     setSearch("");
   };
 
@@ -248,6 +361,16 @@ export default function VehicleManager() {
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-semibold">Vehicle List</h2>
         <div className="flex gap-2">
+          {selectedVehicles.size > 0 && (
+            <Button
+              onClick={() => setShowBatchDeleteConfirm(true)}
+              variant="destructive"
+              className="bg-red-600 hover:bg-red-700"
+            >
+              <RiDeleteBinLine className="mr-1" />
+              Delete Selected ({selectedVehicles.size})
+            </Button>
+          )}
           <Button
             onClick={() => setShowAdd(true)}
             className="bg-[rgb(206,131,57)] hover:bg-[rgb(206,131,57)]/90"
@@ -261,8 +384,30 @@ export default function VehicleManager() {
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search vehicles..."
+          placeholder="Search vehicles by title, make, model, year, price, features, etc..."
         />
+        {search && (
+          <div className="mt-2 text-sm text-gray-600">
+            Found {filteredVehicles.length} vehicle(s) matching "{search}"
+          </div>
+        )}
+        {selectedVehicles.size > 0 && (
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md inline-block mt-5">
+            <div className="flex items-center justify-between">
+              <span className="text-blue-800 font-medium">
+                {selectedVehicles.size} vehicle(s) selected
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedVehicles(new Set())}
+                className="text-blue-600 hover:text-blue-800"
+              >
+                Clear selection
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
       {notification.visible && (
         <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded-md shadow-lg z-50">
@@ -273,6 +418,14 @@ export default function VehicleManager() {
         <table className="min-w-max divide-y divide-gray-200">
           <thead className="bg-gray-100">
             <tr>
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase tracking-wider whitespace-nowrap">
+                <input
+                  type="checkbox"
+                  checked={vehicles.length > 0 && selectedVehicles.size === vehicles.length}
+                  onChange={toggleSelectAll}
+                  className="h-4 w-4 rounded border-gray-300 text-[rgb(206,131,57)] focus:ring-[rgb(206,131,57)]"
+                />
+              </th>
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase tracking-wider whitespace-nowrap">Serial #</th>
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase tracking-wider whitespace-nowrap">Title</th>
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase tracking-wider whitespace-nowrap">Make</th>
@@ -284,22 +437,31 @@ export default function VehicleManager() {
               <th className="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase tracking-wider whitespace-nowrap">Actions</th>
             </tr>
           </thead>
+
           <tbody className="bg-white divide-y divide-gray-200">
             {loading ? (
               <tr>
-                <td colSpan={9} className="p-8 text-center text-gray-500 whitespace-nowrap">
+                <td colSpan={10} className="p-8 text-center text-gray-500 whitespace-nowrap">
                   Loading...
                 </td>
               </tr>
             ) : vehicles.length === 0 ? (
               <tr>
-                <td colSpan={9} className="p-8 text-center text-gray-500 whitespace-nowrap">
-                  No vehicles
+                <td colSpan={10} className="p-8 text-center text-gray-500 whitespace-nowrap">
+                  {search ? "No vehicles match your search" : "No vehicles"}
                 </td>
               </tr>
             ) : (
               vehicles.map((v) => (
                 <tr key={v.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 text-sm font-medium whitespace-nowrap">
+                    <input
+                      type="checkbox"
+                      checked={selectedVehicles.has(v.id)}
+                      onChange={() => toggleVehicleSelection(v.id)}
+                      className="h-4 w-4 rounded border-gray-300 text-[rgb(206,131,57)] focus:ring-[rgb(206,131,57)]"
+                    />
+                  </td>
                   <td className="px-4 py-3 text-sm font-medium whitespace-nowrap">{v.vehical_id || "-"}</td>
                   <td className="px-4 py-3 text-sm flex items-center gap-3 whitespace-nowrap">
                     <div className="w-16 h-12 bg-gray-100 rounded overflow-hidden flex-shrink-0">
@@ -396,7 +558,10 @@ export default function VehicleManager() {
         <Pagination
           currentPage={page}
           totalPages={totalPages}
-          onPageChange={(p) => setPage(p)}
+          onPageChange={(p) => {
+            setPage(p);
+            setSelectedVehicles(new Set());
+          }}
         />
       </div>
 
@@ -414,6 +579,29 @@ export default function VehicleManager() {
         onSaved={onSaveSuccess}
         lookups={{ makes, bodytypes, fueltypes, transmissions, badges }}
       />
+      <Dialog open={showBatchDeleteConfirm} onOpenChange={setShowBatchDeleteConfirm}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-red-600">Confirm Batch Delete</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete {selectedVehicles.size} selected vehicle(s)?
+              This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowBatchDeleteConfirm(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleBatchDelete}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete {selectedVehicles.size} Vehicle(s)
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -446,7 +634,7 @@ function AddVehicleModal({ open, onOpenChange, onSaved, lookups }: {
   });
   const [features, setFeatures] = useState<{ name: string, reason?: string }[]>([]);
   const [newFeature, setNewFeature] = useState("");
-  const [newFeatureReason, setNewFeatureReason] = useState(""); // Add reason field
+  const [newFeatureReason, setNewFeatureReason] = useState("");
   const [images, setImages] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -465,7 +653,6 @@ function AddVehicleModal({ open, onOpenChange, onSaved, lookups }: {
     const files = Array.from(e.target.files);
     setImages((prev) => [...prev, ...files]);
 
-    // Create previews for the new files
     const newPreviews = files.map(file => URL.createObjectURL(file));
     setImagePreviews((prev) => [...prev, ...newPreviews]);
   }
@@ -506,13 +693,11 @@ function AddVehicleModal({ open, onOpenChange, onSaved, lookups }: {
       const fd = new FormData();
       images.forEach((f) => fd.append("images", f));
 
-      // Append all form fields
       Object.entries(form).forEach(([k, v]) => {
         if (v == null || v === "") return;
         fd.append(k, String(v));
       });
 
-      // ✅ Append features as JSON string
       const featuresJSON = JSON.stringify(features);
       fd.append("features", featuresJSON);
 
@@ -553,7 +738,6 @@ function AddVehicleModal({ open, onOpenChange, onSaved, lookups }: {
     }
   }
 
-  // Clean up object URLs when component unmounts
   useEffect(() => {
     return () => {
       imagePreviews.forEach(preview => URL.revokeObjectURL(preview));
@@ -725,7 +909,6 @@ function AddVehicleModal({ open, onOpenChange, onSaved, lookups }: {
             <div className="col-span-2 space-y-2">
               <Label htmlFor="features">Features</Label>
 
-              {/* Add new feature form */}
               <div className="grid grid-cols-2 gap-2 mb-4">
                 <div>
                   <Input
@@ -752,7 +935,6 @@ function AddVehicleModal({ open, onOpenChange, onSaved, lookups }: {
                 </div>
               </div>
 
-              {/* Features list */}
               <div className="space-y-2">
                 {features.map((feature, index) => (
                   <div key={index} className="flex gap-2 items-center p-2 bg-gray-50 rounded">
@@ -942,7 +1124,6 @@ function EditVehicleModal({
 
     setSaving(true);
     try {
-      // Prepare the payload according to backend requirements
       const payload = {
         make_id: form.make_id || null,
         model: form.model || null,
@@ -961,14 +1142,12 @@ function EditVehicleModal({
         features: features.length > 0 ? features : null,
       };
 
-      // Clean the payload - remove null/undefined values
       const cleanPayload = Object.fromEntries(
         Object.entries(payload).filter(([_, v]) => v !== null && v !== undefined && v !== "")
       );
 
       await vehicleService.update(vehicle.id, cleanPayload);
 
-      // Handle image uploads separately if needed
       if (uploadFiles.length > 0) {
         const fd = new FormData();
         uploadFiles.forEach((f) => fd.append("images", f));

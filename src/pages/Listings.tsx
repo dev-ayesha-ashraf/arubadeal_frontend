@@ -240,7 +240,7 @@ const Listings = () => {
   useEffect(() => {
     const params = new URLSearchParams(searchParams);
     params.set("page", String(currentPage));
-    setSearchParams(params, { replace: true }); // avoid adding history entries for every page change
+    setSearchParams(params, { replace: true }); 
   }, [currentPage]);
 
   useEffect(() => {
@@ -262,7 +262,6 @@ const Listings = () => {
   const handleSortChange = (value: string) => {
     setSortBy(value);
 
-    // Preserve all other params (filters/search) but update sort
     const params = new URLSearchParams(searchParams);
     params.set("sort", value);
     setSearchParams(params);

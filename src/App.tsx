@@ -17,8 +17,9 @@ import { HelmetProvider } from "react-helmet-async";
 import { initGA } from "@/lib/analytics";
 import { loadCarsPixel } from "./lib/init-pixel";
 import Profile from "./components/common/Profile";
-import CarAccessories from "./components/landing-page/CarAccessories";
-import AccessoriesDetails from "./pages/AccessoriesDetails";
+import { WhatsAppButton } from "./components/landing-page/WhatsAppButton";
+// import CarAccessories from "./components/landing-page/CarAccessories";
+// import AccessoriesDetails from "./pages/AccessoriesDetails";
 
 const queryClient = new QueryClient();
 initGA();
@@ -37,25 +38,29 @@ const AppContent = () => {
       window.fbq("track", "PageView");
     }
   }, [location.pathname]);
-  return (
-    <Routes>
-      {/* Public routes */}
-      <Route path="/" element={<Index />} />
-      <Route path="/listings" element={<Listings />} />
-      <Route path="/listings/:slug" element={<ListingDetail />} />
-      <Route path="/dealers" element={<Dealers />} />
-      <Route path="/types/:typeSlug" element={<TypeDetail />} />
-      <Route path="/profile" element={<Profile />} />
-      <Route path="/accessories" element={<CarAccessories />} />
-      <Route path="/accessorydetails" element={<AccessoriesDetails />} />
-      {/* <Route path="/admin/*" element={<AdminPortal />} /> */}
-      {/* Protected /admin */}
-      <Route element={<PrivateRoute />}>
-        <Route path="/admin/*" element={<AdminPortal />} />
-      </Route>
+  const isAdminRoute = location.pathname.startsWith("/admin");
 
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+  return (
+    <>
+      <Routes>
+        {/* Public routes */}
+        <Route path="/" element={<Index />} />
+        <Route path="/listings" element={<Listings />} />
+        <Route path="/listings/:slug" element={<ListingDetail />} />
+        <Route path="/dealers" element={<Dealers />} />
+        <Route path="/types/:typeSlug" element={<TypeDetail />} />
+        <Route path="/profile" element={<Profile />} />
+
+        {/* Protected admin routes */}
+        <Route element={<PrivateRoute />}>
+          <Route path="/admin/*" element={<AdminPortal />} />
+        </Route>
+
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+
+      {!isAdminRoute && <WhatsAppButton />}
+    </>
   );
 };
 

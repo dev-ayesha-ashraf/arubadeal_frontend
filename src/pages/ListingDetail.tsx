@@ -4,7 +4,7 @@ import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { MapPin, Mail, Phone, ChevronLeft, ChevronRight, Trash2, Upload, Move, Check, Star } from "lucide-react";
+import { MapPin, Mail, Phone, ChevronLeft, ChevronRight, Trash2, Upload, Move, Check, Star, X } from "lucide-react";
 import { Header } from "@/components/common/Header";
 import { Navbar } from "@/components/common/Navbar";
 import { Footer } from "@/components/common/Footer";
@@ -40,6 +40,7 @@ interface TechnicalSpecification {
   engine?: string;
   transmission?: string;
   fuelTypes?: string[];
+  seats?: number;
 }
 
 interface CarListing {
@@ -58,6 +59,7 @@ interface CarListing {
   slug?: string;
   vehicleId?: string;
   badge?: { id: string; name: string };
+  seats?: number;
 }
 
 interface CarType {
@@ -86,6 +88,7 @@ const fetchCarDetail = async (slug: string): Promise<CarListing> => {
     price: res.price,
     mileage: res.mileage,
     vehicleId: res.vehical_id,
+    seats: res.seats,
     dealer: {
       _id: res.dealer?.id,
       name: [res.dealer?.first_name, res.dealer?.last_name].filter(Boolean).join(" "),
@@ -111,6 +114,7 @@ const fetchCarDetail = async (slug: string): Promise<CarListing> => {
       engine: res.engine_type,
       transmission: res.transmission?.name,
       fuelTypes: res.fuel_type?.name ? [res.fuel_type.name] : [],
+      seats: res.seats,
     },
     slug: res.slug,
     badge: res.badge,
@@ -178,6 +182,7 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
     transmissions: [] as any[],
     badges: [] as any[]
   });
+  
   useEffect(() => {
     if (listing) {
       trackCustomEvent("ListingDetailViewed", {
@@ -189,6 +194,7 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
       });
     }
   }, [listing]);
+  
   useEffect(() => {
     const fetchLookupData = async () => {
       try {
@@ -351,6 +357,10 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
     }
   };
 
+  const handleDeselectAll = () => {
+    setSelectedImages([]);
+  };
+
   const setImageAsPrimary = async (imageId: string) => {
     if (!editableListing || !editableListing.images) return;
     try {
@@ -370,7 +380,6 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
 
       if (!res.ok) throw new Error("Failed to set primary image");
 
-      // update local state after successful API call
       const imageIndex = editableListing.images.findIndex(img => img._id === imageId);
       if (imageIndex === -1) return;
 
@@ -395,7 +404,6 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
       alert("Failed to set primary image");
     }
   };
-
 
   const deleteSelectedImages = async () => {
     if (!editableListing || selectedImages.length === 0) return;
@@ -544,7 +552,7 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
         price: Number(editableListing.price || 0),
         description: editableListing.description?.trim() || null,
         location: editableListing.address?.trim() || null,
-        seats: null,
+        seats: editableListing.seats || editableListing.technicalSpecification?.seats || null,
         condition: "used",
         features: (editableListing.features ?? [])
           .filter(f => f.name?.trim() && f.value?.trim())
@@ -681,13 +689,25 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
                       <input
                         type="checkbox"
                         id="select-all-images"
-                        checked={selectedImages.length === editableListing.images.length}
+                        checked={selectedImages.length === editableListing.images.length && editableListing.images.length > 0}
                         onChange={handleSelectAll}
                         className="h-4 w-4 rounded border-gray-300 text-dealership-primary focus:ring-dealership-primary"
                       />
                       <label htmlFor="select-all-images" className="text-sm text-gray-700">
                         Select all ({selectedImages.length}/{editableListing.images.length})
                       </label>
+                      
+                      {selectedImages.length > 0 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleDeselectAll}
+                          className="flex items-center gap-1 text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <X size={14} />
+                          Deselect All
+                        </Button>
+                      )}
                     </div>
 
                     <div className="flex gap-2">
@@ -855,27 +875,9 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
             <div className="space-y-6">
               <div className="justify-between items-start">
                 <div>
-                  {isAdmin ? (
-                    <div className="w-full">
-                      <label
-                        htmlFor="listing-title"
-                        className="block text-sm font-semibold text-gray-700 mb-2"
-                      >
-                        Title
-                      </label>
-                      <input
-                        id="listing-title"
-                        type="text"
-                        value={display?.title ?? ""}
-                        onChange={(e) => updateField("title", e.target.value)}
-                        placeholder="Enter title"
-                        className="w-full border border-gray-300 focus:border-dealership-navy focus:ring-2 focus:ring-dealership-navy/20 rounded-lg px-4 py-2 text-dealership-navy font-bold text-lg sm:text-2xl transition-colors duration-200"
-                      />
-                    </div>
-
-                  ) : (
+            
                     <h1 className="text-3xl font-bold text-dealership-navy">{display?.title}</h1>
-                  )}
+                 
                   {isAdmin ? (
                     <div className="w-full mt-3">
                       <label
@@ -919,33 +921,10 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
                       </div>
                     )}
 
-                    {isAdmin ? (
-                      <div className="mt-4">
-                        <label className="block text-sm font-medium mb-1">Badge</label>
-                        <select
-                          value={display?.badge?.id || ""}
-                          onChange={(e) => {
-                            const selectedBadge = lookupData.badges.find(b => b.id === e.target.value);
-                            setEditableListing({
-                              ...editableListing!,
-                              badge: selectedBadge ? { id: selectedBadge.id, name: selectedBadge.name } : undefined
-                            });
-                          }}
-                          className="w-full border rounded p-2"
-                        >
-                          <option value="">Select a badge</option>
-                          {lookupData.badges.map((badge) => (
-                            <option key={badge.id} value={badge.id}>
-                              {badge.name.toUpperCase()}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    ) : (
+                   
                       <span className="inline-block bg-blue-300 text-white px-3 py-1 rounded-full text-sm text-blue-900 font-medium ml-3">
                         {display?.description}
                       </span>
-                    )}
                   </div>
 
                 </Card>
@@ -997,7 +976,12 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
                       <p className="font-medium">Mileage</p>
                       {isAdmin ? (
                         <div className="flex gap-2">
-                          <input type="number" className="border rounded p-1 w-full" value={mileageValue} onChange={(e) => setMileageValue(e.target.value === "" ? "" : Number(e.target.value))} />
+                          <input 
+                            type="number" 
+                            className="border rounded p-1 w-32" 
+                            value={mileageValue} 
+                            onChange={(e) => setMileageValue(e.target.value === "" ? "" : Number(e.target.value))} 
+                          />
                           <select className="border rounded p-1" value={mileageUnit} onChange={(e) => setMileageUnit(e.target.value as "miles" | "km")}>
                             <option value="miles">Miles</option>
                             <option value="km">Kilometers</option>
@@ -1009,6 +993,31 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
                             ? `${display.mileage.toLocaleString()} miles`
                             : display?.mileage ?? "N/A"}
                         </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <p className="font-medium">Seats</p>
+                      {isAdmin ? (
+                        <input 
+                          type="number" 
+                          value={display?.seats || display?.technicalSpecification?.seats || ""} 
+                          onChange={(e) => {
+                            const seatsValue = e.target.value === "" ? undefined : Number(e.target.value);
+                            setEditableListing({
+                              ...editableListing!,
+                              seats: seatsValue,
+                              technicalSpecification: {
+                                ...editableListing!.technicalSpecification,
+                                seats: seatsValue
+                              }
+                            });
+                          }}
+                          className="border rounded p-1 w-full"
+                          placeholder="Enter number of seats"
+                        />
+                      ) : (
+                        <p className="text-gray-600">{display?.seats || display?.technicalSpecification?.seats || "N/A"}</p>
                       )}
                     </div>
 
@@ -1034,8 +1043,8 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
                   </div>
                 </Card>
                 {isAdmin && (
-                  <div className="md:col-span-2">
-                    <p className="font-medium mb-2">Features</p>
+                  <Card className="p-6 border-2 border-blue-300 bg-blue-50">
+                    <h2 className="text-xl font-semibold mb-4 text-blue-800">Features</h2>
                     <div className="space-y-2">
                       {(display?.features ?? []).map((f) => (
                         <div key={f._id} className="flex gap-2 items-center">
@@ -1066,7 +1075,7 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
                         + Add Feature
                       </Button>
                     </div>
-                  </div>
+                  </Card>
                 )}
 
                 <Card className="p-6">
