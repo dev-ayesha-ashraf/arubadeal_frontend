@@ -1,35 +1,195 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Header } from '../common/Header';
 import { Navbar } from '../common/Navbar';
 import { Footer } from '../common/Footer';
 import { Pagination } from '../common/Pagination';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
+
+interface Category {
+    id: string;
+    name: string;
+}
+
+interface SubCategory {
+    id: string;
+    name: string;
+}
+
+interface Image {
+    id: string;
+    image_url: string;
+    is_primary: boolean;
+    position: number;
+    is_display: boolean;
+}
 
 interface Accessory {
-    id: number;
+    id: string;
     name: string;
-    category: string;
-    price: number;
-    rating: number;
-    description: string;
-    image: string;
     brand: string;
-    isFeatured?: boolean;
+    stock: number;
+    price: string;
+    description: string;
+    tags: string[];
+    model_compatibility: string[];
+    slug: string;
+    out_of_stock: boolean;
+    category: Category;
+    sub_category: SubCategory;
+    images: Image[];
+}
+
+interface ApiResponse {
+    total_items: number;
+    total_pages: number;
+    page: number;
+    size: number;
+    items: Accessory[];
 }
 
 const ITEMS_PER_PAGE = 9;
+const API_BASE_URL = `${import.meta.env.VITE_API_URL}/car_accessory`;
+const MEDIA_URL = import.meta.env.VITE_MEDIA_URL;
+
+interface FiltersContentProps {
+    selectedCategory: string;
+    setSelectedCategory: (category: string) => void;
+    searchQuery: string;
+    setSearchQuery: (query: string) => void;
+    setCurrentPage: (page: number) => void;
+    isMobile: boolean;
+    setIsFilterOpen?: (isOpen: boolean) => void;
+    categories: Category[];
+}
+const checkPriceRange = (price: string, query: string): boolean => {
+    const priceValue = parseFloat(price);
+    const rangePatterns = [
+        /(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/,
+        /(\d+(?:\.\d+)?)\s+to\s+(\d+(?:\.\d+)?)/, 
+        /(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)/, 
+        /under\s+(\d+(?:\.\d+)?)/, 
+        /over\s+(\d+(?:\.\d+)?)/, 
+        /less than\s+(\d+(?:\.\d+)?)/, 
+        /more than\s+(\d+(?:\.\d+)?)/, 
+        /greater than\s+(\d+(?:\.\d+)?)/, 
+    ];
+
+    for (const pattern of rangePatterns) {
+        const match = query.match(pattern);
+        if (match) {
+            if (pattern.toString().includes('under') || pattern.toString().includes('less than')) {
+                const maxPrice = parseFloat(match[1]);
+                return priceValue <= maxPrice;
+            } else if (pattern.toString().includes('over') || pattern.toString().includes('more than') || pattern.toString().includes('greater than')) {
+                const minPrice = parseFloat(match[1]);
+                return priceValue >= minPrice;
+            } else {
+                const minPrice = parseFloat(match[1]);
+                const maxPrice = parseFloat(match[2]);
+                return priceValue >= minPrice && priceValue <= maxPrice;
+            }
+        }
+    }
+
+    return false;
+};
+
+const FiltersContent = ({
+    selectedCategory,
+    setSelectedCategory,
+    searchQuery,
+    setSearchQuery,
+    setCurrentPage,
+    isMobile,
+    setIsFilterOpen,
+    categories,
+}: FiltersContentProps) => (
+    <div className="h-full overflow-y-auto">
+        <div className="flex items-center justify-between mb-4 border-b border-gray-200 pb-4">
+            <h2 className="text-xl font-bold text-gray-800">Search Filters</h2>
+            {isMobile && setIsFilterOpen && (
+                <button
+                    onClick={() => setIsFilterOpen(false)}
+                    className="p-1 rounded-full hover:bg-gray-100"
+                >
+                    <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            )}
+        </div>
+
+        <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Search Accessories</label>
+            <div className="relative">
+                <svg className="w-5 h-5 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input
+                    type="text"
+                    placeholder="Search by name, brand, price, description..."
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dealership-primary focus:border-blue-500"
+                    value={searchQuery}
+                    onChange={(e) => { 
+                        setSearchQuery(e.target.value); 
+                        setCurrentPage(1); 
+                    }}
+                />
+            </div>
+        </div>
+
+        <div className="mb-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b border-gray-200 pb-2">Categories</h3>
+            <div className="space-y-2">
+                <button
+                    className={`block w-full text-left px-3 py-2 rounded-lg transition-colors ${selectedCategory === 'All'
+                        ? 'bg-dealership-primary/60 text-gray-800 font-medium border border-blue-100'
+                        : 'text-gray-700 hover:bg-gray-50 border border-transparent'
+                        }`}
+                    onClick={() => {
+                        setSelectedCategory('All');
+                        setCurrentPage(1);
+                        if (isMobile && setIsFilterOpen) setIsFilterOpen(false);
+                    }}
+                >
+                    All
+                </button>
+                {categories.map((category) => (
+                    <button
+                        key={category.id}
+                        className={`block w-full text-left px-3 py-2 rounded-lg transition-colors ${selectedCategory === category.id
+                            ? 'bg-dealership-primary/60 text-gray-800 font-medium border border-blue-100'
+                            : 'text-gray-700 hover:bg-gray-50 border border-transparent'
+                            }`}
+                        onClick={() => {
+                            setSelectedCategory(category.id);
+                            setCurrentPage(1);
+                            if (isMobile && setIsFilterOpen) setIsFilterOpen(false);
+                        }}
+                    >
+                        {category.name}
+                    </button>
+                ))}
+            </div>
+        </div>
+    </div>
+);
 
 const CarAccessories = () => {
-    const [selectedCategory, setSelectedCategory] = useState<string>('All');
-    const [searchQuery, setSearchQuery] = useState<string>('');
-    const [currentPage, setCurrentPage] = useState<number>(1);
+    const [searchParams, setSearchParams] = useSearchParams();
+    const [selectedCategory, setSelectedCategory] = useState<string>(searchParams.get('category') || 'All');
+    const [searchQuery, setSearchQuery] = useState<string>(searchParams.get('search') || '');
+    const [currentPage, setCurrentPage] = useState<number>(parseInt(searchParams.get('page') || '1'));
     const [isFilterOpen, setIsFilterOpen] = useState<boolean>(false);
     const [isMobile, setIsMobile] = useState<boolean>(false);
+    const [allAccessories, setAllAccessories] = useState<Accessory[]>([]);
+    const [categories, setCategories] = useState<Category[]>([]);
+    const [loading, setLoading] = useState<boolean>(true);
+    const [error, setError] = useState<string>('');
 
-    // Check screen size on mount and resize
     useEffect(() => {
         const checkScreenSize = () => {
-            setIsMobile(window.innerWidth < 1024); // lg breakpoint
+            setIsMobile(window.innerWidth < 1024); 
         };
 
         checkScreenSize();
@@ -38,229 +198,134 @@ const CarAccessories = () => {
         return () => window.removeEventListener('resize', checkScreenSize);
     }, []);
 
-    const accessories: Accessory[] = [
-        {
-            id: 1,
-            name: "Premium Car Audio System",
-            category: "Audio, video, navigation",
-            price: 299.99,
-            rating: 4.8,
-            description: "High-quality sound system with Bluetooth connectivity",
-            image: "https://plus.unsplash.com/premium_photo-1694206014241-3b20e50b1a4c?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8Y2FyJTIwYXVkaW8lMjBzeXN0ZW18ZW58MHx8MHx8fDA%3D",
-            brand: "Sony",
-            isFeatured: true
-        },
-        {
-            id: 2,
-            name: "Alloy Wheels Set",
-            category: "Tires and rims",
-            price: 899.99,
-            rating: 4.7,
-            description: "18-inch lightweight alloy wheels for improved performance",
-            image: "https://images.unsplash.com/photo-1707926431952-f8b2cd370e9e?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Nnx8YWxsb3klMjB3aGVlbHMlMjBzZXR8ZW58MHx8MHx8fDA%3D",
-            brand: "Enkei"
-        },
-        {
-            id: 3,
-            name: "Performance Exhaust System",
-            category: "Engine and engine equipment",
-            price: 499.99,
-            rating: 4.6,
-            description: "Enhances engine sound and improves performance",
-            image: "https://images.unsplash.com/photo-1725654037117-523ffb2f1f0d?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mjd8fGNhciUyMGV4aGF1c3R8ZW58MHx8MHx8fDA%3D",
-            brand: "Borla"
-        },
-        {
-            id: 4,
-            name: "LED Headlight Kit",
-            category: "Electrical equipment",
-            price: 159.99,
-            rating: 4.5,
-            description: "Bright LED headlights for improved visibility",
-            image: "https://plus.unsplash.com/premium_photo-1693894132528-5336cabf7161?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MjV8fGNhciUyMExFRCUyMGhlYWRsaWdodCUyMGtpdHxlbnwwfHwwfHx8MA%3D%3D",
-            brand: "Philips"
-        },
-        {
-            id: 5,
-            name: "Carbon Fiber Spoiler",
-            category: "Body parts (large-size)",
-            price: 399.99,
-            rating: 4.4,
-            description: "Aerodynamic spoiler for improved stability",
-            image: "https://images.unsplash.com/photo-1710464090591-dcec65dff903?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8Y2FyYm9uJTIwZmliZXIlMjBzcG9pbGVyfGVufDB8fDB8fHww",
-            brand: "Seibon"
-        },
-        {
-            id: 6,
-            name: "Car Cover",
-            category: "Body parts (small-size)",
-            price: 89.99,
-            rating: 4.3,
-            description: "Weather-resistant car cover for outdoor protection",
-            image: "https://images.unsplash.com/photo-1596165494776-c27e37f666fe?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8Y2FyJTIwY292ZXJ8ZW58MHx8MHx8fDA%3D",
-            brand: "Classic Accessories"
-        },
-        {
-            id: 7,
-            name: "Performance Air Filter",
-            category: "Engine and engine equipment",
-            price: 49.99,
-            rating: 4.2,
-            description: "High-flow air filter for improved engine breathing",
-            image: "https://plus.unsplash.com/premium_photo-1682126121962-d2ce1e5d889c?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8Y2FyJTIwYWlyJTIwZmlsdGVyfGVufDB8fDB8fHww",
-            brand: "K&N"
-        },
-        {
-            id: 8,
-            name: "Dash Cam",
-            category: "Audio, video, navigation",
-            price: 129.99,
-            rating: 4.7,
-            description: "1080p HD recording with night vision",
-            image: "https://images.unsplash.com/photo-1624505960581-1303fbcca00d?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8N3x8ZGFzaGNhbXxlbnwwfHwwfHx8MA%3D%3D",
-            brand: "Garmin"
-        },
-        {
-            id: 9,
-            name: "Sport Pedals",
-            category: "Interior compartment",
-            price: 79.99,
-            rating: 4.1,
-            description: "Aluminum sport pedals for better grip and style",
-            image: "https://images.unsplash.com/photo-1623182102094-be4a73832c1d?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8OHx8Y2FycyUyMHBlZGFsc3xlbnwwfHwwfHx8MA%3D%3D",
-            brand: "Megan Racing"
-        },
-        {
-            id: 10,
-            name: "Strut Tower Bar",
-            category: "Suspension and steering",
-            price: 199.99,
-            rating: 4.5,
-            description: "Improves chassis rigidity and handling",
-            image: "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=300",
-            brand: "Cusco"
-        },
-        {
-            id: 11,
-            name: "Shift Knob",
-            category: "Interior compartment",
-            price: 59.99,
-            rating: 4.0,
-            description: "Weighted aluminum shift knob for precise shifting",
-            image: "https://images.unsplash.com/photo-1661501315675-e0edf5678345?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Nnx8Y2FyJTIwc2hpZnQlMjBrbm9ifGVufDB8fDB8fHww",
-            brand: "Billet"
-        },
-        {
-            id: 12,
-            name: "Performance Brake Kit",
-            category: "Suspension and steering",
-            price: 699.99,
-            rating: 4.8,
-            description: "High-performance brake system for improved stopping",
-            image: "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=300",
-            brand: "Brembo"
-        },
-        {
-            id: 13,
-            name: "Window Tint Kit",
-            category: "Body parts (small-size)",
-            price: 69.99,
-            rating: 4.2,
-            description: "Professional-grade window tint for privacy and UV protection",
-            image: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=300",
-            brand: "VViViD"
-        },
-        {
-            id: 15,
-            name: "Floor Mats",
-            category: "Interior compartment",
-            price: 99.99,
-            rating: 4.6,
-            description: "All-weather rubber floor mats for maximum protection",
-            image: "https://images.unsplash.com/photo-1544829099-b9a0c07fad1a?w=300",
-            brand: "WeatherTech"
-        },
-        {
-            id: 16,
-            name: "Performance Chip",
-            category: "Engine control units, modules and relays",
-            price: 199.99,
-            rating: 4.4,
-            description: "Plug-and-play performance chip for increased horsepower",
-            image: "https://images.unsplash.com/photo-1593640408182-31c70c8268f5?w=300",
-            brand: "Jet Performance"
-        },
-        {
-            id: 17,
-            name: "Steering Wheel Cover",
-            category: "Interior compartment",
-            price: 29.99,
-            rating: 4.0,
-            description: "Leather steering wheel cover for improved grip and comfort",
-            image: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=300",
-            brand: "BDK"
-        },
-        {
-            id: 18,
-            name: "Fuel Pump",
-            category: "Fuel system",
-            price: 149.99,
-            rating: 4.5,
-            description: "High-flow fuel pump for performance applications",
-            image: "https://plus.unsplash.com/premium_photo-1693840238993-5536350d6c57?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NXx8Y2FyJTIwYWNjZXNvcnl8ZW58MHx8MHx8fDA%3D",
-            brand: "Walbro"
-        },
-        {
-            id: 19,
-            name: "Radiator",
-            category: "Cooling and climate control",
-            price: 249.99,
-            rating: 4.6,
-            description: "Aluminum radiator for improved cooling efficiency",
-            image: "https://plus.unsplash.com/premium_photo-1694207374055-4593b98cc1df?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTN8fGNhciUyMHJhZGlhdG9yfGVufDB8fDB8fHww",
-            brand: "Koyorad"
-        },
-        {
-            id: 20,
-            name: "Short Throw Shifter",
-            category: "Transmission and gear system",
-            price: 299.99,
-            rating: 4.7,
-            description: "Reduces shift throw by 30% for quicker shifts",
-            image: "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=300",
-            brand: "MGW"
+    useEffect(() => {
+        const fetchCategories = async () => {
+            try {
+                const response = await fetch(`${API_BASE_URL}/category/`);
+                if (!response.ok) throw new Error('Failed to fetch categories');
+                const data = await response.json();
+                setCategories(data);
+            } catch (err) {
+                setError('Failed to load categories');
+                console.error('Error fetching categories:', err);
+            }
+        };
+
+        fetchCategories();
+    }, []);
+
+    useEffect(() => {
+        const fetchAllAccessories = async () => {
+            setLoading(true);
+            try {
+                const response = await fetch(`${API_BASE_URL}/`);
+                if (!response.ok) throw new Error('Failed to fetch accessories');
+                const data: ApiResponse = await response.json();
+                
+                let allItems = data.items;
+                let totalPages = data.total_pages;
+                
+                if (totalPages > 1) {
+                    const promises = [];
+                    for (let page = 2; page <= totalPages; page++) {
+                        promises.push(
+                            fetch(`${API_BASE_URL}/?page=${page}&size=${data.size}`)
+                                .then(res => res.json())
+                                .then(pageData => pageData.items)
+                        );
+                    }
+                    
+                    const additionalItems = await Promise.all(promises);
+                    allItems = allItems.concat(...additionalItems);
+                }
+                
+                setAllAccessories(allItems);
+            } catch (err) {
+                setError('Failed to load accessories');
+                console.error('Error fetching accessories:', err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchAllAccessories();
+    }, []);
+
+    const filteredAccessories = useMemo(() => {
+        if (!allAccessories.length) return [];
+
+        let filtered = allAccessories;
+
+        if (selectedCategory !== 'All') {
+            filtered = filtered.filter(accessory => 
+                accessory.category?.id === selectedCategory
+            );
         }
-    ];
+        if (searchQuery.trim()) {
+            const query = searchQuery.toLowerCase().trim();
+            
+            const isNumericQuery = !isNaN(parseFloat(query)) && isFinite(parseFloat(query));
+            const numericValue = isNumericQuery ? parseFloat(query) : null;
 
-    const categories = [
-        "All",
-        "Audio, video, navigation",
-        "Body parts (large-size)",
-        "Body parts (small-size)",
-        "Cooling and climate control",
-        "Electrical equipment",
-        "Engine and engine equipment",
-        "Engine control units, modules and relays",
-        "Fuel system",
-        "Interior compartment",
-        "Suspension and steering",
-        "Tires and rims",
-        "Transmission and gear system"
-    ];
+            filtered = filtered.filter(accessory => {
+                const textMatch = 
+                    accessory.name.toLowerCase().includes(query) ||
+                    accessory.brand.toLowerCase().includes(query) ||
+                    accessory.description.toLowerCase().includes(query) ||
+                    (accessory.tags && accessory.tags.some(tag => 
+                        tag.toLowerCase().includes(query)
+                    )) ||
+                    (accessory.model_compatibility && accessory.model_compatibility.some(model => 
+                        model.toLowerCase().includes(query)
+                    )) ||
+                    accessory.category?.name.toLowerCase().includes(query) ||
+                    accessory.sub_category?.name.toLowerCase().includes(query);
 
-    // Filtered accessories
-    const filteredAccessories = accessories.filter(accessory => {
-        const matchesCategory = selectedCategory === 'All' || accessory.category === selectedCategory;
-        const matchesSearch = accessory.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            accessory.description.toLowerCase().includes(searchQuery.toLowerCase());
-        return matchesCategory && matchesSearch;
-    });
+                const priceMatch = numericValue !== null && 
+                    parseFloat(accessory.price) === numericValue;
+
+                const partialPriceMatch = numericValue !== null && 
+                    accessory.price.includes(query);
+
+                const rangeMatch = checkPriceRange(accessory.price, query);
+
+                return textMatch || priceMatch || partialPriceMatch || rangeMatch;
+            });
+        }
+
+        return filtered;
+    }, [allAccessories, selectedCategory, searchQuery]);
+
+    const paginatedAccessories = useMemo(() => {
+        const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+        const endIndex = startIndex + ITEMS_PER_PAGE;
+        return filteredAccessories.slice(startIndex, endIndex);
+    }, [filteredAccessories, currentPage]);
 
     const totalPages = Math.ceil(filteredAccessories.length / ITEMS_PER_PAGE);
-    const paginatedAccessories = filteredAccessories.slice(
-        (currentPage - 1) * ITEMS_PER_PAGE,
-        currentPage * ITEMS_PER_PAGE
-    );
+    const totalItems = filteredAccessories.length;
+
+    useEffect(() => {
+        const params = new URLSearchParams();
+        
+        if (selectedCategory !== 'All') {
+            params.set('category', selectedCategory);
+        }
+        
+        if (searchQuery) {
+            params.set('search', searchQuery);
+        }
+        
+        if (currentPage > 1) {
+            params.set('page', currentPage.toString());
+        }
+
+        setSearchParams(params);
+    }, [selectedCategory, searchQuery, currentPage, setSearchParams]);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [selectedCategory, searchQuery]);
 
     const handlePageChange = (page: number) => {
         if (page < 1 || page > totalPages) return;
@@ -268,78 +333,41 @@ const CarAccessories = () => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
-    const renderStars = (rating: number) => {
-        const stars = [];
-        for (let i = 1; i <= 5; i++) {
-            stars.push(
-                <svg
-                    key={i}
-                    className={`w-4 h-4 ${i <= rating ? 'text-amber-400' : 'text-gray-300'}`}
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                >
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                </svg>
-            );
+    const getImageUrl = (imagePath: string): string => {
+        if (!imagePath) {
+            return 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=300'; 
         }
-        return stars;
+        
+        if (imagePath.startsWith('http')) {
+            return imagePath;
+        }
+        
+        return `${MEDIA_URL}${imagePath.startsWith('/') ? '' : '/'}${imagePath}`;
     };
 
-    const FiltersContent = () => (
-        <div className="h-full overflow-y-auto">
-            <div className="flex items-center justify-between mb-4 border-b border-gray-200 pb-4">
-                <h2 className="text-xl font-bold text-gray-800">Search Filters</h2>
-                {isMobile && (
-                    <button
-                        onClick={() => setIsFilterOpen(false)}
-                        className="p-1 rounded-full hover:bg-gray-100"
-                    >
-                        <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
-                )}
-            </div>
+    const getFirstImage = (images: Image[]): string => {
+        if (!images || !Array.isArray(images) || images.length === 0) {
+            return getImageUrl(''); 
+        }
+        
+        const primaryImage = images.find(img => img.is_primary) || images[0];
+        return getImageUrl(primaryImage.image_url);
+    };
 
-            <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Search Accessories</label>
-                <div className="relative">
-                    <svg className="w-5 h-5 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                    <input
-                        type="text"
-                        placeholder="Type to search..."
-                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-dealership-primary focus:border-blue-500"
-                        value={searchQuery}
-                        onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-                    />
+    if (error) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+                <Header />
+                <Navbar />
+                <div className="max-w-7xl mx-auto px-4 py-10 mt-20">
+                    <div className="text-center text-red-500 py-12">
+                        <p className="text-lg">{error}</p>
+                    </div>
                 </div>
+                <Footer />
             </div>
-
-            <div className="mb-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-3 border-b border-gray-200 pb-2">Categories</h3>
-                <div className="space-y-2">
-                    {categories.map((category) => (
-                        <button
-                            key={category}
-                            className={`block w-full text-left px-3 py-2 rounded-lg transition-colors ${selectedCategory === category
-                                ? 'bg-dealership-primary/60 text-gray-800 font-medium border border-blue-100'
-                                : 'text-gray-700 hover:bg-gray-50 border border-transparent'
-                                }`}
-                            onClick={() => {
-                                setSelectedCategory(category);
-                                setCurrentPage(1);
-                                if (isMobile) setIsFilterOpen(false);
-                            }}
-                        >
-                            {category}
-                        </button>
-                    ))}
-                </div>
-            </div>
-        </div>
-    );
+        );
+    }
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
@@ -347,7 +375,6 @@ const CarAccessories = () => {
             <Navbar />
 
             <div className="max-w-7xl mx-auto px-4 py-10">
-                {/* Mobile filter button */}
                 {isMobile && (
                     <div className="mb-4 mt-20 pt-10">
                         <button
@@ -363,87 +390,155 @@ const CarAccessories = () => {
                 )}
 
                 <div className="flex flex-col lg:flex-row gap-8">
-                    {/* Sidebar filters - Desktop */}
                     {!isMobile && (
                         <div className="w-full lg:w-1/4 bg-white rounded-xl shadow-sm p-6 h-fit border border-gray-100">
-                            <FiltersContent />
+                            <FiltersContent
+                                selectedCategory={selectedCategory}
+                                setSelectedCategory={setSelectedCategory}
+                                searchQuery={searchQuery}
+                                setSearchQuery={setSearchQuery}
+                                setCurrentPage={setCurrentPage}
+                                isMobile={isMobile}
+                                categories={categories}
+                            />
                         </div>
                     )}
 
-                    {/* Mobile filter drawer */}
                     {isMobile && (
                         <div className={`fixed inset-0 z-50 transform transition-transform duration-300 ease-in-out ${isFilterOpen ? 'translate-x-0' : 'translate-x-full'}`}>
                             <div className="absolute inset-0 bg-black bg-opacity-50" onClick={() => setIsFilterOpen(false)}></div>
                             <div className="absolute right-0 top-0 h-full w-4/5 max-w-sm bg-white shadow-xl p-6 overflow-y-auto">
-                                <FiltersContent />
+                                <FiltersContent
+                                    selectedCategory={selectedCategory}
+                                    setSelectedCategory={setSelectedCategory}
+                                    searchQuery={searchQuery}
+                                    setSearchQuery={setSearchQuery}
+                                    setCurrentPage={setCurrentPage}
+                                    isMobile={isMobile}
+                                    setIsFilterOpen={setIsFilterOpen}
+                                    categories={categories}
+                                />
                             </div>
                         </div>
                     )}
 
-                    {/* Main Product Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
-                        {paginatedAccessories.map((accessory) => (
-                            <Link to={`/accessorydetails`} key={accessory.id}>
-                                <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 transition-all duration-300 hover:shadow-md cursor-pointer h-full flex flex-col">
-
-                                    {/* Image */}
-                                    <div className="relative overflow-hidden">
-                                        <img
-                                            src={accessory.image}
-                                            alt={accessory.name}
-                                            className="w-full h-56 object-cover transform transition-transform duration-500 hover:scale-105"
-                                        />
-                                        {accessory.isFeatured && (
-                                            <span className="absolute top-3 left-3 bg-gradient-to-r from-red-600 to-red-700 text-white text-xs font-bold px-3 py-1 rounded-full">
-                                                Featured
-                                            </span>
-                                        )}
-                                    </div>
-
-                                    {/* Content */}
-                                    <div className="p-4 flex flex-col flex-grow">
-                                        <div className="flex justify-between items-start mb-2">
-                                            <div>
-                                                <h3 className="font-semibold text-gray-900 text-lg mb-1">{accessory.name}</h3>
-                                                <p className="text-gray-500 text-sm">{accessory.brand}</p>
-                                            </div>
-                                            <span className="bg-blue-50 text-blue-700 text-xs font-medium px-2 py-1 rounded">
-                                                {accessory.category.split(" ")[0]}
-                                            </span>
+                    <div className="flex-1">
+                        <div className="mb-4 text-gray-600">
+                            {loading ? (
+                                'Loading all accessories...'
+                            ) : (
+                                `Showing ${Math.min(paginatedAccessories.length, ITEMS_PER_PAGE)} of ${totalItems} products`
+                            )}
+                        </div>
+                        {loading ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {[...Array(ITEMS_PER_PAGE)].map((_, index) => (
+                                    <div key={index} className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 h-full animate-pulse">
+                                        <div className="w-full h-56 bg-gray-300"></div>
+                                        <div className="p-4">
+                                            <div className="h-4 bg-gray-300 rounded mb-2"></div>
+                                            <div className="h-3 bg-gray-300 rounded w-2/3 mb-4"></div>
+                                            <div className="h-3 bg-gray-300 rounded mb-2"></div>
+                                            <div className="h-3 bg-gray-300 rounded w-4/5"></div>
                                         </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
+                                {paginatedAccessories.length > 0 ? (
+                                    paginatedAccessories.map((accessory) => (
+                                        <Link 
+                                            to={`/accessorydetails/${accessory.slug}`} 
+                                            key={accessory.id}
+                                            state={{ accessory }}
+                                        >
+                                            <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 transition-all duration-300 hover:shadow-md cursor-pointer h-full flex flex-col">
 
-                                        <p className="text-gray-600 text-sm mb-4 line-clamp-2">{accessory.description}</p>
-
-                                        <div className="mt-auto">
-                                            <div className="flex justify-between items-center mb-3">
-                                                <div className="flex items-center">
-                                                    {renderStars(accessory.rating)}
-                                                    <span className="text-gray-500 text-sm ml-1">({accessory.rating})</span>
+                                                <div className="relative overflow-hidden">
+                                                    <img
+                                                        src={getFirstImage(accessory.images)}
+                                                        alt={accessory.name}
+                                                        className="w-full h-56 object-cover transform transition-transform duration-500 hover:scale-105"
+                                                        onError={(e) => {
+                                                            (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=300';
+                                                        }}
+                                                    />
+                                                    {accessory.out_of_stock && (
+                                                        <span className="absolute top-3 left-3 bg-gradient-to-r from-red-600 to-red-700 text-white text-xs font-bold px-3 py-1 rounded-full">
+                                                            Out of Stock
+                                                        </span>
+                                                    )}
                                                 </div>
-                                                <span className="text-lg font-bold text-gray-900">
-                                                    AWG {accessory.price.toFixed(2)}
-                                                </span>
+
+                                                <div className="p-4 flex flex-col flex-grow">
+                                                    <div className="flex justify-between items-start mb-2">
+                                                        <div>
+                                                            <h3 className="font-semibold text-gray-900 text-lg mb-1">{accessory.name}</h3>
+                                                            <p className="text-gray-500 text-sm">{accessory.brand}</p>
+                                                        </div>
+                                                        <span className="bg-blue-50 text-blue-700 text-xs font-medium px-2 py-1 rounded">
+                                                            {accessory.category?.name?.split(" ")[0] || 'Accessory'}
+                                                        </span>
+                                                    </div>
+
+                                                    <p className="text-gray-600 text-sm mb-4 line-clamp-2">{accessory.description}</p>
+
+                                                    <div className="mt-auto">
+                                                        <div className="flex justify-between items-center mb-3">
+                                                          
+                                                            <span className="text-lg font-bold text-gray-900">
+                                                                AWG {accessory.price}
+                                                            </span>
+                                                        </div>
+
+                                                        <button 
+                                                            className={`w-full py-2.5 rounded-lg font-medium transition-all duration-300 flex items-center justify-center ${
+                                                                accessory.out_of_stock
+                                                                    ? 'bg-gray-400 cursor-not-allowed text-gray-200'
+                                                                    : 'bg-dealership-primary hover:bg-dealership-primary/80 text-white'
+                                                            }`}
+                                                            disabled={accessory.out_of_stock}
+                                                        >
+                                                            {accessory.out_of_stock ? (
+                                                                'Out of Stock'
+                                                            ) : (
+                                                                <>
+                                                                    <svg
+                                                                        className="w-5 h-5 mr-2"
+                                                                        fill="none"
+                                                                        stroke="currentColor"
+                                                                        viewBox="0 0 24 24"
+                                                                        xmlns="http://www.w3.org/2000/svg"
+                                                                    >
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                                                    </svg>
+                                                                    Add to Cart
+                                                                </>
+                                                            )}
+                                                        </button>
+                                                    </div>
+                                                </div>
                                             </div>
-
-                                            <button className="w-full bg-dealership-primary hover:bg-dealership-primary/80 text-white py-2.5 rounded-lg font-medium transition-all duration-300 flex items-center justify-center">
-                                                <svg
-                                                    className="w-5 h-5 mr-2"
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    viewBox="0 0 24 24"
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                >
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                                </svg>
-                                                Add to Cart
-                                            </button>
-                                        </div>
+                                        </Link>
+                                    ))
+                                ) : (
+                                    <div className="col-span-full text-center py-12">
+                                        <p className="text-gray-500 text-lg">No products found matching your criteria.</p>
                                     </div>
-                                </div>
-                            </Link>
-                        ))}
+                                )}
+                            </div>
+                        )}
+                        {totalPages > 1 && (
+                            <div className="mt-8">
+                                <Pagination 
+                                    currentPage={currentPage}
+                                    totalPages={totalPages}
+                                    onPageChange={handlePageChange}
+                                />
+                            </div>
+                        )}
                     </div>
-
                 </div>
             </div>
 

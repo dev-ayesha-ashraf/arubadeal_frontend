@@ -18,6 +18,8 @@ import { initGA } from "@/lib/analytics";
 import { loadCarsPixel } from "./lib/init-pixel";
 import Profile from "./components/common/Profile";
 import { WhatsAppButton } from "./components/landing-page/WhatsAppButton";
+import CarAccessories from "./components/landing-page/CarAccessories";
+import AccessoriesDetails from "./pages/AccessoriesDetails";
 // import CarAccessories from "./components/landing-page/CarAccessories";
 // import AccessoriesDetails from "./pages/AccessoriesDetails";
 
@@ -49,6 +51,8 @@ const AppContent = () => {
         <Route path="/listings/:slug" element={<ListingDetail />} />
         <Route path="/dealers" element={<Dealers />} />
         <Route path="/types/:typeSlug" element={<TypeDetail />} />
+        <Route path="/accessories" element={<CarAccessories />} />
+        <Route path="/accessorydetails/:slug" element={<AccessoriesDetails />} />
         <Route path="/profile" element={<Profile />} />
 
         {/* Protected admin routes */}

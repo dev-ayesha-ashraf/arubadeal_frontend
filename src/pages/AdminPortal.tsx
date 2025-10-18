@@ -40,6 +40,7 @@ import {
   PanelLeftClose,
   PanelLeft,
   Mail,
+  Package
 } from "lucide-react";
 import { MouseEvent, useState, useEffect } from "react";
 import {
@@ -73,6 +74,7 @@ const Sidebar = ({
     { path: "/admin", icon: LayoutDashboard, label: "Dashboard" },
     { path: "/admin/vehicles", icon: Car, label: "Vehicle Management" },
     { path: "/admin/vehicle-properties", icon: Tags, label: "Properties" },
+    { path: "/admin/car-accessories", icon: Package, label: "Accessories Management" },
     { path: "/admin/dealers", icon: User, label: "Dealers" },
     { path: "/admin/messages", icon: MessageSquare, label: "Messages" },
     { path: "/admin/banners", icon: ImagePlus, label: "Banners" },

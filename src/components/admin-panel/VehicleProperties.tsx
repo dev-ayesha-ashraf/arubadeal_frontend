@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Car, Tags, Fuel, Zap, Workflow, Briefcase } from "lucide-react";
+import { Car, Tags, Fuel, Zap, Workflow, Briefcase, Wrench } from "lucide-react";
 import { Link } from "react-router-dom";
 
 interface PropertyType {
@@ -33,7 +33,6 @@ const VehicleProperties = () => {
       icon: Fuel,
       path: "/admin/fuel-types",
     },
-  
     {
       id: "transmissions",
       name: "Transmissions",
@@ -47,6 +46,13 @@ const VehicleProperties = () => {
       description: "Manage vehicle badges and special features.",
       icon: Briefcase,
       path: "/admin/bags",
+    },
+    {
+      id: "accessory-categories",
+      name: "Accessory Categories",
+      description: "Manage categories for car accessories like Audio, Lighting, Performance, etc.",
+      icon: Wrench,
+      path: "/admin/category-management",
     },
   ];
 
@@ -78,4 +84,4 @@ const VehicleProperties = () => {
   );
 };
 
-export default VehicleProperties; 
+export default VehicleProperties;

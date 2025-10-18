@@ -23,6 +23,7 @@ interface CarAPI {
   year?: number;
   model: string;
   body_type?: { id: string; name: string; slug?: string };
+  fuel_type?: { id: string; name: string };
   transmission?: { id: string; name: string };
   image: string | null;
   price: number | string;
@@ -34,6 +35,7 @@ interface CarAPI {
   badge?: { id: string; name: string };
   vehicle_id?: string;
   location?: string;
+  badges?: string[];
 }
 
 interface DropdownItem {
@@ -148,6 +150,7 @@ const Listings = () => {
             model: car.model,
             year: car.year,
             body_type: car.body_type,
+            fuel_type: car.fuel_type,
             transmission: car.transmission,
             color: car.color,
             slug: car.slug,
@@ -206,6 +209,8 @@ const Listings = () => {
     const searchQuery = searchParams.get("search")?.trim().toLowerCase();
     if (searchQuery) {
       tempCars = tempCars.filter(c =>
+        c.title?.toLowerCase().includes(searchQuery) ||
+        c.fuel_type?.name?.toLowerCase().includes(searchQuery) ||
         c.make?.name?.toLowerCase().includes(searchQuery) ||
         c.model?.toLowerCase().includes(searchQuery) ||
         c.body_type?.name?.toLowerCase().includes(searchQuery) ||
@@ -240,7 +245,7 @@ const Listings = () => {
   useEffect(() => {
     const params = new URLSearchParams(searchParams);
     params.set("page", String(currentPage));
-    setSearchParams(params, { replace: true }); 
+    setSearchParams(params, { replace: true });
   }, [currentPage]);
 
   useEffect(() => {
@@ -353,7 +358,12 @@ const Listings = () => {
                         />
 
                         {car.status === 3 && (
-                          <div className="hidden md:block absolute top-2 left-2 bg-red-500 text-white px-2 py-0.5 rounded-full text-xs font-medium z-10">
+                          <div
+                            className="absolute bottom-1 left-1 md:top-2 md:left-2 md:bottom-auto
+               bg-red-500 text-white px-1.5 py-0.5 md:px-2 md:py-0.5
+               rounded-full text-[10px] md:text-xs font-semibold
+               z-10 shadow-md"
+                          >
                             Sold
                           </div>
                         )}

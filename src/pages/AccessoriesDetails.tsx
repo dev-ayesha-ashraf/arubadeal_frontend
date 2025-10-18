@@ -2,345 +2,326 @@ import { Footer } from '@/components/common/Footer';
 import { Header } from '@/components/common/Header';
 import { Navbar } from '@/components/common/Navbar';
 import { ImageZoom } from '@/components/common/ImageZoom';
-import { useState } from 'react';
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useState, useEffect } from 'react';
+import { ChevronLeft, ChevronRight, Heart, Truck, Shield, CheckCircle } from "lucide-react";
+import { useParams, Link } from 'react-router-dom';
+
+interface AccessoryImage {
+  id: string;
+  image_url: string;
+  is_primary: boolean;
+  position: number;
+  is_display: boolean;
+}
+
+interface Category {
+  id: string;
+  name: string;
+}
+
+interface SubCategory {
+  id: string;
+  name: string;
+}
+
+interface Accessory {
+  id: string;
+  name: string;
+  brand: string;
+  stock: number;
+  price: string;
+  description: string;
+  tags: string[];
+  model_compatibility: string[];
+  slug: string;
+  out_of_stock: boolean;
+  category: Category;
+  sub_category: SubCategory;
+  images: AccessoryImage[];
+}
 
 const AccessoriesDetails = () => {
+  const { slug } = useParams<{ slug: string }>();
   const [quantity, setQuantity] = useState(1);
-  const [activeTab, setActiveTab] = useState('description');
   const [selectedImageIndex, setSelectedImageIndex] = useState<number>(0);
   const [isZoomOpen, setIsZoomOpen] = useState(false);
-  const relatedProducts = [
-    {
-      id: 1,
-      name: 'Pennzoil Platinum Full Synthetic OW-20 Motor Oil, 5 Quart',
-      price: 26.96,
-      originalPrice: 47.11,
-      discount: 43,
-      rating: 3.33,
-      reviewCount: 3
-    },
-    {
-      id: 2,
-      name: 'Oil Filter - Compatible with 2011 - 2022 Ford',
-      price: 65.33,
-      originalPrice: 89.99,
-      discount: 26,
-      rating: 4.33,
-      reviewCount: 3
-    },
-    {
-      id: 3,
-      name: 'Risione High Mileage Steering Stop White with Leak Repair...',
-      price: 9.88,
-      originalPrice: 15.99,
-      discount: 39,
-      rating: 4.33,
-      reviewCount: 3
-    },
-    {
-      id: 4,
-      name: 'Catalytic converter cleaner high quality pass emissions test...',
-      price: 21.18,
-      originalPrice: 98.45,
-      discount: 45,
-      rating: 4.67,
-      reviewCount: 3
-    },
-    {
-      id: 5,
-      name: 'Castrol GTX High Mileage SW-30 Synthetic Blend Motor Oil, ...',
-      price: 41.16,
-      originalPrice: 57.77,
-      discount: 29,
-      rating: 4.33,
-      reviewCount: 3
-    }
-  ];
-  const productImages = [
-    { url: "https://images.unsplash.com/photo-1612805144400-88c7821bf36f?q=80&w=387&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D", alt: "Steering Wheel Front View" },
-    { url: "https://images.unsplash.com/photo-1713212868358-091a79f8fe9a?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1yZWxhdGVkfDJ8fHxlbnwwfHx8fHw%3D", alt: "Steering Wheel Side View" },
-    { url: "https://images.unsplash.com/photo-1673566774882-620ffd37ab09?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1yZWxhdGVkfDZ8fHxlbnwwfHx8fHw%3D", alt: "Steering Wheel Close-up" }
-  ];
-  const navigatePrevious = () => {
-    setSelectedImageIndex((prev) =>
-      prev === 0 ? productImages.length - 1 : prev - 1
-    );
+  const [accessory, setAccessory] = useState<Accessory | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [relatedProducts, setRelatedProducts] = useState<Accessory[]>([]);
+  const [favorites, setFavorites] = useState<string[]>([]);
+
+  const API_URL = import.meta.env.VITE_API_URL;
+  const MEDIA_URL = import.meta.env.VITE_MEDIA_URL;
+
+  useEffect(() => {
+    const fetchAccessoryDetails = async () => {
+      if (!slug) return;
+      try {
+        setLoading(true);
+        const response = await fetch(`${API_URL}/car_accessory/?page=1&size=50`);
+        if (!response.ok) throw new Error(`Failed to fetch accessories: ${response.status}`);
+
+        const data = await response.json();
+        const foundAccessory = data.items.find((item: Accessory) => item.slug === slug);
+        if (!foundAccessory) throw new Error('Accessory not found');
+        setAccessory(foundAccessory);
+
+        const related = data.items
+          .filter((item: Accessory) => item.id !== foundAccessory.id && item.category.id === foundAccessory.category.id)
+          .slice(0, 4);
+
+        setRelatedProducts(related);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to fetch accessory details');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchAccessoryDetails();
+  }, [slug, API_URL, MEDIA_URL]);
+
+  const productImages = accessory?.images.map(img => ({
+    url: `${MEDIA_URL}${img.image_url}`,
+    alt: accessory.name
+  })) || [];
+
+  const getPrimaryImage = (item: Accessory) => {
+    const primary = item.images.find(i => i.is_primary);
+    return primary ? `${MEDIA_URL}${primary.image_url}` :
+      item.images.length > 0 ? `${MEDIA_URL}${item.images[0].image_url}` :
+        "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=600";
   };
 
-  const navigateNext = () => {
-    setSelectedImageIndex((prev) =>
-      prev === productImages.length - 1 ? 0 : prev + 1
-    );
+  const navigatePrevious = () => setSelectedImageIndex(prev => prev === 0 ? productImages.length - 1 : prev - 1);
+  const navigateNext = () => setSelectedImageIndex(prev => prev === productImages.length - 1 ? 0 : prev + 1);
+
+  const toggleFavorite = (id: string) => {
+    setFavorites(prev => prev.includes(id) ? prev.filter(f => f !== id) : [...prev, id]);
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-white flex flex-col">
+        <Header />
+        <Navbar />
+        <div className="flex-1 flex items-center justify-center py-24">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (error || !accessory) {
+    return (
+      <div className="min-h-screen bg-white flex flex-col">
+        <Header />
+        <Navbar />
+        <div className="flex-1 flex flex-col items-center justify-center py-24">
+          <p className="text-red-500 mb-4">{error || 'Accessory not found'}</p>
+          <button
+            onClick={() => window.history.back()}
+            className="bg-black text-white px-6 py-2 rounded-lg hover:bg-gray-800"
+          >
+            Go Back
+          </button>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-white text-black">
+    <div className="min-h-screen bg-white">
       <Header />
       <Navbar />
-      <div className="container mx-auto mt-[150px] md:mt-0 py-4 md:py-8 px-4">
-        <div className="flex flex-col lg:flex-row gap-6 md:gap-8">
-          <div className="w-full lg:w-1/2">
-            <div className="relative bg-gray-100 rounded-lg">
-              <div
-                className="h-64 md:h-96 flex items-center justify-center cursor-zoom-in relative"
-                onClick={() => setIsZoomOpen(true)}
-              >
-                <img
-                  src={productImages[selectedImageIndex].url}
-                  alt={productImages[selectedImageIndex].alt}
-                  className="max-h-full max-w-full object-contain"
-                />
-                <button
-                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-white rounded-full p-2 shadow-md hover:bg-gray-200"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    navigatePrevious();
-                  }}
-                >
-                  <ChevronLeft className="w-5 h-5" />
-                </button>
 
-                <button
-                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-white rounded-full p-2 shadow-md hover:bg-gray-200"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    navigateNext();
-                  }}
-                >
-                  <ChevronRight className="w-5 h-5" />
-                </button>
-              </div>
-              <div className="hidden sm:grid grid-cols-3 gap-2 mt-4">
+      <div className="container mx-auto py-8 px-4 lg:px-8 mt-4">
+        <div className="flex flex-col lg:flex-row gap-8 mb-16">
+          <div className="lg:w-1/2">
+            <div className="relative bg-gray-50 rounded-2xl p-4">
+              {productImages.length > 0 && (
+                <>
+                  <img
+                    src={productImages[selectedImageIndex].url}
+                    alt={productImages[selectedImageIndex].alt}
+                    className="w-full h-96 object-contain rounded-lg cursor-zoom-in"
+                    onClick={() => setIsZoomOpen(true)}
+                  />
+                  {productImages.length > 1 && (
+                    <>
+                      <button
+                        onClick={navigatePrevious}
+                        className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 rounded-full p-2 shadow-lg"
+                      >
+                        <ChevronLeft size={20} />
+                      </button>
+                      <button
+                        onClick={navigateNext}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 rounded-full p-2 shadow-lg"
+                      >
+                        <ChevronRight size={20} />
+                      </button>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+
+            {productImages.length > 1 && (
+              <div className="flex gap-3 mt-4">
                 {productImages.map((img, idx) => (
-                  <div
+                  <img
                     key={idx}
-                    className={`rounded border-2 cursor-pointer flex items-center justify-center h-20 md:h-24 ${selectedImageIndex === idx
-                      ? "border-black"
-                      : "border-transparent"
-                      }`}
+                    src={img.url}
+                    alt={img.alt}
                     onClick={() => setSelectedImageIndex(idx)}
-                  >
-                    <img
-                      src={img.url}
-                      alt={img.alt}
-                      className="max-h-full max-w-full object-contain"
-                    />
-                  </div>
-                ))}
-              </div>
-
-              <div className="sm:hidden flex justify-center mt-4 space-x-2">
-                {productImages.map((_, idx) => (
-                  <button
-                    key={idx}
-                    className={`w-2 h-2 rounded-full ${selectedImageIndex === idx ? 'bg-black' : 'bg-gray-300'}`}
-                    onClick={() => setSelectedImageIndex(idx)}
-                    aria-label={`View image ${idx + 1}`}
+                    className={`w-16 h-16 object-cover rounded-lg cursor-pointer border-2 ${
+                      selectedImageIndex === idx ? 'border-black' : 'border-transparent'
+                    }`}
                   />
                 ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="w-full lg:w-1/2">
-            <div className="mb-4 md:mb-6">
-              <span className="text-xs md:text-sm text-gray-500">Category: Oils and fluids</span>
-              <h1 className="text-xl md:text-3xl font-bold mt-1">Zerex G05 Phosphate Free Antifreeze Coolant Concentrate 1 GA</h1>
-              <div className="flex items-center mt-2">
-                <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">In Stock</span>
-                <span className="text-gray-500 text-xs md:text-sm ml-3">SKU: UBWDEKISSI</span>
-              </div>
-            </div>
-
-            <div className="mb-4 md:mb-6">
-              <div className="flex items-center">
-                <span className="text-xl md:text-2xl font-bold">$33.43</span>
-                <span className="text-base md:text-lg text-gray-500 line-through ml-2">$48.55</span>
-              </div>
-              <p className="text-xs md:text-sm text-gray-600 mt-1">This product has been added to 25 people's carts.</p>
-            </div>
-
-            <div className="mb-4 md:mb-6">
-              <p className="text-xs md:text-sm">
-                High-quality additives protect against leaks and won't harm gaskets, hoses, plastics or original vehicle finish
-              </p>
-            </div>
-
-            <div className="flex items-center mb-4 md:mb-6">
-              <div className="flex items-center border border-gray-300 rounded-md mr-3 md:mr-4">
-                <button
-                  className="px-3 py-2 text-lg"
-                  onClick={() => setQuantity(prev => Math.max(1, prev - 1))}
-                >
-                  -
-                </button>
-                <span className="px-3 py-2">{quantity}</span>
-                <button
-                  className="px-3 py-2 text-lg"
-                  onClick={() => setQuantity(prev => prev + 1)}
-                >
-                  +
-                </button>
-              </div>
-              <button className="bg-black text-white py-2 px-4 md:px-6 rounded-md font-medium mr-2 md:mr-3 text-sm md:text-base">
-                Add to cart
-              </button>
-            </div>
-
-            <div className="border-t border-gray-200 pt-4 md:pt-6 mb-4 md:mb-6">
-              <div className="flex flex-col md:flex-row md:items-center text-xs md:text-sm">
-                <div className="mb-2 md:mb-0 md:mr-6">
-                  <span className="font-medium">Dispatch within 24 Hours:</span> Your product will be shipped quickly.
-                </div>
-                <div>
-                  <span className="font-medium">3-Year Warranty:</span> Ignaro is safe with warranty conditions.
-                </div>
-              </div>
-              <div className="mt-3 md:mt-4">
-                <p className="text-xs md:text-sm">
-                  Our customer representative is waiting for you.<br className="hidden md:block" />
-                  Call for immediate assistance at <span className="font-medium">1-234-5678-91</span>
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-8 md:mt-12">
-          <div className="border-b border-gray-200">
-            <nav className="flex space-x-4 md:space-x-8 overflow-x-auto">
-              {['description', 'specs', 'reviews'].map((tab) => (
-                <button
-                  key={tab}
-                  className={`py-3 md:py-4 px-1 font-medium text-xs md:text-sm border-b-2 whitespace-nowrap ${activeTab === tab
-                    ? 'border-black text-black'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                    }`}
-                  onClick={() => setActiveTab(tab)}
-                >
-                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                </button>
-              ))}
-            </nav>
-          </div>
-
-          <div className="py-4 md:py-6">
-            {activeTab === 'description' && (
-              <div className="prose max-w-none text-sm md:text-base">
-                <p>
-                  High-quality additives protect against leaks and won't harm gaskets, hoses, plastics or original vehicle finish.
-                  Integer matts ultricies augue, ac bloendum arcu viverra vel. Etiam eu facilisi svelt. Mauris auctor efficitur turpis feugiat boreet.
-                </p>
               </div>
             )}
           </div>
-        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 mt-8 md:mt-12">
-          <div className="text-center">
-            <div className="mb-3 md:mb-4">
-              <div className="w-10 h-10 md:w-12 md:h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto">
-                <span className="text-xs">🚚</span>
+          <div className="lg:w-1/2 space-y-6">
+            <div>
+              <div className="flex items-center gap-4 ">
+                <span className="text-sm text-gray-500">{accessory.category.name}</span>
+                <span className={`px-3 py-1 text-sm rounded-full ${
+                  accessory.out_of_stock ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+                }`}>
+                  {accessory.out_of_stock ? 'Out of Stock' : 'In Stock'}
+                </span>
+              </div>
+              
+              <h1 className="text-3xl font-bold mb-2">{accessory.name}</h1>
+              <p className="text-gray-600">{accessory.description}</p>
+            </div>
+
+            <div className="flex justify-between">
+              <span className="text-4xl font-bold">AWG {accessory.price}</span>
+              <button
+                onClick={() => toggleFavorite(accessory.id)}
+                className="p-3 rounded-full border hover:bg-gray-50"
+              >
+                <Heart 
+                  size={20} 
+                  className={favorites.includes(accessory.id) ? 'fill-red-500 text-red-500' : 'text-gray-400'} 
+                />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4 py-4">
+              <div className="flex items-center gap-2 text-sm">
+                <Truck className="text-green-600" size={16} />
+                <span>Free Shipping</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <Shield className="text-blue-600" size={16} />
+                <span>2-Year Warranty</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <CheckCircle className="text-green-600" size={16} />
+                <span>Quality Certified</span>
               </div>
             </div>
-            <h3 className="font-medium mb-2 text-sm md:text-base">Fast Shipping</h3>
-            <p className="text-xs md:text-sm text-gray-600">
-              Integer matts ultricies augue, ac bloendum arcu viverra vel. Etiam eu facilisi svelt. Mauris auctor efficitur turpis feugiat boreet.
-            </p>
-          </div>
 
-          <div className="text-center">
-            <div className="mb-3 md:mb-4">
-              <div className="w-10 h-10 md:w-12 md:h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto">
-                <span className="text-xs">↩️</span>
-              </div>
-            </div>
-            <h3 className="font-medium mb-2 text-sm md:text-base">Easy Return</h3>
-            <p className="text-xs md:text-sm text-gray-600">
-              Integer matts ultricies augue, ac bloendum arcu viverra vel. Etiam eu facilisi svelt. Mauris auctor efficitur turpis feugiat boreet.
-            </p>
-          </div>
-
-          <div className="text-center">
-            <div className="mb-3 md:mb-4">
-              <div className="w-10 h-10 md:w-12 md:h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto">
-                <span className="text-xs">🔧</span>
-              </div>
-            </div>
-            <h3 className="font-medium mb-2 text-sm md:text-base">Warranty Policy</h3>
-            <p className="text-xs md:text-sm text-gray-600">
-              Integer matts ultricies augue, ac bloendum arcu viverra vel. Etiam eu facilisi svelt. Mauris auctor efficitur turpis feugiat boreet.
-            </p>
-          </div>
-        </div>
-
-        {/* Related Products Section - Now visible on mobile too */}
-        <div className="mt-8 md:mt-12">
-          <h2 className="text-xl md:text-2xl font-bold mb-4 md:mb-6">Related products</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 md:gap-4">
-            {relatedProducts.map((product) => (
-              <div key={product.id} className="border border-gray-200 rounded-lg p-3 md:p-4">
-                <div className="bg-gray-100 h-28 md:h-40 mb-2 md:mb-3 flex items-center justify-center rounded">
-                  <img
-                    src="https://plus.unsplash.com/premium_photo-1672723447001-52a2e9f7f58d?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8OXx8Y2FyJTIwdGlyZXN8ZW58MHx8MHx8fDA%3D"
-                    alt={product.name}
-                    className="max-h-full max-w-full object-contain"
-                  />
+            <div className="space-y-4">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center border rounded-lg">
+                  <button 
+                    onClick={() => setQuantity(prev => Math.max(1, prev - 1))} 
+                    className="px-4 py-2 hover:bg-gray-50"
+                  >
+                    -
+                  </button>
+                  <span className="px-4 py-2 min-w-[40px] text-center">{quantity}</span>
+                  <button 
+                    onClick={() => setQuantity(prev => prev + 1)} 
+                    className="px-4 py-2 hover:bg-gray-50"
+                  >
+                    +
+                  </button>
                 </div>
-                <div className="mb-1 md:mb-2">
-                  <span className="bg-red-100 text-red-800 text-xs px-1 md:px-2 py-0.5 md:py-1 rounded">
-                    {product.discount}% OFF
-                  </span>
-                </div>
-                <h3 className="font-medium text-xs md:text-sm mb-1 md:mb-2 line-clamp-2">{product.name}</h3>
-                <div className="flex items-center mb-1 md:mb-2">
-                  <div className="flex items-center">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <svg
-                        key={star}
-                        className={`w-3 h-3 md:w-4 md:h-4 ${star <= Math.floor(product.rating)
-                          ? 'text-yellow-400'
-                          : 'text-gray-300'
-                          }`}
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                      </svg>
-                    ))}
-                  </div>
-                  <span className="text-xs text-gray-600 ml-1">
-                    {product.rating} ({product.reviewCount})
-                  </span>
-                </div>
-                <div className="flex items-center">
-                  <span className="font-bold text-sm md:text-base">${product.price}</span>
-                  <span className="text-xs md:text-sm text-gray-500 line-through ml-1 md:ml-2">
-                    ${product.originalPrice}
-                  </span>
-                </div>
-                <button className="w-full mt-2 md:mt-3 bg-black text-white py-1.5 md:py-2 text-xs md:text-sm rounded">
-                  Add to cart
+                
+                <button
+                  className="flex-1 bg-black text-white py-3 rounded-lg font-semibold hover:bg-gray-800 disabled:bg-gray-400"
+                  disabled={accessory.out_of_stock}
+                >
+                  {accessory.out_of_stock ? 'Out of Stock' : 'Add to Cart'}
                 </button>
               </div>
-            ))}
+            </div>
+
+            <div className="border-t pt-6">
+              <h3 className="font-semibold mb-3">Quick Specs</h3>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-gray-600">Brand:</span>
+                  <span className="ml-2 font-medium">{accessory.brand}</span>
+                </div>
+                <div>
+                  <span className="text-gray-600">Stock:</span>
+                  <span className="ml-2 font-medium">{accessory.stock} units</span>
+                </div>
+                {accessory.model_compatibility.length > 0 && (
+                  <div className="col-span-2">
+                    <span className="text-gray-600">Compatible with:</span>
+                    <span className="ml-2 font-medium">{accessory.model_compatibility.join(', ')}</span>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
+
+        {relatedProducts.length > 0 && (
+          <div className="mt-12">
+            <h2 className="text-2xl font-bold mb-6">You May Also Like</h2>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {relatedProducts.map((prod) => (
+                <Link key={prod.id} to={`/accessorydetails/${prod.slug}`}>
+                  <div className="group bg-white border rounded-xl overflow-hidden hover:shadow-lg transition">
+                    <img
+                      src={getPrimaryImage(prod)}
+                      alt={prod.name}
+                      className="w-full h-48 object-cover group-hover:scale-105 transition-transform"
+                    />
+                    <div className="p-4">
+                      <h4 className="font-semibold text-gray-900 mb-1">{prod.name}</h4>
+                      <p className="text-sm text-gray-600 mb-2">{prod.category.name}</p>
+                      <div className="flex items-center justify-between">
+                        <p className="text-lg font-bold">AWG {prod.price}</p>
+                        <span className={`text-xs px-2 py-1 rounded ${
+                          prod.out_of_stock ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+                        }`}>
+                          {prod.out_of_stock ? 'Out of Stock' : 'In Stock'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
-      <div className='mt-12 md:mt-20'>
-        <Footer />
-      </div>
+      <Footer />
 
-      <ImageZoom
-        isOpen={isZoomOpen}
-        onClose={() => setIsZoomOpen(false)}
-        imageUrl={productImages[selectedImageIndex].url}
-        alt={productImages[selectedImageIndex].alt}
-        images={productImages}
-        currentIndex={selectedImageIndex}
-      />
+      {productImages.length > 0 && (
+        <ImageZoom
+          isOpen={isZoomOpen}
+          onClose={() => setIsZoomOpen(false)}
+          imageUrl={productImages[selectedImageIndex].url}
+          alt={productImages[selectedImageIndex].alt}
+          images={productImages}
+          currentIndex={selectedImageIndex}
+        />
+      )}
     </div>
   );
 };

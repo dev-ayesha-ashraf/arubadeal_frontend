@@ -1,8 +1,9 @@
 import { Footer } from "@/components/common/Footer";
 import { Header } from "@/components/common/Header";
 import { Navbar } from "@/components/common/Navbar";
+import { SubscriptionBox } from "@/components/common/SubscriptionBox";
 import { BrowseByMake } from "@/components/landing-page/BrosweByMake";
-// import BrowseAccessories from "@/components/landing-page/BrowseAccesories";
+import BrowseAccessories from "@/components/landing-page/BrowseAccesories";
 import { BrowseByType } from "@/components/landing-page/BrowseByType";
 import { CarFilter } from "@/components/landing-page/CarFilter";
 import { Hero } from "@/components/landing-page/Hero";
@@ -22,7 +23,7 @@ const Index = () => {
       <OurCars />
       <BrowseByType />
       <BrowseByMake />
-      {/* <BrowseAccessories /> */}
+      <BrowseAccessories />
       <ReviewSection />
       <StatsSection />
       <WhyChooseUs />
