@@ -4,7 +4,7 @@ import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { MapPin, Mail, Phone, ChevronLeft, ChevronRight, Trash2, Upload, Move, Check, Star, X } from "lucide-react";
+import { MapPin, Mail, Phone, ChevronLeft, ChevronRight, Trash2, Upload, Move, Check, Star, X, Download } from "lucide-react";
 import { Header } from "@/components/common/Header";
 import { Navbar } from "@/components/common/Navbar";
 import { Footer } from "@/components/common/Footer";
@@ -81,6 +81,21 @@ const fetchCarDetail = async (slug: string): Promise<CarListing> => {
   if (!response.ok) throw new Error("Failed to fetch car detail");
   const res = await response.json();
 
+  const sortedImages = (res.images ?? [])
+    .filter((img: any) => img.is_display !== false)
+    .sort((a: any, b: any) => {
+      if (a.is_primary && !b.is_primary) return -1;
+      if (!a.is_primary && b.is_primary) return 1;
+      return (a.position || 0) - (b.position || 0);
+    })
+    .map((img: any, index: number) => ({
+      _id: img.id,
+      image: img.image_url,
+      isPrimary: img.is_primary,
+      isDisplay: img.is_display,
+      position: img.position,
+    }));
+
   const mapped: CarListing = {
     _id: res.id,
     title: res.title,
@@ -100,14 +115,7 @@ const fetchCarDetail = async (slug: string): Promise<CarListing> => {
       name: f.name,
       value: f.reason ?? "",
     })),
-    images: (res.images ?? [])
-      .filter((img: any) => img.is_display !== false)
-      .map((img: any) => ({
-        _id: img.id,
-        image: img.image_url,
-        isPrimary: img.is_primary,
-        isDisplay: img.is_display,
-      })),
+    images: sortedImages,
     technicalSpecification: {
       make: res.make?.name,
       type: res.body_type?.name,
@@ -168,6 +176,8 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
   const [mileageUnit, setMileageUnit] = useState<"miles" | "km">("miles");
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const [isReordering, setIsReordering] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const { data: listing, isLoading, refetch } = useQuery({
     queryKey: ["carDetail", slug],
@@ -182,7 +192,56 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
     transmissions: [] as any[],
     badges: [] as any[]
   });
-  
+  const getFilename = (url: string, alt: string) => {
+    try {
+      const parts = url.split("/");
+      const rawName = parts[parts.length - 1].split("?")[0];
+      const ext = rawName.includes(".") ? rawName.split(".").pop() : "jpg";
+
+      const match = rawName.match(/-(\d+)\./);
+      const index = match ? match[1] : "1";
+
+      const carId = rawName.split("-")[0];
+      const cleanAlt = alt.replace(/\s+/g, '-').toLowerCase();
+
+      return `car-${carId}-${cleanAlt}-image-${index}.${ext}`;
+    } catch {
+      return "car-image.jpg";
+    }
+  };
+
+  const handleDownload = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!displayImages.length || selectedImageIndex === null) return;
+
+    try {
+      setIsDownloading(true);
+      const currentImageUrl = getImageUrl(displayImages[selectedImageIndex]?.image);
+      const currentImageAlt = display?.title || "Vehicle image";
+
+      const response = await fetch(currentImageUrl, { mode: "cors" });
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = getFilename(currentImageUrl, currentImageAlt);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+
+      trackCustomEvent("ImageDownloaded", {
+        listing_id: listing?._id,
+        image_index: selectedImageIndex,
+        image_url: currentImageUrl,
+      });
+    } catch (err) {
+      console.error("Failed to download image:", err);
+      alert("Sorry, the image could not be downloaded.");
+    } finally {
+      setIsDownloading(false);
+    }
+  };
   useEffect(() => {
     if (listing) {
       trackCustomEvent("ListingDetailViewed", {
@@ -194,7 +253,7 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
       });
     }
   }, [listing]);
-  
+
   useEffect(() => {
     const fetchLookupData = async () => {
       try {
@@ -380,22 +439,31 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
 
       if (!res.ok) throw new Error("Failed to set primary image");
 
-      const imageIndex = editableListing.images.findIndex(img => img._id === imageId);
+      const newImages = [...editableListing.images];
+      const imageIndex = newImages.findIndex(img => img._id === imageId);
       if (imageIndex === -1) return;
 
-      const newImages = [...editableListing.images];
-      const [movedImage] = newImages.splice(imageIndex, 1);
-      newImages.unshift(movedImage);
+      const [primaryImage] = newImages.splice(imageIndex, 1);
+
+      const updatedImages = newImages.map(img => ({
+        ...img,
+        isPrimary: false
+      }));
+
+      updatedImages.unshift({
+        ...primaryImage,
+        isPrimary: true
+      });
 
       setEditableListing({
         ...editableListing,
-        images: newImages
+        images: updatedImages
       });
 
       if (selectedImageIndex === imageIndex) {
         setSelectedImageIndex(0);
-      } else if (selectedImageIndex !== null && selectedImageIndex < imageIndex) {
-        setSelectedImageIndex(selectedImageIndex + 1);
+      } else if (selectedImageIndex !== null && selectedImageIndex > imageIndex) {
+        setSelectedImageIndex(selectedImageIndex - 1);
       }
 
       alert("Primary image updated successfully!");
@@ -445,46 +513,68 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
       alert("Failed to delete some images. Check console for details.");
     }
   };
-
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!editableListing || !e.target.files?.length) return;
+    if (!editableListing || !e.target.files?.length || !editableListing.vehicleId) return;
 
-    const file = e.target.files[0];
-    const formData = new FormData();
-    formData.append("image", file);
+    const files = Array.from(e.target.files);
+
+    const validFiles = files.filter(file => {
+      const isValidType = file.type.startsWith('image/');
+      const isValidSize = file.size <= 10 * 1024 * 1024;
+
+      if (!isValidType) {
+        alert(`File ${file.name} is not a valid image type`);
+        return false;
+      }
+      if (!isValidSize) {
+        alert(`File ${file.name} is too large (max 10MB)`);
+        return false;
+      }
+      return true;
+    });
+
+    if (validFiles.length === 0) return;
+
+    setIsUploading(true);
 
     try {
       const token = localStorage.getItem("access_token")?.replace(/(^"|"$)/g, "");
       if (!token) throw new Error("Login required");
 
+      const formData = new FormData();
+      validFiles.forEach((file) => formData.append("images", file));
+
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/car_listing/upload_image/${editableListing._id}`,
+        `${import.meta.env.VITE_API_URL}/car_listing/upload-images?vehical_id=${editableListing.vehicleId}`,
         {
           method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
+          headers: {
+            "Authorization": `Bearer ${token}`,
+          },
           body: formData,
         }
       );
 
-      if (!response.ok) throw new Error("Failed to upload image");
-      const resData = await response.json();
-      const newImage: ImageItem = {
-        _id: resData.id,
-        image: resData.image_url,
-        isPrimary: resData.is_primary ?? false,
-      };
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Upload error response:", errorText);
+        throw new Error(`Failed to upload images: ${response.status}`);
+      }
 
-      setEditableListing({
-        ...editableListing,
-        images: [...(editableListing.images ?? []), newImage],
-      });
+      const resData = await response.json();
+      console.log("Upload successful:", resData);
+
+      await refetch();
+
+      alert(`Successfully uploaded ${validFiles.length} image(s)!`);
 
     } catch (err) {
-      console.error(err);
-      alert("Failed to upload image.");
+      console.error("Image upload error:", err);
+      alert("Failed to upload images. Please try again.");
+    } finally {
+      setIsUploading(false);
+      e.target.value = "";
     }
-
-    e.target.value = "";
   };
 
   const updateField = (field: keyof CarListing, value: any) => {
@@ -647,6 +737,19 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
                           });
                         }}
                       />
+                      <button
+                        onClick={handleDownload}
+                        disabled={isDownloading}
+                        className="absolute top-4 right-4 bg-black/40 text-white p-3 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 hover:bg-black/70 z-10 flex items-center justify-center"
+                        aria-label="Download image"
+                      >
+                        <Download size={20} />
+                        {isDownloading && (
+                          <span className="absolute -bottom-6 text-xs text-white bg-black/70 px-2 py-1 rounded">
+                            Downloading...
+                          </span>
+                        )}
+                      </button>
 
                       {displayImages.length > 1 && (
                         <>
@@ -696,7 +799,7 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
                       <label htmlFor="select-all-images" className="text-sm text-gray-700">
                         Select all ({selectedImages.length}/{editableListing.images.length})
                       </label>
-                      
+
                       {selectedImages.length > 0 && (
                         <Button
                           variant="ghost"
@@ -804,7 +907,7 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
 
                           {isAdmin && (
                             <>
-                              {isPrimary && (
+                              {img.isPrimary && (
                                 <div className="absolute top-1 left-1 bg-green-600 text-white text-[10px] font-semibold px-1 rounded select-none pointer-events-none">
                                   PRIMARY
                                 </div>
@@ -850,17 +953,25 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
                         </div>
                       );
                     })}
-
                     {isAdmin && !isReordering && (
                       <label
                         htmlFor="image-upload"
-                        className="flex items-center justify-center w-24 h-16 cursor-pointer border-2 border-dashed border-gray-400 text-gray-600 rounded"
+                        className={`flex flex-col items-center justify-center w-24 h-16 cursor-pointer border-2 border-dashed border-gray-400 text-gray-600 rounded hover:border-dealership-primary hover:text-dealership-primary transition-colors ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
                       >
-                        <Upload size={20} />
+                        {isUploading ? (
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-dealership-primary"></div>
+                        ) : (
+                          <>
+                            <Upload size={20} />
+                            <span className="text-xs mt-1 text-center">Add Images</span>
+                          </>
+                        )}
                         <input
                           id="image-upload"
                           type="file"
                           accept="image/*"
+                          multiple
+                          disabled={isUploading}
                           className="hidden"
                           onChange={handleImageUpload}
                         />
@@ -875,9 +986,9 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
             <div className="space-y-6">
               <div className="justify-between items-start">
                 <div>
-            
-                    <h1 className="text-3xl font-bold text-dealership-navy">{display?.title}</h1>
-                 
+
+                  <h1 className="text-3xl font-bold text-dealership-navy">{display?.title}</h1>
+
                   {isAdmin ? (
                     <div className="w-full mt-3">
                       <label
@@ -921,10 +1032,10 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
                       </div>
                     )}
 
-                   
-                      <span className="inline-block bg-blue-300 text-white px-3 py-1 rounded-full text-sm text-blue-900 font-medium ml-3">
-                        {display?.description}
-                      </span>
+
+                    <span className="inline-block bg-blue-300 text-white px-3 py-1 rounded-full text-sm text-blue-900 font-medium ml-3">
+                      {display?.description}
+                    </span>
                   </div>
 
                 </Card>
@@ -976,11 +1087,11 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
                       <p className="font-medium">Mileage</p>
                       {isAdmin ? (
                         <div className="flex gap-2">
-                          <input 
-                            type="number" 
-                            className="border rounded p-1 w-32" 
-                            value={mileageValue} 
-                            onChange={(e) => setMileageValue(e.target.value === "" ? "" : Number(e.target.value))} 
+                          <input
+                            type="number"
+                            className="border rounded p-1 w-32"
+                            value={mileageValue}
+                            onChange={(e) => setMileageValue(e.target.value === "" ? "" : Number(e.target.value))}
                           />
                           <select className="border rounded p-1" value={mileageUnit} onChange={(e) => setMileageUnit(e.target.value as "miles" | "km")}>
                             <option value="miles">Miles</option>
@@ -999,9 +1110,9 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
                     <div>
                       <p className="font-medium">Seats</p>
                       {isAdmin ? (
-                        <input 
-                          type="number" 
-                          value={display?.seats || display?.technicalSpecification?.seats || ""} 
+                        <input
+                          type="number"
+                          value={display?.seats || display?.technicalSpecification?.seats || ""}
                           onChange={(e) => {
                             const seatsValue = e.target.value === "" ? undefined : Number(e.target.value);
                             setEditableListing({

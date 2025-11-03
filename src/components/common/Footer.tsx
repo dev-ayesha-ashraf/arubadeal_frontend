@@ -68,7 +68,7 @@ export const Footer = () => {
               </p>
               <p className="flex items-center gap-2">
                 <Mail className="w-5 h-5" />
-                <span>info@cardealership.com</span>
+                <span>support@arudeal.com</span>
               </p>
               <p className="flex items-center gap-2">
                 <MapPin className="w-5 h-5" />

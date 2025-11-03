@@ -93,6 +93,15 @@ const vehicleService = {
     api.delete(`/car_listing/delete`, { params: { id } }),
   batchDelete: (ids: string[]) =>
     api.delete(`/car_listing/batch-delete`, { data: ids }),
+  batchStatus: (ids: string[], is_sold?: boolean) =>
+    api.put(`/car_listing/batch-status`, ids, {
+      params: { is_sold }
+    }),
+  uploadImages: (vehicalId: string, formData: FormData) =>
+    api.post(`/car_listing/upload-images`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+      params: { vehical_id: vehicalId }
+    }),
 };
 
 const lookups = {
@@ -112,6 +121,7 @@ export default function VehicleManager() {
   const navigate = useNavigate();
   const [allVehicles, setAllVehicles] = useState<Vehicle[]>([]);
   const [filteredVehicles, setFilteredVehicles] = useState<Vehicle[]>([]);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [page, setPage] = useState(1);
   const [size] = useState(12);
   const [totalPages, setTotalPages] = useState(1);
@@ -128,10 +138,123 @@ export default function VehicleManager() {
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
   const [selectedVehicles, setSelectedVehicles] = useState<Set<string>>(new Set());
   const [showBatchDeleteConfirm, setShowBatchDeleteConfirm] = useState(false);
+  const [showBatchSoldConfirm, setShowBatchSoldConfirm] = useState(false);
+  const [showBatchActiveConfirm, setShowBatchActiveConfirm] = useState(false);
   const [notification, setNotification] = useState<{ message: string; visible: boolean }>({
     message: '',
     visible: false
   });
+
+  const getPrimaryImage = (images: VehicleImage[]): VehicleImage | null => {
+    if (!images || images.length === 0) return null;
+    const primaryImage = images.find(img => img.is_primary === true);
+    if (primaryImage) return primaryImage;
+    return images[0];
+  };
+
+  const allSelectedAreSold = useMemo(() => {
+    if (selectedVehicles.size === 0) return false;
+
+    const selectedVehiclesList = vehicles.filter(v => selectedVehicles.has(v.id));
+    return selectedVehiclesList.every(v => v.is_sold);
+  }, [selectedVehicles, vehicles]);
+
+  const allSelectedAreActive = useMemo(() => {
+    if (selectedVehicles.size === 0) return false;
+
+    const selectedVehiclesList = vehicles.filter(v => selectedVehicles.has(v.id));
+    return selectedVehiclesList.every(v => !v.is_sold);
+  }, [selectedVehicles, vehicles]);
+
+  const hasMixedStatus = useMemo(() => {
+    if (selectedVehicles.size === 0) return false;
+
+    const selectedVehiclesList = vehicles.filter(v => selectedVehicles.has(v.id));
+    const hasSold = selectedVehiclesList.some(v => v.is_sold);
+    const hasActive = selectedVehiclesList.some(v => !v.is_sold);
+
+    return hasSold && hasActive;
+  }, [selectedVehicles, vehicles]);
+
+  const handleBatchMarkAsSold = async () => {
+    if (selectedVehicles.size === 0) return;
+
+    try {
+      const ids = Array.from(selectedVehicles);
+      await vehicleService.batchStatus(ids, true);
+
+      fetchVehicles();
+      setSelectedVehicles(new Set());
+
+      setNotification({
+        message: `${ids.length} vehicle(s) marked as sold`,
+        visible: true
+      });
+
+      setTimeout(() => {
+        setNotification({
+          message: '',
+          visible: false
+        });
+      }, 5000);
+
+    } catch (err: any) {
+      console.error("Batch mark as sold failed:", err?.response?.data || err);
+      setNotification({
+        message: "Failed to update vehicles",
+        visible: true
+      });
+
+      setTimeout(() => {
+        setNotification({
+          message: '',
+          visible: false
+        });
+      }, 5000);
+    } finally {
+      setShowBatchSoldConfirm(false);
+    }
+  };
+
+  const handleBatchMarkAsActive = async () => {
+    if (selectedVehicles.size === 0) return;
+
+    try {
+      const ids = Array.from(selectedVehicles);
+      await vehicleService.batchStatus(ids, false);
+
+      fetchVehicles();
+      setSelectedVehicles(new Set());
+
+      setNotification({
+        message: `${ids.length} vehicle(s) marked as active`,
+        visible: true
+      });
+
+      setTimeout(() => {
+        setNotification({
+          message: '',
+          visible: false
+        });
+      }, 5000);
+
+    } catch (err: any) {
+      console.error("Batch mark as active failed:", err?.response?.data || err);
+      setNotification({
+        message: "Failed to update vehicles",
+        visible: true
+      });
+
+      setTimeout(() => {
+        setNotification({
+          message: '',
+          visible: false
+        });
+      }, 5000);
+    } finally {
+      setShowBatchActiveConfirm(false);
+    }
+  };
 
   useEffect(() => {
     fetchLookups();
@@ -141,34 +264,29 @@ export default function VehicleManager() {
     fetchVehicles();
   }, []);
 
-  // Filter vehicles based on search term
   useEffect(() => {
     if (!search.trim()) {
       setFilteredVehicles(allVehicles);
     } else {
       const searchTerm = search.toLowerCase().trim();
-      const filtered = allVehicles.filter(vehicle => 
+      const filtered = allVehicles.filter(vehicle =>
         searchVehicle(vehicle, searchTerm)
       );
       setFilteredVehicles(filtered);
     }
-    setPage(1); // Reset to first page when search changes
+    setPage(1);
   }, [search, allVehicles]);
 
-  // Update pagination when filtered vehicles change
   useEffect(() => {
     const startIndex = (page - 1) * size;
     const endIndex = startIndex + size;
     const paginatedVehicles = filteredVehicles.slice(startIndex, endIndex);
-    
+
     setVehicles(paginatedVehicles);
     setTotalPages(Math.ceil(filteredVehicles.length / size));
     setTotalItems(filteredVehicles.length);
   }, [filteredVehicles, page, size]);
 
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-
-  // Search function that checks all vehicle fields
   const searchVehicle = (vehicle: Vehicle, searchTerm: string): boolean => {
     const fieldsToSearch = [
       vehicle.title,
@@ -191,7 +309,7 @@ export default function VehicleManager() {
       ...(vehicle.features?.map(f => f.reason).filter(Boolean) || [])
     ];
 
-    return fieldsToSearch.some(field => 
+    return fieldsToSearch.some(field =>
       field && field.toLowerCase().includes(searchTerm)
     );
   };
@@ -218,7 +336,7 @@ export default function VehicleManager() {
   async function fetchVehicles() {
     setLoading(true);
     try {
-      const res = await vehicleService.list(1, 1000); // Get all vehicles for frontend search
+      const res = await vehicleService.list(1, 1000);
       const d = res.data;
       const allVehiclesData = d.items || [];
       setAllVehicles(allVehiclesData);
@@ -238,7 +356,6 @@ export default function VehicleManager() {
     if (!confirm("Are you sure you want to delete this vehicle?")) return;
     try {
       await vehicleService.delete(id);
-      // Refresh the vehicle list
       fetchVehicles();
       setNotification({
         message: "Vehicle deleted successfully",
@@ -362,14 +479,38 @@ export default function VehicleManager() {
         <h2 className="text-xl font-semibold">Vehicle List</h2>
         <div className="flex gap-2">
           {selectedVehicles.size > 0 && (
-            <Button
-              onClick={() => setShowBatchDeleteConfirm(true)}
-              variant="destructive"
-              className="bg-red-600 hover:bg-red-700"
-            >
-              <RiDeleteBinLine className="mr-1" />
-              Delete Selected ({selectedVehicles.size})
-            </Button>
+            <>
+              {!allSelectedAreSold && (
+                <Button
+                  onClick={() => setShowBatchSoldConfirm(true)}
+                  variant="outline"
+                  className="bg-green-600 text-white hover:bg-green-700 border-green-600"
+                >
+                  <RiCheckboxLine className="mr-1" />
+                  Mark as Sold ({selectedVehicles.size})
+                </Button>
+              )}
+
+              {!allSelectedAreActive && (
+                <Button
+                  onClick={() => setShowBatchActiveConfirm(true)}
+                  variant="outline"
+                  className="bg-blue-600 text-white hover:bg-blue-700 border-blue-600"
+                >
+                  <RiCheckboxLine className="mr-1" />
+                  Mark as Active ({selectedVehicles.size})
+                </Button>
+              )}
+
+              <Button
+                onClick={() => setShowBatchDeleteConfirm(true)}
+                variant="destructive"
+                className="bg-red-600 hover:bg-red-700"
+              >
+                <RiDeleteBinLine className="mr-1" />
+                Delete Selected ({selectedVehicles.size})
+              </Button>
+            </>
           )}
           <Button
             onClick={() => setShowAdd(true)}
@@ -379,6 +520,16 @@ export default function VehicleManager() {
           </Button>
         </div>
       </div>
+
+      {hasMixedStatus && (
+        <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+          <div className="flex items-center">
+            <span className="text-yellow-800 text-sm">
+              Selected vehicles have mixed status. You can mark all as Sold or Active.
+            </span>
+          </div>
+        </div>
+      )}
 
       <div className="mb-4">
         <Input
@@ -467,7 +618,7 @@ export default function VehicleManager() {
                     <div className="w-16 h-12 bg-gray-100 rounded overflow-hidden flex-shrink-0">
                       {v.images && v.images.length > 0 ? (
                         <img
-                          src={`${MEDIA}${v.images[0].image_url}`}
+                          src={`${MEDIA}${getPrimaryImage(v.images)?.image_url || v.images[0].image_url}`}
                           alt={v.title}
                           className="w-full h-full object-cover"
                         />
@@ -579,6 +730,49 @@ export default function VehicleManager() {
         onSaved={onSaveSuccess}
         lookups={{ makes, bodytypes, fueltypes, transmissions, badges }}
       />
+      <Dialog open={showBatchSoldConfirm} onOpenChange={setShowBatchSoldConfirm}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-green-600">Mark as Sold</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to mark {selectedVehicles.size} selected vehicle(s) as sold?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowBatchSoldConfirm(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleBatchMarkAsSold}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              Mark {selectedVehicles.size} as Sold
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showBatchActiveConfirm} onOpenChange={setShowBatchActiveConfirm}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-blue-600">Mark as Active</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to mark {selectedVehicles.size} selected vehicle(s) as active?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowBatchActiveConfirm(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleBatchMarkAsActive}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              Mark {selectedVehicles.size} as Active
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Dialog open={showBatchDeleteConfirm} onOpenChange={setShowBatchDeleteConfirm}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -605,7 +799,6 @@ export default function VehicleManager() {
     </div>
   );
 }
-
 function AddVehicleModal({ open, onOpenChange, onSaved, lookups }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -1054,11 +1247,26 @@ function EditVehicleModal({
 }) {
   const [form, setForm] = useState<any>({});
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
+  const [uploadPreviews, setUploadPreviews] = useState<string[]>([]);
   const [images, setImages] = useState<VehicleImage[]>(vehicle?.images || []);
   const [saving, setSaving] = useState(false);
   const [features, setFeatures] = useState<{ name: string, reason?: string }[]>([]);
   const [newFeature, setNewFeature] = useState("");
   const [newFeatureReason, setNewFeatureReason] = useState("");
+
+  const sortImagesWithPrimaryFirst = (images: VehicleImage[]): VehicleImage[] => {
+    if (!images || images.length === 0) return [];
+
+    return [...images].sort((a, b) => {
+      if (a.is_primary && !b.is_primary) return -1;
+      if (!a.is_primary && b.is_primary) return 1;
+      if (a.position !== undefined && b.position !== undefined) {
+        return a.position - b.position;
+      }
+
+      return 0;
+    });
+  };
 
   useEffect(() => {
     if (vehicle) {
@@ -1079,7 +1287,8 @@ function EditVehicleModal({
         condition: vehicle.condition || "used",
       });
       setFeatures(vehicle.features || []);
-      setImages(vehicle.images || []);
+      const sortedImages = sortImagesWithPrimaryFirst(vehicle.images || []);
+      setImages(sortedImages);
     }
   }, [vehicle]);
 
@@ -1089,7 +1298,20 @@ function EditVehicleModal({
 
   function onFilesChange(e: React.ChangeEvent<HTMLInputElement>) {
     if (!e.target.files) return;
-    setUploadFiles((p) => [...p, ...Array.from(e.target.files)]);
+
+    const files = Array.from(e.target.files);
+    setUploadFiles((prev) => [...prev, ...files]);
+
+    const newPreviews = files.map(file => URL.createObjectURL(file));
+    setUploadPreviews((prev) => [...prev, ...newPreviews]);
+  }
+
+  function removeUploadFile(index: number) {
+    setUploadFiles(prev => prev.filter((_, i) => i !== index));
+    setUploadPreviews(prev => {
+      URL.revokeObjectURL(prev[index]);
+      return prev.filter((_, i) => i !== index);
+    });
   }
 
   function addFeature() {
@@ -1148,16 +1370,26 @@ function EditVehicleModal({
 
       await vehicleService.update(vehicle.id, cleanPayload);
 
-      if (uploadFiles.length > 0) {
+      if (uploadFiles.length > 0 && vehicle.vehical_id) {
         const fd = new FormData();
         uploadFiles.forEach((f) => fd.append("images", f));
-        fd.append("car_id", vehicle.id);
+
         try {
-          await api.post("/car_listing/create", fd, {
-            headers: { "Content-Type": "multipart/form-data" },
-          });
-        } catch (err) {
-          console.warn("Image upload failed:", err);
+          console.log("Uploading images for vehicle:", vehicle.vehical_id);
+          const uploadResponse = await vehicleService.uploadImages(vehicle.vehical_id, fd);
+          console.log("Upload response:", uploadResponse.data);
+          const freshResponse = await vehicleService.get(vehicle.slug || '');
+          const freshImages = freshResponse.data.images || [];
+          const sortedImages = sortImagesWithPrimaryFirst(freshImages);
+
+          setImages(sortedImages);
+          setUploadFiles([]);
+          setUploadPreviews([]);
+          uploadPreviews.forEach(preview => URL.revokeObjectURL(preview));
+
+        } catch (err: any) {
+          console.error("Image upload failed:", err?.response?.data || err);
+          alert("Vehicle details updated but image upload failed");
         }
       }
 
@@ -1172,23 +1404,32 @@ function EditVehicleModal({
     }
   }
 
+  useEffect(() => {
+    return () => {
+      uploadPreviews.forEach(preview => URL.revokeObjectURL(preview));
+    };
+  }, [uploadPreviews]);
+
   async function setPrimaryImage(image: VehicleImage) {
     if (!vehicle) return;
     try {
       await vehicleService.updateImages({ image_id: image.id, make_primary: true });
       const fresh = await api.get(`/car_listing/get_car/${vehicle.slug}`);
-      setImages(fresh.data.images || []);
+      const freshImages = fresh.data.images || [];
+      const sortedImages = sortImagesWithPrimaryFirst(freshImages);
+      setImages(sortedImages);
     } catch (err) {
       console.error(err);
     }
   }
-
   async function removeImage(image: VehicleImage) {
     if (!vehicle) return;
     try {
       await vehicleService.updateImages({ image_id: image.id, mark_not_to_show: true });
       const fresh = await api.get(`/car_listing/get_car/${vehicle.slug}`);
-      setImages(fresh.data.images || []);
+      const freshImages = fresh.data.images || [];
+      const sortedImages = sortImagesWithPrimaryFirst(freshImages);
+      setImages(sortedImages);
     } catch (err) {
       console.error(err);
     }
@@ -1390,7 +1631,6 @@ function EditVehicleModal({
           <div className="col-span-2 space-y-2">
             <Label htmlFor="features">Features</Label>
 
-            {/* Add new feature form */}
             <div className="grid grid-cols-2 gap-2 mb-4">
               <div>
                 <Input
@@ -1417,7 +1657,6 @@ function EditVehicleModal({
               </div>
             </div>
 
-            {/* Features list */}
             <div className="space-y-2">
               {features.map((feature, index) => (
                 <div key={index} className="flex gap-2 items-center p-2 bg-gray-50 rounded">
@@ -1446,38 +1685,79 @@ function EditVehicleModal({
             </div>
           </div>
 
-          {/* Upload New Images */}
           <div className="col-span-2 space-y-2">
             <Label>Upload New Images</Label>
-            <Input type="file" multiple onChange={onFilesChange} className="mt-2" />
-            <div className="mt-3 grid grid-cols-4 gap-2">
-              {uploadFiles.map((f, i) => (
-                <div key={i} className="border p-1 text-xs">
-                  {f.name}
+            <Input
+              type="file"
+              multiple
+              onChange={onFilesChange}
+              className="mt-2"
+              accept="image/*"
+            />
+            {uploadFiles.length > 0 && (
+              <div className="mt-3">
+                <Label>New Images to Upload:</Label>
+                <div className="grid grid-cols-4 gap-2 mt-2">
+                  {uploadFiles.map((file, i) => (
+                    <div key={i} className="border p-2 text-xs relative">
+                      <div className="h-20 overflow-hidden flex items-center justify-center mb-2">
+                        {uploadPreviews[i] ? (
+                          <img
+                            src={uploadPreviews[i]}
+                            alt={file.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">
+                            {file.name}
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-xs truncate">{file.name}</div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeUploadFile(i)}
+                        className="absolute top-1 right-1 text-red-600 text-xs p-1 h-6 w-6"
+                      >
+                        ×
+                      </Button>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </div>
+            )}
           </div>
 
-          {/* Current Images */}
           <div className="col-span-2 space-y-2">
             <Label>Current Images</Label>
             <div className="grid grid-cols-5 gap-2 mt-2">
-              {images.map((img) => (
-                <div key={img.id} className="border p-2 text-xs">
+              {images.map((img, index) => (
+                <div
+                  key={img.id}
+                  className={`border p-2 text-xs relative ${index === 0 ? 'ring-2 ring-dealership-primary/80 ring-opacity-50' : ''
+                    }`}
+                >
                   <img
                     src={`${MEDIA}${img.image_url}`}
                     className="h-24 w-full object-cover mb-2"
+                    alt={`Vehicle image ${index + 1}`}
                   />
                   <div className="flex justify-between items-center">
-                    <div className="text-xs">{img.is_primary ? "Primary" : ""}</div>
-                    <div className="flex gap-2">
-                      {!img.is_primary && (
+                    <div className="text-xs font-medium">
+                      {index === 0 ? (
+                        <span className="text-dealership-primary">Primary</span>
+                      ) : null}
+
+                    </div>
+                    <div className="flex gap-1">
+                      {index !== 0 && (
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => setPrimaryImage(img)}
-                          className="text-sm p-0 h-auto"
+                          className="text-xs p-1 h-6 text-blue-600 hover:text-blue-800"
+                          title="Set as primary"
                         >
                           Set Primary
                         </Button>
@@ -1486,7 +1766,8 @@ function EditVehicleModal({
                         variant="ghost"
                         size="sm"
                         onClick={() => removeImage(img)}
-                        className="text-sm text-red-600 p-0 h-auto"
+                        className="text-xs p-1 h-6 text-red-600 hover:text-red-800"
+                        title="Remove image"
                       >
                         Remove
                       </Button>
@@ -1495,6 +1776,7 @@ function EditVehicleModal({
                 </div>
               ))}
             </div>
+
           </div>
         </div>
 

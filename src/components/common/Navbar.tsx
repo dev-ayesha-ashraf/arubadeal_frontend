@@ -119,6 +119,15 @@ export const Navbar = () => {
                   Accesories
                 </Link>
               </li>
+                {/* <li>
+                <Link
+                  to="/sellcar"
+                  className="text-lg hover:text-dealership-primary"
+                  onClick={onClose}
+                >
+                  Sell Cars
+                </Link>
+              </li> */}
               <div>{user ? <ProfileButton /> : <LoginButton />}</div>
             </ul>
           </nav>
@@ -213,6 +222,12 @@ export const Navbar = () => {
               >
                 Accesories
               </Link>
+                 {/* <Link
+                to="/sellcar"
+                className="text-dealership-primary text-lg font-medium hover:text-dealership-primary/80 transition-colors"
+              >
+                Sell Cars
+              </Link> */}
             </div>
 
             <form onSubmit={handleSearch} className="relative w-64">

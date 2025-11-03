@@ -45,42 +45,47 @@ export const CarFilter = () => {
   const [filters, setFilters] = useState<FilterState>({});
   const [selectedBadge, setSelectedBadge] = useState<string>("all");
   const [totalListings, setTotalListings] = useState<number>(0);
+useEffect(() => {
+  const fetchFilters = async () => {
+    try {
+      const [makesRes, typesRes, badgesRes] = await Promise.all([
+        fetch(`${import.meta.env.VITE_API_URL}/make/get_all`),
+        fetch(`${import.meta.env.VITE_API_URL}/bodytype/get_all`),
+        fetch(`${import.meta.env.VITE_API_URL}/badge/get_all`), 
+      ]);
 
-  useEffect(() => {
-    const fetchFilters = async () => {
-      try {
-        const [makesRes, typesRes] = await Promise.all([
-          fetch(`${import.meta.env.VITE_API_URL}/make/get_all`),
-          fetch(`${import.meta.env.VITE_API_URL}/bodytype/get_all`),
-        ]);
+      const [makes, types, badges] = await Promise.all([
+        makesRes.json(),
+        typesRes.json(),
+        badgesRes.json(),
+      ]);
 
-        const [makes, types] = await Promise.all([makesRes.json(), typesRes.json()]);
+      const listingRes = await fetch(`${import.meta.env.VITE_API_URL}/car_listing/listing`);
+      const listingData = await listingRes.json();
+      setTotalListings(listingData.total_items ?? 0);
 
-        const listingRes = await fetch(`${import.meta.env.VITE_API_URL}/car_listing/listing`);
-        const listingData = await listingRes.json();
-        setTotalListings(listingData.total_items ?? 0);
+      const items = listingData.items || [];
+      const uniqueModels = Array.from(new Set(items.map((i: any) => i.model).filter(Boolean)));
+      const uniqueColors = Array.from(new Set(items.map((i: any) => i.color).filter(Boolean)));
+      const uniqueLocations = Array.from(new Set(items.map((i: any) => i.location).filter(Boolean)));
 
-        const items = listingData.items || [];
-        const uniqueModels = Array.from(new Set(items.map((i: any) => i.model).filter(Boolean)));
-        const uniqueColors = Array.from(new Set(items.map((i: any) => i.color).filter(Boolean)));
-        const uniqueLocations = Array.from(new Set(items.map((i: any) => i.location).filter(Boolean)));
+      setDropdowns({
+        makes,
+        types,
+        badges, 
+        locations: uniqueLocations,
+        prices: ["0-3000", "3000-12000", "12000-50000"],
+        colors: uniqueColors,
+        models: uniqueModels,
+      });
+    } catch (err) {
+      console.error("Error fetching filters:", err);
+    }
+  };
 
-        setDropdowns({
-          makes,
-          types,
-          badges: [],
-          locations: uniqueLocations,
-          prices: ["0-3000", "3000-12000", "12000-50000"],
-          colors: uniqueColors,
-          models: uniqueModels,
-        });
-      } catch (err) {
-        console.error("Error fetching filters:", err);
-      }
-    };
+  fetchFilters();
+}, []);
 
-    fetchFilters();
-  }, []);
 
   const handleSearch = () => {
     const params = new URLSearchParams();

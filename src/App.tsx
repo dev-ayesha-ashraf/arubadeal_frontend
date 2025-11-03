@@ -20,6 +20,8 @@ import Profile from "./components/common/Profile";
 import { WhatsAppButton } from "./components/landing-page/WhatsAppButton";
 import CarAccessories from "./components/landing-page/CarAccessories";
 import AccessoriesDetails from "./pages/AccessoriesDetails";
+// import SellPage from "./components/common/SellPage";
+// import CreateCarListing from "./components/common/CreareCarListing";
 // import CarAccessories from "./components/landing-page/CarAccessories";
 // import AccessoriesDetails from "./pages/AccessoriesDetails";
 
@@ -52,10 +54,10 @@ const AppContent = () => {
         <Route path="/dealers" element={<Dealers />} />
         <Route path="/types/:typeSlug" element={<TypeDetail />} />
         <Route path="/accessories" element={<CarAccessories />} />
+        {/* <Route path="/sellcar" element={<SellPage />} /> */}
+        {/* <Route path="/list-car" element={<CreateCarListing />} /> */}
         <Route path="/accessorydetails/:slug" element={<AccessoriesDetails />} />
         <Route path="/profile" element={<Profile />} />
-
-        {/* Protected admin routes */}
         <Route element={<PrivateRoute />}>
           <Route path="/admin/*" element={<AdminPortal />} />
         </Route>

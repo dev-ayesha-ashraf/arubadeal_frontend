@@ -54,6 +54,7 @@ import {
 import VehicleManager from "@/components/admin-panel/VehicleManagment";
 import CarAccessory from "@/components/admin-panel/CarAccessories";
 import CategoryPage from "@/components/admin-panel/CategoryPage";
+// import CarListingRequests from "@/components/admin-panel/CarListingRequests";
 
 const Sidebar = ({
   isOpen,
@@ -75,6 +76,7 @@ const Sidebar = ({
     { path: "/admin/vehicles", icon: Car, label: "Vehicle Management" },
     { path: "/admin/vehicle-properties", icon: Tags, label: "Properties" },
     { path: "/admin/car-accessories", icon: Package, label: "Accessories Management" },
+    // { path: "/admin/car-requests", icon: Package, label: "Car Listing Requests" },
     { path: "/admin/dealers", icon: User, label: "Dealers" },
     { path: "/admin/messages", icon: MessageSquare, label: "Messages" },
     { path: "/admin/banners", icon: ImagePlus, label: "Banners" },
@@ -259,6 +261,7 @@ const AdminPortal = () => {
             <Route path="/category-management" element={<CategoryPage />} />
             <Route path="/messages" element={<Messages />} />
             <Route path="/subscriptions" element={<SubscriptionsManagement />} />
+            {/* <Route path="/car-requests" element={<CarListingRequests />} /> */}
             <Route path="/listings/:slug" element={<ListingDetail isAdmin />} />
           </Routes>
         </div>

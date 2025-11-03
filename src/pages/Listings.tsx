@@ -208,17 +208,24 @@ const Listings = () => {
 
     const searchQuery = searchParams.get("search")?.trim().toLowerCase();
     if (searchQuery) {
-      tempCars = tempCars.filter(c =>
-        c.title?.toLowerCase().includes(searchQuery) ||
-        c.fuel_type?.name?.toLowerCase().includes(searchQuery) ||
-        c.make?.name?.toLowerCase().includes(searchQuery) ||
-        c.model?.toLowerCase().includes(searchQuery) ||
-        c.body_type?.name?.toLowerCase().includes(searchQuery) ||
-        c.color?.toLowerCase().includes(searchQuery) ||
-        c.location?.toLowerCase().includes(searchQuery) ||
-        (c.badges && c.badges.some(b => b.toLowerCase().includes(searchQuery))) ||
-        (c.year && c.year.toString().includes(searchQuery))
-      );
+      const keywords = searchQuery.split(/\s+/).filter(Boolean);
+      tempCars = tempCars.filter(c => {
+        const haystack = [
+          c.title,
+          c.fuel_type?.name,
+          c.make?.name,
+          c.model,
+          c.body_type?.name,
+          c.color,
+          c.location,
+          c.badges?.join(" "),
+          c.year?.toString()
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        return keywords.every(keyword => haystack.includes(keyword));
+      });
     }
 
     switch (sortBy) {
