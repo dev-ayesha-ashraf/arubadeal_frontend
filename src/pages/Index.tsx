@@ -14,17 +14,17 @@ import { StatsSection } from "@/components/landing-page/StatsSection";
 import { WhatsAppButton } from "@/components/landing-page/WhatsAppButton";
 import { WhyChooseUs } from "@/components/landing-page/WhyChooseUs";
 
-// import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 const Index = () => {
-  // const [showPopup, setShowPopup] = useState(false);
+  const [showPopup, setShowPopup] = useState(false);
 
-  // useEffect(() => {
-  //   const timer = setTimeout(() => {
-  //     setShowPopup(true);
-  //   }, 8000); 
-  //   return () => clearTimeout(timer);
-  // }, []);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowPopup(true);
+    }, 8000); 
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <div className="min-h-screen">
@@ -40,11 +40,11 @@ const Index = () => {
       <StatsSection />
       <WhyChooseUs />
       <Footer />
-      {/* <Dialog open={showPopup} onOpenChange={setShowPopup} >
+      <Dialog open={showPopup} onOpenChange={setShowPopup} >
         <DialogContent >
           <SubscriptionBox />
         </DialogContent>
-      </Dialog> */}
+      </Dialog>
     </div>
   );
 };
