@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { FeedbackBar } from "@/components/common/FeedbackBar";
 
 interface CarAPI {
   _id: string;
@@ -36,6 +37,7 @@ interface CarAPI {
   vehicle_id?: string;
   location?: string;
   badges?: string[];
+  seats?: number | string | null;
 }
 
 interface DropdownItem {
@@ -48,6 +50,7 @@ interface DropdownsData {
   types: DropdownItem[];
   badges: DropdownItem[];
   locations: string[];
+  fuelTypes: DropdownItem[];
   prices: string[];
   colors: string[];
   models?: string[];
@@ -61,6 +64,7 @@ interface FilterState {
   location?: string;
   color?: string;
   badge?: string;
+  fuelType?: string;
 }
 
 const getPriceBadge = (price: number): string | null => {
@@ -98,6 +102,7 @@ const Listings = () => {
       const min_price = searchParams.get("min_price");
       const max_price = searchParams.get("max_price");
       const badge_id = searchParams.get("badge_id");
+      const fuel_type_id = searchParams.get("fuel_type_id");
 
       if (badge_id) newFilters.badge = badge_id;
       if (make_id) newFilters.make = make_id;
@@ -106,6 +111,7 @@ const Listings = () => {
       if (color) newFilters.color = color;
       if (location) newFilters.location = location;
       if (min_price && max_price) newFilters.priceRange = `${min_price}-${max_price}`;
+      if (fuel_type_id) newFilters.fuelType = fuel_type_id;
 
       return newFilters;
     };
@@ -117,18 +123,20 @@ const Listings = () => {
     const fetchDropdownsAndCars = async () => {
       setIsLoading(true);
       try {
-        const [makesRes, typesRes, badgesRes] = await Promise.all([
+        const [makesRes, typesRes, badgesRes, fuelTypesRes] = await Promise.all([
           fetch(`${import.meta.env.VITE_API_URL}/make/get_all`),
           fetch(`${import.meta.env.VITE_API_URL}/bodytype/get_all`),
-          fetch(`${import.meta.env.VITE_API_URL}/badge/get_all`)
+          fetch(`${import.meta.env.VITE_API_URL}/badge/get_all`),
+          fetch(`${import.meta.env.VITE_API_URL}/fueltype/get_all`)
         ]);
 
-        const [makes, types, badges] = await Promise.all([
+        const [makes, types, badges, fuelTypes] = await Promise.all([
           makesRes.json(),
           typesRes.json(),
-          badgesRes.json()
+          badgesRes.json(),
+          fuelTypesRes.json()
         ]);
-
+        console.log('Fuel Types API Response:', fuelTypes);
         const makeSlug = searchParams.get("makeSlug");
         const listingUrlBase = makeSlug
           ? `${import.meta.env.VITE_API_URL}/make/list_by_makes/${makeSlug}`
@@ -162,7 +170,8 @@ const Listings = () => {
             badges: car.badge ? [car.badge.name] : [],
             badge: car.badge,
             vehicle_id: car.vehical_id ?? "",
-            location: car.location ?? ""
+            location: car.location ?? "",
+            seats: car.seats ?? null,
           };
         });
 
@@ -174,6 +183,7 @@ const Listings = () => {
           makes,
           types,
           badges: badges || [],
+          fuelTypes: fuelTypes || [],
           locations: uniqueLocations,
           prices: ["0-3000", "3000-12000", "12000-50000"],
           colors: uniqueColors,
@@ -200,6 +210,7 @@ const Listings = () => {
     if (filters.color) tempCars = tempCars.filter(c => c.color === filters.color);
     if (filters.location) tempCars = tempCars.filter(c => c.location === filters.location);
     if (filters.badge) tempCars = tempCars.filter(c => c.badge?.id === filters.badge);
+    if (filters.fuelType) tempCars = tempCars.filter(c => c.fuel_type?.id === filters.fuelType);
 
     if (filters.priceRange) {
       const [min, max] = filters.priceRange.split("-").map(Number);
@@ -207,8 +218,32 @@ const Listings = () => {
     }
 
     const searchQuery = searchParams.get("search")?.trim().toLowerCase();
+
     if (searchQuery) {
       const keywords = searchQuery.split(/\s+/).filter(Boolean);
+      const numberWords: Record<string, number> = {
+        one: 1,
+        two: 2,
+        three: 3,
+        four: 4,
+        five: 5,
+        six: 6,
+        seven: 7,
+        eight: 8,
+        nine: 9,
+        ten: 10,
+      };
+      const seatMatch = searchQuery.match(/\b(\d{1,2})\s*(seats?|seater)?\b/);
+      let seatQuery: number | null = seatMatch ? Number(seatMatch[1]) : null;
+      if (!seatQuery) {
+        const wordMatch = searchQuery.match(
+          new RegExp(`\\b(${Object.keys(numberWords).join("|")})\\s*(seats?|seater)?\\b`, "i")
+        );
+        if (wordMatch) {
+          seatQuery = numberWords[wordMatch[1].toLowerCase()];
+        }
+      }
+
       tempCars = tempCars.filter(c => {
         const haystack = [
           c.title,
@@ -216,17 +251,29 @@ const Listings = () => {
           c.make?.name,
           c.model,
           c.body_type?.name,
+          c.fuel_type?.name,
           c.color,
           c.location,
           c.badges?.join(" "),
-          c.year?.toString()
+          c.year?.toString(),
         ]
           .filter(Boolean)
           .join(" ")
           .toLowerCase();
-        return keywords.every(keyword => haystack.includes(keyword));
+
+        const matchesText = keywords.every(keyword => haystack.includes(keyword));
+
+        const matchesSeats =
+          seatQuery !== null && Number(c.seats) === seatQuery;
+
+        if (seatQuery !== null) {
+          return matchesSeats;
+        }
+
+        return matchesText;
       });
     }
+
 
     switch (sortBy) {
       case "price-asc":
@@ -288,6 +335,7 @@ const Listings = () => {
     if (filters.color) params.set("color", filters.color);
     if (filters.location) params.set("location", filters.location);
     if (filters.badge) params.set("badge_id", filters.badge);
+    if (filters.fuelType) params.set("fuel_type_id", filters.fuelType);
     if (filters.priceRange) {
       const [min, max] = filters.priceRange.split("-");
       params.set("min_price", min);
@@ -308,7 +356,7 @@ const Listings = () => {
       <Header />
       <Navbar />
       <div className="container mx-auto px-4 py-8">
-        <div className="flex flex-col gap-8 mt-[120px] md:mt-0">
+        <div className="flex flex-col gap-8 mt-[20px] md:mt-0">
           <div className="w-full flex justify-center">
             {dropdowns && (
               <ListingsFilter

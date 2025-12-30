@@ -1,100 +1,198 @@
-import {
-  CartesianGrid,
-  Cell,
-  Legend,
-  Line,
-  LineChart,
-  Pie,
-  PieChart,
-  Tooltip,
-  XAxis,
-  YAxis,
-  ResponsiveContainer,
-} from "recharts";
+import { useEffect, useState } from "react";
+import { Car, Users, UserCheck, ShoppingCart } from "lucide-react";
+import StatsCard from "../common/StatsCard";
+import PieChartComponent from "../common/PieChartComponent";
+import BarChart from "../common/BarChart";
+import LineChartComponent from "../common/LineChartComponent";
+import PageHeader from "../common/PageHeader";
+import { LayoutDashboard } from "lucide-react";
+
+interface DashboardData {
+  total_vehical: number;
+  active_dealer: number;
+  active_seller: number;
+  active_user: number;
+  vehical_types: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    image_url: string;
+    count: number;
+  }>;
+  vehical_makes: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    image_url: string;
+    count: number;
+  }>;
+  monthly_sale: Array<{
+    month: number;
+    total_sold: number;
+    total_sale: number;
+  }>;
+}
 
 const Dashboard = () => {
-  const salesData = [
-    { month: "Jan", sales: 65 },
-    { month: "Feb", sales: 59 },
-    { month: "Mar", sales: 80 },
-    { month: "Apr", sales: 81 },
-    { month: "May", sales: 56 },
-    { month: "Jun", sales: 55 },
-  ];
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const API_URL = import.meta.env.VITE_API_URL;
 
-  const carTypeData = [
-    { name: "SUV", value: 40 },
-    { name: "Sedan", value: 30 },
-    { name: "Sports", value: 15 },
-    { name: "Electric", value: 15 },
-  ];
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
 
-  const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042"];
+  const fetchDashboardData = async () => {
+    try {
+      const token = localStorage.getItem("access_token");
+      const response = await fetch(`${API_URL}/dashboard/`, {
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setDashboardData(data);
+      }
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="px-6 py-6 flex items-center justify-center min-h-[400px]">
+        <div className="text-lg text-gray-600">Loading dashboard...</div>
+      </div>
+    );
+  }
+
+  if (!dashboardData) {
+    return (
+      <div className="px-6 py-6">
+        <div className="text-lg text-red-600">Failed to load dashboard data</div>
+      </div>
+    );
+  }
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+  const monthlySalesData = dashboardData.monthly_sale.map((item) => ({
+    month: monthNames[item.month - 1],
+    sold: item.total_sold,
+    revenue: item.total_sale,
+  }));
+
+  const topVehicleTypes = dashboardData.vehical_types
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10)
+    .map((item) => ({
+      name: item.name.charAt(0).toUpperCase() + item.name.slice(1),
+      count: item.count,
+    }));
+
+  const topVehicleMakes = dashboardData.vehical_makes
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10)
+    .map((item) => ({
+      name: item.name.charAt(0).toUpperCase() + item.name.slice(1),
+      count: item.count,
+    }));
+
+  const totalRevenue = dashboardData.monthly_sale.reduce(
+    (sum, item) => sum + item.total_sale,
+    0
+  );
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6">Welcome, Admin</h1>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h3 className="text-lg font-semibold mb-2">Total Vehicles</h3>
-          <p className="text-3xl font-bold text-dealership-primary">150</p>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h3 className="text-lg font-semibold mb-2">Active Dealers</h3>
-          <p className="text-3xl font-bold text-dealership-primary">25</p>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h3 className="text-lg font-semibold mb-2">New Messages</h3>
-          <p className="text-3xl font-bold text-dealership-primary">12</p>
-        </div>
+    <div className="px-6 py-6">
+      <PageHeader
+        title="Admin Dashboard"
+        description="Overview of your dealership performance"
+        icon={LayoutDashboard}
+      />
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <StatsCard
+          title="Total Vehicles"
+          value={dashboardData.total_vehical}
+          icon={Car}
+          variant="blue"
+        />
+        <StatsCard
+          title="Active Sellers"
+          value={dashboardData.active_seller}
+          icon={UserCheck}
+          variant="green"
+        />
+        <StatsCard
+          title="Active Users"
+          value={dashboardData.active_user}
+          icon={Users}
+          variant="orange"
+        />
+        <StatsCard
+          title="Total Revenue"
+          value={`AWG ${(totalRevenue / 1000).toFixed(1)}k`}
+          icon={ShoppingCart}
+          variant="purple"
+        />
       </div>
 
+      {/* Monthly Sales Chart */}
+      <div className="mb-8">
+        <LineChartComponent
+          title="Monthly Sales & Revenue"
+          data={monthlySalesData}
+          xKey="month"
+          height={350}
+          lines={[
+            { dataKey: "sold", color: "#8b5cf6", name: "Vehicles Sold" },
+            { dataKey: "revenue", color: "#10b981", name: "Revenue (AWG)" },
+          ]}
+        />
+      </div>
+
+      {/* Charts Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <BarChart
+          title="Top 10 Vehicle Types"
+          data={topVehicleTypes}
+          dataKey="count"
+          xKey="name"
+          color="#8b5cf6"
+          height={350}
+        />
+        <BarChart
+          title="Top 10 Vehicle Makes"
+          data={topVehicleMakes}
+          dataKey="count"
+          xKey="name"
+          color="#3b82f6"
+          height={350}
+        />
+      </div>
+
+      {/* Pie Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h3 className="text-lg font-semibold mb-4">Monthly Sales</h3>
-          <div style={{ width: "100%", maxWidth: "500px", margin: "0 auto" }}>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={salesData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Line type="monotone" dataKey="sales" stroke="#8884d8" />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h3 className="text-lg font-semibold mb-4">
-            Vehicle Types Distribution
-          </h3>
-          <div style={{ width: "100%", maxWidth: "500px", margin: "0 auto" }}>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={carTypeData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {carTypeData.map((entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={COLORS[index % COLORS.length]}
-                    />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+        <PieChartComponent
+          title="Vehicle Types Distribution"
+          data={topVehicleTypes}
+          dataKey="count"
+          nameKey="name"
+          height={350}
+        />
+        <PieChartComponent
+          title="Vehicle Makes Distribution"
+          data={topVehicleMakes}
+          dataKey="count"
+          nameKey="name"
+          height={350}
+        />
       </div>
     </div>
   );

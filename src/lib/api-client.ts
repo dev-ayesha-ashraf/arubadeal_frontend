@@ -26,7 +26,7 @@ export async function apiClient(
   };
 
   if (!options.skipAuth && token) {
-    headers["Authorization"] = `Bearer ${JSON.parse(token)}`;
+    headers["Authorization"] = `Bearer ${token}`;
   }
 
   const config = { ...options, headers };

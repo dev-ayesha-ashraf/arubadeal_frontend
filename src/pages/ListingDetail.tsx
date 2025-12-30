@@ -11,6 +11,7 @@ import { Footer } from "@/components/common/Footer";
 import { ImageZoom } from "@/components/common/ImageZoom";
 import { ShareButtons } from "@/components/common/ShareButtons";
 import { trackCustomEvent } from "@/lib/init-pixel";
+import { toast } from "sonner";
 
 interface Feature {
   _id: string;
@@ -60,6 +61,7 @@ interface CarListing {
   vehicleId?: string;
   badge?: { id: string; name: string };
   seats?: number;
+  is_sold?: boolean;
 }
 
 interface CarType {
@@ -104,6 +106,7 @@ const fetchCarDetail = async (slug: string): Promise<CarListing> => {
     mileage: res.mileage,
     vehicleId: res.vehical_id,
     seats: res.seats,
+    is_sold: res.is_sold,
     dealer: {
       _id: res.dealer?.id,
       name: [res.dealer?.first_name, res.dealer?.last_name].filter(Boolean).join(" "),
@@ -192,26 +195,86 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
     transmissions: [] as any[],
     badges: [] as any[]
   });
-  const getFilename = (url: string, alt: string) => {
+  const getFilename = (url: string, alt: string, index?: number) => {
     try {
       const parts = url.split("/");
       const rawName = parts[parts.length - 1].split("?")[0];
       const ext = rawName.includes(".") ? rawName.split(".").pop() : "jpg";
 
-      const match = rawName.match(/-(\d+)\./);
-      const index = match ? match[1] : "1";
+      const imageIndex = index !== undefined ? index + 1 :
+        (rawName.match(/-(\d+)\./) ? rawName.match(/-(\d+)\./)![1] : "1");
 
-      const carId = rawName.split("-")[0];
-      const cleanAlt = alt.replace(/\s+/g, '-').toLowerCase();
+      const carId = rawName.split("-")[0] || listing?._id?.slice(-8) || "car";
+      const cleanAlt = alt.replace(/\s+/g, '-').toLowerCase().slice(0, 20);
 
-      return `car-${carId}-${cleanAlt}-image-${index}.${ext}`;
+      return `${cleanAlt}-${carId}-image-${imageIndex}.${ext}`;
     } catch {
-      return "car-image.jpg";
+      return index !== undefined ? `car-image-${index + 1}.jpg` : "car-image.jpg";
     }
   };
+  const downloadAllImages = async () => {
+    if (!displayImages.length) return;
 
-  const handleDownload = async (e: React.MouseEvent) => {
+    try {
+      setIsDownloading(true);
+
+      trackCustomEvent("BulkImageDownload", {
+        listing_id: listing?._id,
+        total_images: displayImages.length,
+        listing_title: listing?.title,
+      });
+
+      const downloadPromises = displayImages.map(async (img, index) => {
+        try {
+          const imageUrl = getImageUrl(img.image);
+          const imageAlt = display?.title || "Vehicle image";
+
+          const response = await fetch(imageUrl, { mode: "cors" });
+          if (!response.ok) throw new Error(`Failed to fetch image ${index + 1}`);
+
+          const blob = await response.blob();
+          const blobUrl = URL.createObjectURL(blob);
+
+          const link = document.createElement("a");
+          link.href = blobUrl;
+          link.download = getFilename(imageUrl, imageAlt);
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+
+          URL.revokeObjectURL(blobUrl);
+
+          return { success: true, index };
+        } catch (error) {
+          console.error(`Failed to download image ${index + 1}:`, error);
+          return { success: false, index, error };
+        }
+      });
+
+      const results = await Promise.all(downloadPromises);
+      const successfulDownloads = results.filter(result => result.success);
+      const failedDownloads = results.filter(result => !result.success);
+      if (failedDownloads.length > 0) {
+        toast.error(`Successfully downloaded ${successfulDownloads.length} out of ${displayImages.length} images. ${failedDownloads.length} failed.`);
+      } else {
+        toast.success(`Successfully downloaded all ${displayImages.length} images!`);
+      }
+
+    } catch (error) {
+      console.error("Bulk download failed:", error);
+      toast.error("Failed to download images. Please try again.");
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+  const handleDownload = async (e: React.MouseEvent, bulkDownload: boolean = false) => {
     e.stopPropagation();
+
+    if (bulkDownload) {
+      await downloadAllImages();
+      return;
+    }
+
     if (!displayImages.length || selectedImageIndex === null) return;
 
     try {
@@ -224,7 +287,7 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
       const blobUrl = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = blobUrl;
-      link.download = getFilename(currentImageUrl, currentImageAlt);
+      link.download = getFilename(currentImageUrl, currentImageAlt, selectedImageIndex);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -237,7 +300,7 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
       });
     } catch (err) {
       console.error("Failed to download image:", err);
-      alert("Sorry, the image could not be downloaded.");
+      toast.error("Sorry, the image could not be downloaded.");
     } finally {
       setIsDownloading(false);
     }
@@ -1013,31 +1076,50 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
                     </p>
                   )}
                 </div>
-                <ShareButtons title={display?.title ?? ""} url={listingUrl} />
+                <div className="flex items-center gap-2 mt-2">
+                  <ShareButtons title={display?.title ?? ""} url={listingUrl} />
+                  <button
+                    onClick={(e) => handleDownload(e, true)}
+                    disabled={isDownloading || !displayImages.length}
+                    className="flex justify-center items-center text-center bg-dealership-primary text-white p-2 rounded-md hover:bg-dealership-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    aria-label="Download all images"
+                    title="Download all images"
+                  >
+                    <span className="pr-2">
+                      {isDownloading ? "Downloading..." : `Download All (${displayImages.length})`}
+                    </span>
+                    <Download size={20} />
+                  </button>
+                </div>
               </div>
 
               <div className="space-y-6">
-
                 <Card className="p-6">
                   <h2 className="text-xl font-semibold mb-4">Overview</h2>
                   <p className="text-sm text-gray-500 mt-1">
                     Vehicle ID: {display?.vehicleId || "N/A"}
                   </p>
-                  <div className="flex items-center mt-5">
-                    {display?.badge && (
-                      <div>
-                        <span className="inline-block bg-dealership-primary text-white px-3 py-1 rounded-full text-sm font-medium">
-                          {display.badge.name.toUpperCase()}
-                        </span>
-                      </div>
+
+
+                  <div className="flex flex-wrap items-center gap-2 mt-5">
+                    {display?.is_sold && (
+                      <span className="inline-flex items-center bg-red-600 text-white px-3 py-1 rounded-full text-xs font-semibold tracking-wide shadow-sm">
+                        SOLD
+                      </span>
                     )}
 
+                    {display?.badge && (
+                      <span className="inline-flex items-center bg-dealership-primary text-white px-3 py-1 rounded-full text-xs font-semibold tracking-wide shadow-sm">
+                        {display.badge.name.toUpperCase()}
+                      </span>
+                    )}
 
-                    <span className="inline-block bg-blue-300 text-white px-3 py-1 rounded-full text-sm text-blue-900 font-medium ml-3">
-                      {display?.description}
-                    </span>
+                    {display?.description && (
+                      <span className="inline-flex items-center bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-medium border border-blue-200">
+                        {display.description}
+                      </span>
+                    )}
                   </div>
-
                 </Card>
 
                 <Card className="p-6">

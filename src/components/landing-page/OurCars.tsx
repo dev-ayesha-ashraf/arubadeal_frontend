@@ -13,7 +13,7 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { Pagination } from "../common/Pagination";
-import { trackCustomEvent } from "@/lib/init-pixel"; 
+import { trackCustomEvent } from "@/lib/init-pixel";
 
 const filters = ["All", "Best Seller", "New Arrival", "Popular", "Used Cars"];
 
@@ -43,7 +43,11 @@ interface CarsAPIResponse {
   };
 }
 
-export const OurCars = () => {
+interface OurCarsProps {
+  badgeFilter?: string;
+}
+
+export const OurCars = ({ badgeFilter = "all" }: OurCarsProps) => {
   const [selectedFilter, setSelectedFilter] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(() => {
@@ -74,35 +78,68 @@ export const OurCars = () => {
     },
     isLoading,
   } = useQuery<CarsAPIResponse>({
-    queryKey: ["cars", selectedFilter, currentPage, itemsPerPage],
+    queryKey: ["cars", selectedFilter, currentPage, itemsPerPage, badgeFilter],
     queryFn: async () => {
-      const params = new URLSearchParams();
-      params.set("page", currentPage.toString());
-      params.set("size", itemsPerPage.toString());
 
+      const params = new URLSearchParams();
       let endpoint = "/car_listing/listing";
 
       if (selectedFilter === "New Arrival") {
         endpoint = "/car_listing/latest_arrival";
       }
 
-      const result = await api.get<{
-        items: Car[];
-        total_items: number;
-        total_pages: number;
-        page: number;
-        size: number;
-      }>(`${endpoint}?${params.toString()}`, { skipAuth: true });
+      if (badgeFilter && badgeFilter !== "all") {
+        params.set("size", "1000");
+        params.set("page", "1");
 
-      return {
-        cars: result.items ?? [],
-        pagination: {
-          total: result.total_items,
-          totalPages: result.total_pages,
-          currentPage: result.page,
-          limit: result.size,
-        },
-      };
+        const result = await api.get<{
+          items: Car[];
+          total_items: number;
+          total_pages: number;
+          page: number;
+          size: number;
+        }>(`${endpoint}?${params.toString()}`, { skipAuth: true });
+
+        const allItems = result.items ?? [];
+        const filteredItems = allItems.filter(car => car.badge?.id === badgeFilter);
+
+        const totalItems = filteredItems.length;
+        const totalPages = Math.ceil(totalItems / itemsPerPage);
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const pagedItems = filteredItems.slice(startIndex, startIndex + itemsPerPage);
+
+        return {
+          cars: pagedItems,
+          pagination: {
+            total: totalItems,
+            totalPages: totalPages,
+            currentPage: currentPage,
+            limit: itemsPerPage
+          }
+        };
+
+      } else {
+        params.set("page", currentPage.toString());
+        params.set("size", itemsPerPage.toString());
+
+        const result = await api.get<{
+          items: Car[];
+          total_items: number;
+          total_pages: number;
+          page: number;
+          size: number;
+        }>(`${endpoint}?${params.toString()}`, { skipAuth: true });
+
+        return {
+          cars: result.items ?? [],
+          pagination: {
+            total: result.total_items,
+            totalPages: result.total_pages,
+            currentPage: result.page,
+            limit: result.size,
+          },
+        };
+      }
     },
 
     staleTime: 1000 * 60 * 5,
@@ -154,11 +191,10 @@ export const OurCars = () => {
                   key={filter}
                   variant={selectedFilter === filter ? "default" : "destructive"}
                   onClick={() => handleFilterChange(filter)}
-                  className={`transition-colors ${
-                    selectedFilter === filter
-                      ? "bg-dealership-primary text-white hover:bg-dealership-primary/90"
-                      : ""
-                  }`}
+                  className={`transition-colors ${selectedFilter === filter
+                    ? "bg-dealership-primary text-white hover:bg-dealership-primary/90"
+                    : ""
+                    }`}
                 >
                   {filter}
                 </Button>
@@ -175,11 +211,10 @@ export const OurCars = () => {
                     <SelectItem
                       key={filter}
                       value={filter}
-                      className={`text-gray-700 hover:bg-[#EADDCA] hover:text-black font-medium ${
-                        selectedFilter === filter
-                          ? "bg-dealership-primary text-white"
-                          : ""
-                      }`}
+                      className={`text-gray-700 hover:bg-[#EADDCA] hover:text-black font-medium ${selectedFilter === filter
+                        ? "bg-dealership-primary text-white"
+                        : ""
+                        }`}
                     >
                       {filter}
                     </SelectItem>
@@ -205,13 +240,15 @@ export const OurCars = () => {
             Array.from({ length: itemsPerPage }).map((_, i) => (
               <Card
                 key={i}
-                className="overflow-hidden animate-pulse rounded-sm sm:rounded-md"
+                className="overflow-hidden animate-pulse rounded-sm sm:rounded-md h-full flex flex-col"
               >
                 <div className="w-full h-16 sm:h-48 bg-gray-200" />
-                <CardContent className="p-1 sm:p-4">
-                  <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                  <div className="h-3 bg-gray-200 rounded w-1/2 mb-2"></div>
-                  <div className="h-3 bg-gray-200 rounded w-1/3"></div>
+                <CardContent className="p-1 sm:p-4 flex flex-col flex-grow">
+                  <div className="flex-grow">
+                    <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                    <div className="h-3 bg-gray-200 rounded w-1/2 mb-2"></div>
+                    <div className="h-3 bg-gray-200 rounded w-1/3"></div>
+                  </div>
                 </CardContent>
               </Card>
             ))
@@ -232,9 +269,10 @@ export const OurCars = () => {
                   key={car.id}
                   to={`/listings/${car.slug}`}
                   onClick={() => trackCarView(car)}
+                  className="h-full"
                 >
-                  <Card className="overflow-hidden hover:shadow-md transition-shadow rounded-sm sm:rounded-md">
-                    <div className="relative w-full h-16 sm:h-48">
+                  <Card className="overflow-hidden hover:shadow-md transition-shadow rounded-sm sm:rounded-md h-full flex flex-col">
+                    <div className="relative w-full h-16 sm:h-48 flex-shrink-0">
                       <img
                         src={`${import.meta.env.VITE_MEDIA_URL}${primaryImage}`}
                         alt={car.make?.name}
@@ -246,8 +284,8 @@ export const OurCars = () => {
                         </div>
                       )}
                     </div>
-                    <CardContent className="p-1 sm:p-4">
-                      <div>
+                    <CardContent className="p-1 sm:p-4 flex flex-col flex-grow">
+                      <div className="flex-grow">
                         <h3 className="text-[11px] font-semibold text-dealership-navy truncate sm:text-xl">
                           {car.title.toUpperCase()}
                         </h3>

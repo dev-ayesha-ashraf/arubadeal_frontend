@@ -38,7 +38,7 @@ interface Car {
   address: string;
   status: number;
   slug: string;
-  created_at?: string; 
+  created_at?: string;
 }
 
 const fetchAllTypes = async (): Promise<CarType[]> => {
@@ -63,7 +63,7 @@ const fetchAllTypes = async (): Promise<CarType[]> => {
 
 const fetchAllCarsBySlug = async (slug: string): Promise<Car[]> => {
   const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/bodytype/list_by_bodytype/${slug}?page=1&size=1000`, 
+    `${import.meta.env.VITE_API_URL}/bodytype/list_by_bodytype/${slug}?page=1&size=1000`,
     { method: "GET", headers: { "Content-Type": "application/json" } }
   );
 
@@ -72,19 +72,19 @@ const fetchAllCarsBySlug = async (slug: string): Promise<Car[]> => {
 
   return Array.isArray(res.items)
     ? res.items.map((car: any) => ({
-        _id: car.id,
-        title: car.title,
-        price: Number(car.price),
-        mileage: isNaN(Number(car.mileage)) ? car.mileage : Number(car.mileage),
-        make: car.make?.name,
-        transmission: car.transmission?.name,
-        type: car.body_type?.name,
-        image: car.images?.[0]?.image_url || "",
-        address: car.location,
-        status: car.is_sold ? 3 : 1,
-        slug: car.slug,
-        created_at: car.created_at, 
-      }))
+      _id: car.id,
+      title: car.title,
+      price: Number(car.price),
+      mileage: isNaN(Number(car.mileage)) ? car.mileage : Number(car.mileage),
+      make: car.make?.name,
+      transmission: car.transmission?.name,
+      type: car.body_type?.name,
+      image: car.images?.[0]?.image_url || "",
+      address: car.location,
+      status: car.is_sold ? 3 : 1,
+      slug: car.slug,
+      created_at: car.created_at,
+    }))
     : [];
 };
 
@@ -92,12 +92,15 @@ const TypeDetail = () => {
   const navigate = useNavigate();
   const { typeSlug } = useParams<{ typeSlug: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
-  
+
   const urlSortBy = searchParams.get('sort') || "date-desc";
   const [sortBy, setSortBy] = useState(urlSortBy);
-  
+
   const [currentType, setCurrentType] = useState<CarType | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(() => {
+    const pageParam = searchParams.get('page');
+    return pageParam ? parseInt(pageParam) : 1;
+  });
   const carsPerPage = 9;
 
   const { data: allTypes = [], isLoading: typesLoading } = useQuery({
@@ -126,12 +129,34 @@ const TypeDetail = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [currentPage]);
 
+  // Sync state with URL params (handles back/forward button)
+  useEffect(() => {
+    const pageParam = searchParams.get('page');
+    const newPage = pageParam ? parseInt(pageParam) : 1;
+    if (newPage !== currentPage) {
+      setCurrentPage(newPage);
+    }
+
+    const sortParam = searchParams.get('sort');
+    if (sortParam && sortParam !== sortBy) {
+      setSortBy(sortParam);
+    }
+  }, [searchParams]);
+
   const handleSortChange = (value: string) => {
     setSortBy(value);
-    setCurrentPage(1); 
-    
+    setCurrentPage(1);
+
     const newSearchParams = new URLSearchParams(searchParams);
     newSearchParams.set('sort', value);
+    newSearchParams.set('page', '1');
+    setSearchParams(newSearchParams);
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    const newSearchParams = new URLSearchParams(searchParams);
+    newSearchParams.set('page', page.toString());
     setSearchParams(newSearchParams);
   };
 
@@ -275,7 +300,7 @@ const TypeDetail = () => {
               <Pagination
                 currentPage={currentPage}
                 totalPages={totalPages}
-                onPageChange={(page) => setCurrentPage(page)}
+                onPageChange={handlePageChange}
               />
             )}
           </div>

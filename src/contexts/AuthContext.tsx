@@ -3,6 +3,16 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { useApi } from "@/hooks/useApi";
 import { apiClient } from "@/lib/api-client";
+import { jwtDecode } from "jwt-decode";
+
+const isTokenExpired = (token: string) => {
+  try {
+    const decoded: any = jwtDecode(token);
+    return decoded.exp * 1000 < Date.now();
+  } catch {
+    return true;
+  }
+};
 
 export interface UserRole {
   role_id: string;
@@ -10,28 +20,27 @@ export interface UserRole {
   user_id: string;
 }
 
-
 export interface User {
   id: string;
-  name: string;
-  image: string | null;
+  first_name: string;
+  mid_name?: string | null;
+  last_name: string;
   email: string;
-  phoneNo: string | null;
-  city: string | null;
-  address: string | null;
+  phoneNo?: string | null;
+  city?: string | null;
+  address?: string | null;
   role: string;
 }
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<User>;
   logout: () => void;
   forgotPassword: (email: string) => Promise<void>;
   signup: (payload: any) => Promise<void>;
   verify: (token: string) => Promise<void>;
   resendVerification: (email: string) => Promise<void>;
 }
-
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
@@ -82,24 +91,34 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     const accessToken = localStorage.getItem("access_token");
+    const refreshToken = localStorage.getItem("refresh_token");
     const storedUser = localStorage.getItem("user");
 
-    if (accessToken && storedUser) {
-      const parsedUser = JSON.parse(storedUser);
-      setUser(parsedUser);
+    if (!accessToken || !storedUser || isTokenExpired(accessToken)) {
+      // Token invalid or expired — clear everything
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("refresh_token");
+      localStorage.removeItem("user");
+      setUser(null);
+      return;
+    }
 
-      const currentPath = window.location.pathname;
-      const isOpenedFromAdminPanel = window.opener !== null;
+    // Token valid — restore user
+    const parsedUser = JSON.parse(storedUser);
+    setUser(parsedUser);
 
-      if ((currentPath === "/" || currentPath === "") && !isOpenedFromAdminPanel) {
-        if (parsedUser.role === "admin") {
-          navigate("/");
-        } else if (parsedUser.role === "dealer") {
-          navigate("/dealer");
-        }
+    const currentPath = window.location.pathname;
+    const isOpenedFromAdminPanel = window.opener !== null;
+
+    if ((currentPath === "/" || currentPath === "") && !isOpenedFromAdminPanel) {
+      if (parsedUser.role === "admin") {
+        navigate("/");
+      } else if (parsedUser.role === "dealer") {
+        navigate("/dealer");
       }
     }
   }, [navigate]);
+
 
 
   const signup = async (payload: any) => {
@@ -162,7 +181,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<User> => {
     try {
       const response = await fetch(
         `${import.meta.env.VITE_API_URL1}/v1/auth/login`,
@@ -174,14 +193,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       );
 
       if (!response.ok) {
-        throw new Error("Invalid credentials");
+        const errorData = await response.json().catch(() => null);
+        const errorMessage = errorData?.detail || errorData?.message || "Login failed";
+        throw new Error(errorMessage);
       }
 
       const res = await response.json();
 
       localStorage.setItem("access_token", res.access_token);
       localStorage.setItem("refresh_token", res.refresh_token);
-
       const userResponse = await fetch(
         `${import.meta.env.VITE_API_URL1}/me`,
         {
@@ -195,23 +215,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         throw new Error("Failed to fetch user profile");
       }
 
-      const user = await userResponse.json();
+      const user: User = await userResponse.json();
+
       setUser(user);
       localStorage.setItem("user", JSON.stringify(user));
-      navigate("/profile");
-      toast.success("Logged in successfully");
-
 
       toast.success("Logged in successfully");
+
+      return user;
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Login failed");
       throw error;
     }
   };
 
+
   const forgotPassword = async (email: string) => {
     try {
-      // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 1000));
       toast.success("Password reset link sent to your email");
     } catch (error) {

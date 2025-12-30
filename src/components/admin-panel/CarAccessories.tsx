@@ -51,6 +51,7 @@ import {
   Eye
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import PageHeader from "../common/PageHeader";
 
 const API_URL = import.meta.env.VITE_API_URL;
 const MEDIA_URL = import.meta.env.VITE_MEDIA_URL || "https://api.arudeal.com/static";
@@ -101,6 +102,7 @@ export default function CarAccessory() {
   const [sortBy, setSortBy] = useState<string>("newest");
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
   const navigate = useNavigate();
+
 
   const [formData, setFormData] = useState<any>({
     name: "",
@@ -369,13 +371,12 @@ export default function CarAccessory() {
 
         <div className="mb-8">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-                <Package className="w-8 h-8 text-dealership-primary" />
-                Car Accessories
-              </h1>
-              <p className="text-gray-600 mt-2">Manage your car accessories inventory</p>
-            </div>
+            <PageHeader
+              title="Car Accessories"
+              description="Manage your car accessories inventory"
+              icon={Package}
+            >
+            </PageHeader>
             <Dialog
               open={open}
               onOpenChange={(isOpen) => {

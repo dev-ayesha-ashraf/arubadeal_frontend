@@ -1,9 +1,6 @@
-import React, { useEffect, useState, useMemo } from "react";
-import axios, { AxiosRequestConfig, InternalAxiosRequestConfig } from "axios";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { RiEyeLine, RiEdit2Line, RiCheckboxLine, RiDeleteBinLine } from 'react-icons/ri';
-import { Pagination } from "../common/Pagination";
-
+import axios, { InternalAxiosRequestConfig } from "axios";
 import {
   Dialog,
   DialogContent,
@@ -11,17 +8,63 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "../ui/dialog";
-import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import { Label } from "../ui/label";
-import { Textarea } from "../ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import StatsCard from "../common/StatsCard";
+import {
+  Car,
+  CheckCircle,
+  DollarSign,
+  Trash2,
+  XCircle,
+  Plus,
+  Search,
+  Edit,
+  Eye,
+  CheckSquare,
+  Gauge,
+  Palette,
+  Calendar,
+  MapPin,
+  User,
+} from "lucide-react";
+import SearchBar from "../common/SearchBar";
+import { Pagination } from "../common/Pagination";
+import PageHeader from "../common/PageHeader";
+import LayoutToggle from "../common/LayoutToggle";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Card,
+  CardContent,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
-const API = import.meta.env.VITE_API_URL as string;
-const MEDIA = import.meta.env.VITE_MEDIA_URL as string;
+const API = import.meta.env.VITE_API_URL;
+const MEDIA = import.meta.env.VITE_MEDIA_URL;
 
-type Option = { id: string; name?: string; slug?: string };
+type Option = {
+  id: string;
+  name: string;
+  slug?: string;
+};
 
 type VehicleImage = {
   id: string;
@@ -54,6 +97,9 @@ type Vehicle = {
   features?: { name: string; reason?: string }[];
   location?: string;
   condition?: string;
+  created_at: string;
+  dealer?: { first_name: string; last_name: string };
+  description?: string;
 };
 
 const api = axios.create({ baseURL: API, withCredentials: false });
@@ -117,15 +163,21 @@ function formatPrice(num?: number) {
   return `AWG ${num.toLocaleString()}`;
 }
 
+const getPrimaryImage = (images: VehicleImage[]): VehicleImage | null => {
+  if (!images || images.length === 0) return null;
+  const primaryImage = images.find(img => img.is_primary === true);
+  if (primaryImage) return primaryImage;
+  return images[0];
+};
+
 export default function VehicleManager() {
   const navigate = useNavigate();
   const [allVehicles, setAllVehicles] = useState<Vehicle[]>([]);
   const [filteredVehicles, setFilteredVehicles] = useState<Vehicle[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
   const [page, setPage] = useState(1);
   const [size] = useState(12);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [makes, setMakes] = useState<Option[]>([]);
@@ -140,77 +192,58 @@ export default function VehicleManager() {
   const [showBatchDeleteConfirm, setShowBatchDeleteConfirm] = useState(false);
   const [showBatchSoldConfirm, setShowBatchSoldConfirm] = useState(false);
   const [showBatchActiveConfirm, setShowBatchActiveConfirm] = useState(false);
-  const [notification, setNotification] = useState<{ message: string; visible: boolean }>({
+  const [notification, setNotification] = useState<{ message: string; visible: boolean; type?: 'success' | 'error' }>({
     message: '',
-    visible: false
+    visible: false,
+    type: 'success'
   });
 
-  const getPrimaryImage = (images: VehicleImage[]): VehicleImage | null => {
-    if (!images || images.length === 0) return null;
-    const primaryImage = images.find(img => img.is_primary === true);
-    if (primaryImage) return primaryImage;
-    return images[0];
+  const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
+    setNotification({
+      message,
+      visible: true,
+      type
+    });
+    setTimeout(() => {
+      setNotification({
+        message: '',
+        visible: false,
+        type: 'success'
+      });
+    }, 5000);
   };
 
   const allSelectedAreSold = useMemo(() => {
     if (selectedVehicles.size === 0) return false;
-
     const selectedVehiclesList = vehicles.filter(v => selectedVehicles.has(v.id));
     return selectedVehiclesList.every(v => v.is_sold);
   }, [selectedVehicles, vehicles]);
 
   const allSelectedAreActive = useMemo(() => {
     if (selectedVehicles.size === 0) return false;
-
     const selectedVehiclesList = vehicles.filter(v => selectedVehicles.has(v.id));
     return selectedVehiclesList.every(v => !v.is_sold);
   }, [selectedVehicles, vehicles]);
 
   const hasMixedStatus = useMemo(() => {
     if (selectedVehicles.size === 0) return false;
-
     const selectedVehiclesList = vehicles.filter(v => selectedVehicles.has(v.id));
     const hasSold = selectedVehiclesList.some(v => v.is_sold);
     const hasActive = selectedVehiclesList.some(v => !v.is_sold);
-
     return hasSold && hasActive;
   }, [selectedVehicles, vehicles]);
 
   const handleBatchMarkAsSold = async () => {
     if (selectedVehicles.size === 0) return;
-
     try {
       const ids = Array.from(selectedVehicles);
       await vehicleService.batchStatus(ids, true);
-
       fetchVehicles();
       setSelectedVehicles(new Set());
-
-      setNotification({
-        message: `${ids.length} vehicle(s) marked as sold`,
-        visible: true
-      });
-
-      setTimeout(() => {
-        setNotification({
-          message: '',
-          visible: false
-        });
-      }, 5000);
-
+      showNotification(`${ids.length} vehicle(s) marked as sold`);
     } catch (err: any) {
       console.error("Batch mark as sold failed:", err?.response?.data || err);
-      setNotification({
-        message: "Failed to update vehicles",
-        visible: true
-      });
-
-      setTimeout(() => {
-        setNotification({
-          message: '',
-          visible: false
-        });
-      }, 5000);
+      showNotification("Failed to update vehicles", 'error');
     } finally {
       setShowBatchSoldConfirm(false);
     }
@@ -218,39 +251,15 @@ export default function VehicleManager() {
 
   const handleBatchMarkAsActive = async () => {
     if (selectedVehicles.size === 0) return;
-
     try {
       const ids = Array.from(selectedVehicles);
       await vehicleService.batchStatus(ids, false);
-
       fetchVehicles();
       setSelectedVehicles(new Set());
-
-      setNotification({
-        message: `${ids.length} vehicle(s) marked as active`,
-        visible: true
-      });
-
-      setTimeout(() => {
-        setNotification({
-          message: '',
-          visible: false
-        });
-      }, 5000);
-
+      showNotification(`${ids.length} vehicle(s) marked as active`);
     } catch (err: any) {
       console.error("Batch mark as active failed:", err?.response?.data || err);
-      setNotification({
-        message: "Failed to update vehicles",
-        visible: true
-      });
-
-      setTimeout(() => {
-        setNotification({
-          message: '',
-          visible: false
-        });
-      }, 5000);
+      showNotification("Failed to update vehicles", 'error');
     } finally {
       setShowBatchActiveConfirm(false);
     }
@@ -258,9 +267,6 @@ export default function VehicleManager() {
 
   useEffect(() => {
     fetchLookups();
-  }, []);
-
-  useEffect(() => {
     fetchVehicles();
   }, []);
 
@@ -281,10 +287,7 @@ export default function VehicleManager() {
     const startIndex = (page - 1) * size;
     const endIndex = startIndex + size;
     const paginatedVehicles = filteredVehicles.slice(startIndex, endIndex);
-
     setVehicles(paginatedVehicles);
-    setTotalPages(Math.ceil(filteredVehicles.length / size));
-    setTotalItems(filteredVehicles.length);
   }, [filteredVehicles, page, size]);
 
   const searchVehicle = (vehicle: Vehicle, searchTerm: string): boolean => {
@@ -357,29 +360,10 @@ export default function VehicleManager() {
     try {
       await vehicleService.delete(id);
       fetchVehicles();
-      setNotification({
-        message: "Vehicle deleted successfully",
-        visible: true
-      });
-      setTimeout(() => {
-        setNotification({
-          message: '',
-          visible: false
-        });
-      }, 5000);
+      showNotification("Vehicle deleted successfully");
     } catch (err: any) {
       console.error("Delete failed:", err?.response?.data || err);
-      setNotification({
-        message: "Failed to delete vehicle",
-        visible: true
-      });
-
-      setTimeout(() => {
-        setNotification({
-          message: '',
-          visible: false
-        });
-      }, 5000);
+      showNotification("Failed to delete vehicle", 'error');
     }
   };
 
@@ -388,9 +372,10 @@ export default function VehicleManager() {
     try {
       await vehicleService.setStatus({ id, is_sold: true });
       fetchVehicles();
+      showNotification("Vehicle marked as sold");
     } catch (err: any) {
       console.error("Mark as sold failed:", err?.response?.data || err);
-      alert("Failed to update status");
+      showNotification("Failed to update status", 'error');
     }
   };
 
@@ -399,9 +384,10 @@ export default function VehicleManager() {
     try {
       await vehicleService.setStatus({ id, is_sold: false });
       fetchVehicles();
+      showNotification("Vehicle marked as active");
     } catch (err: any) {
       console.error("Mark as unsold failed:", err?.response?.data || err);
-      alert("Failed to update status");
+      showNotification("Failed to update status", 'error');
     }
   };
 
@@ -421,45 +407,21 @@ export default function VehicleManager() {
     if (selectedVehicles.size === vehicles.length) {
       setSelectedVehicles(new Set());
     } else {
-      const allIds = new Set(vehicles.map(v => v.id));
-      setSelectedVehicles(allIds);
+      setSelectedVehicles(new Set(vehicles.map(v => v.id)));
     }
   };
 
   const handleBatchDelete = async () => {
     if (selectedVehicles.size === 0) return;
-
     try {
       const ids = Array.from(selectedVehicles);
       await vehicleService.batchDelete(ids);
       fetchVehicles();
       setSelectedVehicles(new Set());
-
-      setNotification({
-        message: `${ids.length} vehicle(s) deleted successfully`,
-        visible: true
-      });
-
-      setTimeout(() => {
-        setNotification({
-          message: '',
-          visible: false
-        });
-      }, 5000);
-
+      showNotification(`${ids.length} vehicle(s) deleted successfully`);
     } catch (err: any) {
       console.error("Batch delete failed:", err?.response?.data || err);
-      setNotification({
-        message: "Failed to delete vehicles",
-        visible: true
-      });
-
-      setTimeout(() => {
-        setNotification({
-          message: '',
-          visible: false
-        });
-      }, 5000);
+      showNotification("Failed to delete vehicles", 'error');
     } finally {
       setShowBatchDeleteConfirm(false);
     }
@@ -473,10 +435,33 @@ export default function VehicleManager() {
     setSearch("");
   };
 
+  const handleEdit = (vehicle: Vehicle) => {
+    setEditingVehicle(vehicle);
+    setShowEdit(true);
+  };
+
+  const totalVehicles = allVehicles.length;
+  const activeVehicles = allVehicles.filter(v => !v.is_sold).length;
+  const soldVehicles = allVehicles.filter(v => v.is_sold).length;
+  const totalPages = Math.ceil(filteredVehicles.length / size);
+
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold">Vehicle List</h2>
+    <div className="p-6 space-y-6">
+      {/* Notification */}
+      {notification.visible && (
+        <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg ${notification.type === 'success' ? 'bg-green-500' : 'bg-red-500'
+          } text-white`}>
+          {notification.message}
+        </div>
+      )}
+
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <PageHeader
+          title="Vehicle Management"
+          description="Manage your vehicle inventory"
+          icon={Car}
+        />
         <div className="flex gap-2">
           {selectedVehicles.size > 0 && (
             <>
@@ -486,250 +471,402 @@ export default function VehicleManager() {
                   variant="outline"
                   className="bg-green-600 text-white hover:bg-green-700 border-green-600"
                 >
-                  <RiCheckboxLine className="mr-1" />
+                  <CheckSquare className="mr-2 h-4 w-4" />
                   Mark as Sold ({selectedVehicles.size})
                 </Button>
               )}
-
               {!allSelectedAreActive && (
                 <Button
                   onClick={() => setShowBatchActiveConfirm(true)}
                   variant="outline"
                   className="bg-blue-600 text-white hover:bg-blue-700 border-blue-600"
                 >
-                  <RiCheckboxLine className="mr-1" />
+                  <CheckSquare className="mr-2 h-4 w-4" />
                   Mark as Active ({selectedVehicles.size})
                 </Button>
               )}
-
               <Button
                 onClick={() => setShowBatchDeleteConfirm(true)}
                 variant="destructive"
-                className="bg-red-600 hover:bg-red-700"
               >
-                <RiDeleteBinLine className="mr-1" />
+                <Trash2 className="mr-2 h-4 w-4" />
                 Delete Selected ({selectedVehicles.size})
               </Button>
             </>
           )}
           <Button
             onClick={() => setShowAdd(true)}
-            className="bg-[rgb(206,131,57)] hover:bg-[rgb(206,131,57)]/90"
+            className="bg-dealership-primary hover:bg-dealership-primary/90"
           >
-            + Add Vehicle
+            <Plus className="mr-2 h-4 w-4" />
+            Add Vehicle
           </Button>
+          <LayoutToggle viewMode={viewMode} onViewModeChange={setViewMode} />
         </div>
       </div>
 
-      {hasMixedStatus && (
-        <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-          <div className="flex items-center">
-            <span className="text-yellow-800 text-sm">
-              Selected vehicles have mixed status. You can mark all as Sold or Active.
-            </span>
-          </div>
-        </div>
-      )}
-
-      <div className="mb-4">
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search vehicles by title, make, model, year, price, features, etc..."
-        />
-        {search && (
-          <div className="mt-2 text-sm text-gray-600">
-            Found {filteredVehicles.length} vehicle(s) matching "{search}"
-          </div>
-        )}
-        {selectedVehicles.size > 0 && (
-          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md inline-block mt-5">
-            <div className="flex items-center justify-between">
-              <span className="text-blue-800 font-medium">
-                {selectedVehicles.size} vehicle(s) selected
+      {
+        hasMixedStatus && (
+          <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+            <div className="flex items-center">
+              <span className="text-yellow-800 text-sm">
+                Selected vehicles have mixed status. You can mark all as Sold or Active.
               </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setSelectedVehicles(new Set())}
-                className="text-blue-600 hover:text-blue-800"
-              >
-                Clear selection
-              </Button>
             </div>
           </div>
-        )}
-      </div>
-      {notification.visible && (
-        <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded-md shadow-lg z-50">
-          {notification.message}
-        </div>
-      )}
-      <div className="overflow-x-auto bg-white rounded shadow">
-        <table className="min-w-max divide-y divide-gray-200">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase tracking-wider whitespace-nowrap">
-                <input
-                  type="checkbox"
-                  checked={vehicles.length > 0 && selectedVehicles.size === vehicles.length}
-                  onChange={toggleSelectAll}
-                  className="h-4 w-4 rounded border-gray-300 text-[rgb(206,131,57)] focus:ring-[rgb(206,131,57)]"
-                />
-              </th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase tracking-wider whitespace-nowrap">Serial #</th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase tracking-wider whitespace-nowrap">Title</th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase tracking-wider whitespace-nowrap">Make</th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase tracking-wider whitespace-nowrap">Type</th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase tracking-wider whitespace-nowrap">Model</th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase tracking-wider whitespace-nowrap">Price</th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase tracking-wider whitespace-nowrap">Year</th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase tracking-wider whitespace-nowrap">Status</th>
-              <th className="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase tracking-wider whitespace-nowrap">Actions</th>
-            </tr>
-          </thead>
+        )
+      }
 
-          <tbody className="bg-white divide-y divide-gray-200">
-            {loading ? (
-              <tr>
-                <td colSpan={10} className="p-8 text-center text-gray-500 whitespace-nowrap">
-                  Loading...
-                </td>
-              </tr>
-            ) : vehicles.length === 0 ? (
-              <tr>
-                <td colSpan={10} className="p-8 text-center text-gray-500 whitespace-nowrap">
-                  {search ? "No vehicles match your search" : "No vehicles"}
-                </td>
-              </tr>
-            ) : (
-              vehicles.map((v) => (
-                <tr key={v.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 text-sm font-medium whitespace-nowrap">
-                    <input
-                      type="checkbox"
-                      checked={selectedVehicles.has(v.id)}
-                      onChange={() => toggleVehicleSelection(v.id)}
-                      className="h-4 w-4 rounded border-gray-300 text-[rgb(206,131,57)] focus:ring-[rgb(206,131,57)]"
-                    />
-                  </td>
-                  <td className="px-4 py-3 text-sm font-medium whitespace-nowrap">{v.vehical_id || "-"}</td>
-                  <td className="px-4 py-3 text-sm flex items-center gap-3 whitespace-nowrap">
-                    <div className="w-16 h-12 bg-gray-100 rounded overflow-hidden flex-shrink-0">
-                      {v.images && v.images.length > 0 ? (
-                        <img
-                          src={`${MEDIA}${getPrimaryImage(v.images)?.image_url || v.images[0].image_url}`}
-                          alt={v.title}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">No image</div>
-                      )}
-                    </div>
-                    <div className="flex flex-col">
-                      <div className="font-medium text-gray-800">{v.title}</div>
-                      <div className="text-xs text-gray-500">{v.location}</div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-sm whitespace-nowrap">{v.make?.name}</td>
-                  <td className="px-4 py-3 text-sm whitespace-nowrap">{v.body_type?.name}</td>
-                  <td className="px-4 py-3 text-sm whitespace-nowrap">{v.model}</td>
-                  <td className="px-4 py-3 text-sm whitespace-nowrap">{formatPrice(v.price)}</td>
-                  <td className="px-4 py-3 text-sm whitespace-nowrap">{v.year || "-"}</td>
-
-                  <td className="px-4 py-3 text-sm whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs rounded-full font-semibold ${v.is_sold
-                      ? "bg-red-100 text-red-700"
-                      : v.is_active
-                        ? "bg-green-100 text-green-700"
-                        : "bg-gray-100 text-gray-700"
-                      }`}>
-                      {v.is_sold ? "Sold" : v.is_active ? "Active" : "Inactive"}
-                    </span>
-                  </td>
-
-                  <td className="px-4 py-3 text-sm whitespace-nowrap">
-                    <div className="flex gap-2 flex-nowrap overflow-x-auto">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-blue-600 border-blue-600 hover:bg-blue-50"
-                        onClick={() => handleViewClick(v.slug || "")}
-                      >
-                        <RiEyeLine className="mr-1" /> View
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-yellow-600 border-yellow-600 hover:bg-yellow-50"
-                        onClick={() => {
-                          setEditingVehicle(v);
-                          setShowEdit(true);
-                        }}
-                      >
-                        <RiEdit2Line className="mr-1" /> Edit
-                      </Button>
-                      {v.is_sold ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-purple-700 border-purple-700 hover:bg-purple-50"
-                          onClick={() => handleMarkAsUnsold(v.id)}
-                        >
-                          <RiCheckboxLine className="mr-1" /> Active
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-green-700 border-green-700 hover:bg-green-50"
-                          onClick={() => handleMarkAsSold(v.id)}
-                        >
-                          <RiCheckboxLine className="mr-1" /> Sold
-                        </Button>
-                      )}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-red-600 border-red-600 hover:bg-red-50"
-                        onClick={() => handleDelete(v.id)}
-                      >
-                        <RiDeleteBinLine className="mr-1" /> Delete
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="mt-4 flex items-center justify-center align-center">
-        <Pagination
-          currentPage={page}
-          totalPages={totalPages}
-          onPageChange={(p) => {
-            setPage(p);
-            setSelectedVehicles(new Set());
-          }}
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <StatsCard
+          title="Total Vehicles"
+          value={totalVehicles}
+          icon={Car}
+          variant="blue"
+        />
+        <StatsCard
+          title="Active Listings"
+          value={activeVehicles}
+          icon={CheckCircle}
+          variant="green"
+        />
+        <StatsCard
+          title="Sold Vehicles"
+          value={soldVehicles}
+          icon={DollarSign}
+          variant="orange"
         />
       </div>
 
+      {
+        selectedVehicles.size > 0 && (
+          <div className="flex justify-between items-center p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <span className="text-sm font-medium text-blue-900">
+              {selectedVehicles.size} vehicle(s) selected
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedVehicles(new Set())}
+              className="text-blue-600 hover:text-blue-800"
+            >
+              Clear selection
+            </Button>
+          </div>
+        )
+      }
+
+      <SearchBar
+        value={search}
+        onChange={setSearch}
+        placeholder="Search vehicles by title, make, model, year, price, features, etc..."
+        className="max-w-2xl"
+      />
+
+      {
+        search && (
+          <div className="text-sm text-gray-600">
+            Found {filteredVehicles.length} vehicle(s) matching "{search}"
+          </div>
+        )
+      }
+
+      {/* Vehicles Grid */}
+      {
+        loading ? (
+          <div className="text-center py-12">
+            <p className="text-gray-600">Loading vehicles...</p>
+          </div>
+        ) : vehicles.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-gray-600">
+              {search ? "No vehicles match your search" : "No vehicles found"}
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center gap-2 mb-4">
+              <Checkbox
+                checked={selectedVehicles.size === vehicles.length && vehicles.length > 0}
+                onCheckedChange={toggleSelectAll}
+              />
+              <Label className="text-sm text-gray-600">Select All</Label>
+            </div>
+            {viewMode === "grid" ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {vehicles.map((vehicle) => (
+                  <Card key={vehicle.id} className="overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 border-slate-200 bg-white group relative">
+
+                    <Button
+                      onClick={() => handleEdit(vehicle)}
+                      className="absolute top-3 left-3 z-10 bg-white/90 hover:bg-white text-gray-700 border border-gray-300 shadow-sm h-8 px-3"
+                      size="sm"
+                    >
+                      <Edit className="w-3 h-3 mr-1.5" />
+                      Edit
+                    </Button>
+
+                    <div className="absolute top-3 right-3 z-10">
+                      <Checkbox
+                        checked={selectedVehicles.has(vehicle.id)}
+                        onCheckedChange={() => toggleVehicleSelection(vehicle.id)}
+                        className="bg-white/90 border-gray-300 data-[state=checked]:bg-dealership-primary data-[state=checked]:border-dealership-primary w-5 h-5"
+                      />
+                    </div>
+
+                    {/* Image Section */}
+                    <div className="relative h-48 bg-gradient-to-br from-slate-100 to-slate-200 overflow-hidden">
+                      <img
+                        src={`${MEDIA}${getPrimaryImage(vehicle.images)?.image_url || vehicle.images?.[0]?.image_url}`}
+                        alt={vehicle.title}
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = `${MEDIA}/cars/placeholder-image.png`;
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+
+                      {/* Status Badge */}
+                      <Badge className={`absolute bottom-3 left-3 border-0 shadow-sm ${vehicle.is_sold
+                        ? "bg-red-100 text-red-800"
+                        : vehicle.is_active
+                          ? "bg-green-100 text-green-800"
+                          : "bg-gray-100 text-gray-800"
+                        }`}>
+                        <span className="flex items-center gap-1 text-xs font-medium">
+                          {vehicle.is_sold ? (
+                            <>
+                              <DollarSign className="w-3 h-3" /> Sold
+                            </>
+                          ) : vehicle.is_active ? (
+                            <>
+                              <CheckCircle className="w-3 h-3" /> Active
+                            </>
+                          ) : (
+                            <>
+                              <XCircle className="w-3 h-3" /> Inactive
+                            </>
+                          )}
+                        </span>
+                      </Badge>
+                    </div>
+
+                    <CardContent className="p-5">
+                      {/* Title and Info */}
+                      <div className="mb-4">
+                        <h3 className="font-bold text-lg text-slate-900 mb-2 line-clamp-2 group-hover:text-dealership-primary transition-colors">
+                          {vehicle.title}
+                        </h3>
+                        <p className="text-slate-600 text-sm mb-3">
+                          {vehicle.year} • {vehicle.make?.name} {vehicle.model}
+                        </p>
+                      </div>
+
+                      {/* Details Grid */}
+                      <div className="grid grid-cols-2 gap-3 mb-4 text-sm">
+                        <div className="flex flex-col gap-1 text-slate-700">
+                          <div className="flex items-center gap-1">
+                            <span className="font-semibold text-slate-900">{formatPrice(vehicle.price)}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 text-slate-700">
+                          <Gauge className="w-4 h-4 text-blue-600" />
+                          <span>{vehicle.mileage || "-"}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-slate-700">
+                          <Car className="w-4 h-4 text-purple-600" />
+                          <span className="truncate">{vehicle.body_type?.name || "-"}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-slate-700">
+                          <Palette className="w-4 h-4 text-orange-600" />
+                          <span className="truncate">{vehicle.color || "-"}</span>
+                        </div>
+                      </div>
+
+                      {/* Location & Date */}
+                      <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg mb-4">
+                        <div className="flex items-center gap-2">
+                          <MapPin className="w-4 h-4 text-slate-400" />
+                          <span className="text-sm text-slate-700 font-medium truncate max-w-[120px]">
+                            {vehicle.location || "No location"}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Calendar className="w-4 h-4 text-slate-400" />
+                          <span className="text-sm text-slate-700">
+                            {new Date(vehicle.created_at).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 flex-wrap">
+
+                        {vehicle.is_sold ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 bg-green-50 text-green-700 border-green-200 hover:bg-green-100 hover:border-green-300"
+                            onClick={() => handleMarkAsUnsold(vehicle.id)}
+                          >
+                            <CheckCircle className="w-3.5 h-3.5 mr-2" />
+                            Active
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 hover:border-blue-300"
+                            onClick={() => handleMarkAsSold(vehicle.id)}
+                          >
+                            <DollarSign className="w-3.5 h-3.5 mr-2" />
+                            Sold
+                          </Button>
+                        )}
+
+                        {/* Delete */}
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => handleDelete(vehicle.id)}
+                        >
+                          <Trash2 className="w-3.5 h-3.5 mr-2" />
+                          Delete
+                        </Button>
+                      </div>
+                      {/* View */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-5 w-full bg-[rgb(206,131,57)] hover:bg-[rgb(196,121,47)] text-white shadow-sm transition-colors"
+                        onClick={() => handleViewClick(vehicle.slug || "")}
+                      >
+                        <Eye className="w-4 h-4 mr-2" />
+                        View Details
+                      </Button>
+
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-md border bg-white mb-8 overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Vehicle</TableHead>
+                      <TableHead>Price</TableHead>
+                      <TableHead>Mileage</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {vehicles.map((vehicle) => (
+                      <TableRow key={vehicle.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <div className="w-16 h-12 rounded-md overflow-hidden bg-slate-100 flex-shrink-0">
+                              <img
+                                src={`${MEDIA}${getPrimaryImage(vehicle.images)?.image_url || vehicle.images?.[0]?.image_url}`}
+                                alt={vehicle.title}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src = `${MEDIA}/cars/placeholder-image.png`;
+                                }}
+                              />
+                            </div>
+                            <div>
+                              <div className="font-medium text-slate-900">{vehicle.title}</div>
+                              <div className="text-sm text-slate-500">{vehicle.year} • {vehicle.make?.name} {vehicle.model}</div>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="font-medium">{formatPrice(vehicle.price)}</div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm text-slate-600">{vehicle.mileage || "-"}</div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={`border-0 shadow-sm ${vehicle.is_sold
+                            ? "bg-red-100 text-red-800"
+                            : vehicle.is_active
+                              ? "bg-green-100 text-green-800"
+                              : "bg-gray-100 text-gray-800"
+                            }`}>
+                            {vehicle.is_sold ? "Sold" : vehicle.is_active ? "Active" : "Inactive"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              onClick={() => handleEdit(vehicle)}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              onClick={() => handleDelete(vehicle.id)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 w-8 p-0"
+                              onClick={() => handleViewClick(vehicle.slug || "")}
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+
+            <Pagination
+              currentPage={page}
+              totalPages={totalPages}
+              onPageChange={(p) => {
+                setPage(p);
+                setSelectedVehicles(new Set());
+              }}
+            />
+          </>
+        )
+      }
+
+      {/* Add Vehicle Modal */}
       <AddVehicleModal
         open={showAdd}
         onOpenChange={setShowAdd}
         onSaved={onSaveSuccess}
         lookups={{ makes, bodytypes, fueltypes, transmissions, badges }}
+        showNotification={showNotification}
       />
 
+      {/* Edit Vehicle Modal */}
       <EditVehicleModal
         open={showEdit}
         onOpenChange={setShowEdit}
         vehicle={editingVehicle}
         onSaved={onSaveSuccess}
         lookups={{ makes, bodytypes, fueltypes, transmissions, badges }}
+        showNotification={showNotification}
       />
+
+      {/* Confirmation Dialogs */}
       <Dialog open={showBatchSoldConfirm} onOpenChange={setShowBatchSoldConfirm}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -773,6 +910,7 @@ export default function VehicleManager() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
       <Dialog open={showBatchDeleteConfirm} onOpenChange={setShowBatchDeleteConfirm}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -789,21 +927,22 @@ export default function VehicleManager() {
             <Button
               variant="destructive"
               onClick={handleBatchDelete}
-              className="bg-red-600 hover:bg-red-700"
             >
               Delete {selectedVehicles.size} Vehicle(s)
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </div >
   );
 }
-function AddVehicleModal({ open, onOpenChange, onSaved, lookups }: {
+
+function AddVehicleModal({ open, onOpenChange, onSaved, lookups, showNotification }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSaved: () => void;
-  lookups: any
+  lookups: any;
+  showNotification: (message: string, type?: 'success' | 'error') => void;
 }) {
   const [step, setStep] = useState<1 | 2>(1);
   const [form, setForm] = useState<any>({
@@ -849,6 +988,7 @@ function AddVehicleModal({ open, onOpenChange, onSaved, lookups }: {
     const newPreviews = files.map(file => URL.createObjectURL(file));
     setImagePreviews((prev) => [...prev, ...newPreviews]);
   }
+
   function addFeature() {
     if (newFeature.trim()) {
       const feature = {
@@ -875,6 +1015,7 @@ function AddVehicleModal({ open, onOpenChange, onSaved, lookups }: {
     };
     setFeatures(updatedFeatures);
   }
+
   async function handleCreate() {
     setSubmitting(true);
     if (newFeature.trim()) {
@@ -897,7 +1038,7 @@ function AddVehicleModal({ open, onOpenChange, onSaved, lookups }: {
       fd.append("features", JSON.stringify([...features, ...(newFeature.trim() ? [{ name: newFeature.trim(), reason: newFeatureReason.trim() || undefined }] : [])]));
       await vehicleService.create(fd);
 
-      alert("Created");
+      showNotification("Vehicle created successfully");
       onSaved();
       onOpenChange(false);
       setStep(1);
@@ -925,7 +1066,7 @@ function AddVehicleModal({ open, onOpenChange, onSaved, lookups }: {
       setImagePreviews([]);
     } catch (err) {
       console.error("❌ API Error:", err);
-      alert("Failed to create");
+      showNotification("Failed to create vehicle", 'error');
     } finally {
       setSubmitting(false);
     }
@@ -941,7 +1082,7 @@ function AddVehicleModal({ open, onOpenChange, onSaved, lookups }: {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-[rgb(206,131,57)]">Add a new vehicle</DialogTitle>
+          <DialogTitle className="text-dealership-primary">Add a new vehicle</DialogTitle>
           <DialogDescription>
             Step {step} of 2 - {step === 1 ? "Vehicle Information" : "Upload Images"}
           </DialogDescription>
@@ -1039,7 +1180,6 @@ function AddVehicleModal({ open, onOpenChange, onSaved, lookups }: {
                   ))}
                 </SelectContent>
               </Select>
-
             </div>
             <div className="space-y-2">
               <Label htmlFor="engine_type">Engine Type</Label>
@@ -1121,7 +1261,7 @@ function AddVehicleModal({ open, onOpenChange, onSaved, lookups }: {
                   <Button
                     type="button"
                     onClick={addFeature}
-                    className="bg-[rgb(206,131,57)] hover:bg-[rgb(206,131,57)]/90"
+                    className="bg-dealership-primary hover:bg-dealership-primary/90"
                   >
                     Add
                   </Button>
@@ -1207,7 +1347,7 @@ function AddVehicleModal({ open, onOpenChange, onSaved, lookups }: {
               <Button
                 onClick={() => setStep(2)}
                 disabled={!canNext}
-                className="bg-[rgb(206,131,57)] hover:bg-[rgb(206,131,57)]/90"
+                className="bg-dealership-primary hover:bg-dealership-primary/90"
               >
                 Next: Upload Images
               </Button>
@@ -1220,7 +1360,7 @@ function AddVehicleModal({ open, onOpenChange, onSaved, lookups }: {
               <Button
                 onClick={handleCreate}
                 disabled={images.length === 0 || submitting}
-                className="bg-[rgb(206,131,57)] hover:bg-[rgb(206,131,57)]/90"
+                className="bg-dealership-primary hover:bg-dealership-primary/90"
               >
                 {submitting ? "Creating..." : "Create"}
               </Button>
@@ -1238,12 +1378,14 @@ function EditVehicleModal({
   vehicle,
   onSaved,
   lookups,
+  showNotification,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   vehicle: Vehicle | null;
   onSaved: () => void;
   lookups: any;
+  showNotification: (message: string, type?: 'success' | 'error') => void;
 }) {
   const [form, setForm] = useState<any>({});
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
@@ -1256,16 +1398,16 @@ function EditVehicleModal({
 
   const sortImagesWithPrimaryFirst = (images: VehicleImage[]): VehicleImage[] => {
     if (!images || images.length === 0) return [];
-
-    return [...images].sort((a, b) => {
-      if (a.is_primary && !b.is_primary) return -1;
-      if (!a.is_primary && b.is_primary) return 1;
-      if (a.position !== undefined && b.position !== undefined) {
-        return a.position - b.position;
-      }
-
-      return 0;
-    });
+    return [...images]
+      .filter((img) => img.is_display !== false)
+      .sort((a, b) => {
+        if (a.is_primary && !b.is_primary) return -1;
+        if (!a.is_primary && b.is_primary) return 1;
+        if (a.position !== undefined && b.position !== undefined) {
+          return a.position - b.position;
+        }
+        return 0;
+      });
   };
 
   useEffect(() => {
@@ -1281,6 +1423,7 @@ function EditVehicleModal({
         color: vehicle.color || "",
         mileage: vehicle.mileage || "",
         price: vehicle.price ?? "",
+        year: vehicle.year ?? "",
         description: vehicle.description || "",
         location: vehicle.location || "",
         seats: vehicle.seats ?? "",
@@ -1357,6 +1500,7 @@ function EditVehicleModal({
         color: form.color || null,
         mileage: form.mileage || null,
         price: form.price !== "" ? Number(form.price) : null,
+        year: form.year !== "" ? Number(form.year) : null,
         description: form.description || null,
         location: form.location || null,
         seats: form.seats !== "" ? Number(form.seats) : null,
@@ -1375,9 +1519,7 @@ function EditVehicleModal({
         uploadFiles.forEach((f) => fd.append("images", f));
 
         try {
-          console.log("Uploading images for vehicle:", vehicle.vehical_id);
           const uploadResponse = await vehicleService.uploadImages(vehicle.vehical_id, fd);
-          console.log("Upload response:", uploadResponse.data);
           const freshResponse = await vehicleService.get(vehicle.slug || '');
           const freshImages = freshResponse.data.images || [];
           const sortedImages = sortImagesWithPrimaryFirst(freshImages);
@@ -1389,16 +1531,16 @@ function EditVehicleModal({
 
         } catch (err: any) {
           console.error("Image upload failed:", err?.response?.data || err);
-          alert("Vehicle details updated but image upload failed");
+          showNotification("Vehicle details updated but image upload failed", 'error');
         }
       }
 
-      alert("Updated successfully");
+      showNotification("Vehicle updated successfully");
       onSaved();
       onOpenChange(false);
     } catch (err: any) {
       console.error("Update failed:", err?.response?.data || err);
-      alert("Failed to update");
+      showNotification("Failed to update vehicle", 'error');
     } finally {
       setSaving(false);
     }
@@ -1418,10 +1560,13 @@ function EditVehicleModal({
       const freshImages = fresh.data.images || [];
       const sortedImages = sortImagesWithPrimaryFirst(freshImages);
       setImages(sortedImages);
+      showNotification("Primary image updated");
     } catch (err) {
       console.error(err);
+      showNotification("Failed to update primary image", 'error');
     }
   }
+
   async function removeImage(image: VehicleImage) {
     if (!vehicle) return;
     try {
@@ -1430,8 +1575,10 @@ function EditVehicleModal({
       const freshImages = fresh.data.images || [];
       const sortedImages = sortImagesWithPrimaryFirst(freshImages);
       setImages(sortedImages);
+      showNotification("Image removed");
     } catch (err) {
       console.error(err);
+      showNotification("Failed to remove image", 'error');
     }
   }
 
@@ -1441,7 +1588,7 @@ function EditVehicleModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-[rgb(206,131,57)]">Edit Vehicle</DialogTitle>
+          <DialogTitle className="text-dealership-primary">Edit Vehicle</DialogTitle>
           <DialogDescription>
             Update the details of this vehicle
           </DialogDescription>
@@ -1470,6 +1617,19 @@ function EditVehicleModal({
               id="edit-model"
               value={form.model || ""}
               onChange={(e) => updateField("model", e.target.value)}
+            />
+          </div>
+
+          {/* Year */}
+          <div className="space-y-2">
+            <Label htmlFor="edit-year">Year</Label>
+            <Input
+              id="edit-year"
+              type="number"
+              value={form.year || ""}
+              onChange={(e) => updateField("year", Number(e.target.value))}
+              min="1900"
+              max={new Date().getFullYear() + 1}
             />
           </div>
 
@@ -1532,7 +1692,6 @@ function EditVehicleModal({
                 ))}
               </SelectContent>
             </Select>
-
           </div>
 
           {/* Badge */}
@@ -1650,7 +1809,7 @@ function EditVehicleModal({
                 <Button
                   type="button"
                   onClick={addFeature}
-                  className="bg-[rgb(206,131,57)] hover:bg-[rgb(206,131,57)]/90"
+                  className="bg-dealership-primary hover:bg-dealership-primary/90"
                 >
                   Add
                 </Button>
@@ -1731,32 +1890,35 @@ function EditVehicleModal({
 
           <div className="col-span-2 space-y-2">
             <Label>Current Images</Label>
-            <div className="grid grid-cols-5 gap-2 mt-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 mt-2">
               {images.map((img, index) => (
                 <div
                   key={img.id}
-                  className={`border p-2 text-xs relative ${index === 0 ? 'ring-2 ring-dealership-primary/80 ring-opacity-50' : ''
+                  className={`border p-2 text-xs relative flex flex-col ${index === 0 ? 'ring-2 ring-dealership-primary/80 ring-opacity-50' : ''
                     }`}
                 >
-                  <img
-                    src={`${MEDIA}${img.image_url}`}
-                    className="h-24 w-full object-cover mb-2"
-                    alt={`Vehicle image ${index + 1}`}
-                  />
-                  <div className="flex justify-between items-center">
-                    <div className="text-xs font-medium">
+                  <div className="w-full h-24 overflow-hidden rounded">
+                    <img
+                      src={`${MEDIA}${img.image_url}`}
+                      className="h-24 w-full object-cover"
+                      alt={`Vehicle image ${index + 1}`}
+                    />
+                  </div>
+
+                  <div className="flex justify-between items-center mt-2">
+                    <div className="text-xs font-medium truncate">
                       {index === 0 ? (
                         <span className="text-dealership-primary">Primary</span>
                       ) : null}
-
                     </div>
+
                     <div className="flex gap-1">
                       {index !== 0 && (
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => setPrimaryImage(img)}
-                          className="text-xs p-1 h-6 text-blue-600 hover:text-blue-800"
+                          className="text-xs p-1 h-6 text-blue-600 hover:text-blue-800 whitespace-nowrap"
                           title="Set as primary"
                         >
                           Set Primary
@@ -1766,7 +1928,7 @@ function EditVehicleModal({
                         variant="ghost"
                         size="sm"
                         onClick={() => removeImage(img)}
-                        className="text-xs p-1 h-6 text-red-600 hover:text-red-800"
+                        className="text-xs p-1 h-6 text-red-600 hover:text-red-800 whitespace-nowrap"
                         title="Remove image"
                       >
                         Remove
@@ -1776,7 +1938,6 @@ function EditVehicleModal({
                 </div>
               ))}
             </div>
-
           </div>
         </div>
 
@@ -1787,7 +1948,7 @@ function EditVehicleModal({
           <Button
             onClick={handleSave}
             disabled={saving}
-            className="bg-[rgb(206,131,57)] hover:bg-[rgb(206,131,57)]/90"
+            className="bg-dealership-primary hover:bg-dealership-primary/90"
           >
             {saving ? "Saving..." : "Save"}
           </Button>

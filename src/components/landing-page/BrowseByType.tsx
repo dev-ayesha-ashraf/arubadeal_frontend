@@ -75,7 +75,7 @@ export const BrowseByType = () => {
                   key={item.id}
                   to={`/types/${item.slug}`}
                   className="group"
-                  onClick={() => handleTypeClick(item)} 
+                  onClick={() => handleTypeClick(item)}
                 >
                   <div>
                     <img

@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight, Heart } from "lucide-react";
 import { Link } from "react-router-dom";
+import { Button } from "../ui/button";
+import { Card, CardContent } from "../ui/card";
 
 interface AccessoryImage {
     id: string;
@@ -60,17 +62,12 @@ const AccessoriesShowcase = () => {
         const fetchAccessories = async () => {
             try {
                 setLoading(true);
-                const response = await fetch(`${API_URL}/car_accessory/?page=1&size=8`);
-
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch accessories: ${response.status}`);
-                }
-
-                const data: AccessoriesResponse = await response.json();
+                const res = await fetch(`${API_URL}/car_accessory/?page=1&size=8`);
+                if (!res.ok) throw new Error(`Failed to fetch accessories: ${res.status}`);
+                const data: AccessoriesResponse = await res.json();
                 setAccessories(data.items);
             } catch (err) {
-                setError(err instanceof Error ? err.message : 'Failed to fetch accessories');
-                console.error('Error fetching accessories:', err);
+                setError(err instanceof Error ? err.message : "Failed to fetch accessories");
             } finally {
                 setLoading(false);
             }
@@ -78,29 +75,17 @@ const AccessoriesShowcase = () => {
 
         const fetchCategories = async () => {
             try {
-                const response = await fetch(`${API_URL}/car_accessory/category/`);
-
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch categories: ${response.status}`);
-                }
-
-                const data: Category[] = await response.json();
+                const res = await fetch(`${API_URL}/car_accessory/category/`);
+                if (!res.ok) throw new Error(`Failed to fetch categories: ${res.status}`);
+                const data: Category[] = await res.json();
                 setCategories(data);
-            } catch (err) {
-                console.error('Error fetching categories:', err);
+            } catch {
                 setCategories([
                     { id: "1", name: "Tires" },
                     { id: "2", name: "Brakes" },
                     { id: "3", name: "Body" },
                     { id: "4", name: "Filter" },
                     { id: "5", name: "Oils & Liquids" },
-                    { id: "6", name: "Wheel suspension & handlebars" },
-                    { id: "7", name: "Suspension" },
-                    { id: "8", name: "Exhaust" },
-                    { id: "9", name: "Electrics" },
-                    { id: "10", name: "Motor" },
-                    { id: "11", name: "Belts, chains, rollers" },
-                    { id: "12", name: "Other categories" }
                 ]);
             }
         };
@@ -113,15 +98,10 @@ const AccessoriesShowcase = () => {
 
     useEffect(() => {
         const handleResize = () => {
-            if (window.innerWidth < 640) {
-                setVisibleItems(1);
-            } else if (window.innerWidth < 768) {
-                setVisibleItems(2);
-            } else if (window.innerWidth < 1024) {
-                setVisibleItems(3);
-            } else {
-                setVisibleItems(4);
-            }
+            if (window.innerWidth < 640) setVisibleItems(1);
+            else if (window.innerWidth < 768) setVisibleItems(2);
+            else if (window.innerWidth < 1024) setVisibleItems(3);
+            else setVisibleItems(4);
         };
 
         handleResize();
@@ -132,64 +112,52 @@ const AccessoriesShowcase = () => {
     const handlePrevious = () => {
         if (isAnimating || accessories.length === 0) return;
         setIsAnimating(true);
-        setCurrentIndex((prevIndex) =>
-            (prevIndex - 1 + accessories.length) % accessories.length
-        );
-        setTimeout(() => setIsAnimating(false), 300);
+        setCurrentIndex((prev) => (prev - 1 + accessories.length) % accessories.length);
+        setTimeout(() => setIsAnimating(false), 500);
     };
 
     const handleNext = () => {
         if (isAnimating || accessories.length === 0) return;
         setIsAnimating(true);
-        setCurrentIndex((prevIndex) => (prevIndex + 1) % accessories.length);
-        setTimeout(() => setIsAnimating(false), 300);
+        setCurrentIndex((prev) => (prev + 1) % accessories.length);
+        setTimeout(() => setIsAnimating(false), 500);
     };
 
     const toggleFavorite = (id: string, e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        setFavorites(prev =>
-            prev.includes(id)
-                ? prev.filter(item => item !== id)
-                : [...prev, id]
+        setFavorites((prev) =>
+            prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
         );
+    };
+
+    const getPrimaryImage = (accessory: Accessory) => {
+        const primaryImage = accessory.images.find((img) => img.is_primary);
+        if (primaryImage) return `${MEDIA_URL}${primaryImage.image_url}`;
+        if (accessory.images.length > 0)
+            return `${MEDIA_URL}${accessory.images[0].image_url}`;
+        return "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=600&auto=format&fit=crop&q=60";
     };
 
     const getVisibleAccessories = () => {
         if (accessories.length === 0) return [];
-
         const items = [];
         const maxItems = Math.min(visibleItems, accessories.length);
-
         for (let i = 0; i < maxItems; i++) {
             const index = (currentIndex + i) % accessories.length;
             items.push(accessories[index]);
         }
-
         return items;
-    };
-
-    const getPrimaryImage = (accessory: Accessory) => {
-        const primaryImage = accessory.images.find(img => img.is_primary);
-        if (primaryImage) {
-            return `${MEDIA_URL}${primaryImage.image_url}`;
-        }
-        if (accessory.images.length > 0) {
-            return `${MEDIA_URL}${accessory.images[0].image_url}`;
-        }
-        return "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8Y2FyfGVufDB8fDB8fHww";
     };
 
     if (loading) {
         return (
-            <section className="py-4 overflow-hidden">
-                <div className="container mx-auto px-4">
-                    <div className="text-center mb-12">
-                        <h2 className="text-4xl font-bold text-gray-900 mb-3">Premium Car Accessories</h2>
-                        <p className="text-gray-600 max-w-2xl mx-auto">
-                            Loading accessories...
-                        </p>
-                    </div>
+            <section className="py-16 bg-background overflow-hidden">
+                <div className="container text-center">
+                    <h2 className="text-3xl font-bold text-foreground mb-3">
+                        Premium Car Accessories
+                    </h2>
+                    <p className="text-muted-foreground">Loading accessories...</p>
                 </div>
             </section>
         );
@@ -197,159 +165,146 @@ const AccessoriesShowcase = () => {
 
     if (error) {
         return (
-            <section className="py-4 overflow-hidden">
-                <div className="container mx-auto px-4">
-                    <div className="text-center mb-12">
-                        <h2 className="text-4xl font-bold text-gray-900 mb-3">Premium Car Accessories</h2>
-                        <p className="text-red-500 max-w-2xl mx-auto">
-                            Error: {error}
-                        </p>
-                    </div>
+            <section className="py-16 bg-background overflow-hidden">
+                <div className="container text-center">
+                    <h2 className="text-3xl font-bold text-foreground mb-3">
+                        Premium Car Accessories
+                    </h2>
+                    <p className="text-red-500">Error: {error}</p>
                 </div>
             </section>
         );
     }
 
     return (
-        <section className="py-4 overflow-hidden">
-            <div className="container mx-auto px-4">
-                <div className="text-center mb-12">
-                    <h2 className="text-4xl font-bold text-gray-900 mb-3">Premium Car Accessories</h2>
-                    <p className="text-gray-600 max-w-2xl mx-auto">
-                        Discover our curated collection of high-quality automotive accessories
-                    </p>
+        <section className="py-16 bg-background overflow-hidden">
+            <div className="container mx-auto">
+                {/* Header */}
+                <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-8">
+                    <div>
+                        <h2 className="text-3xl font-bold text-foreground mb-2">
+                            Premium Car Accessories
+                        </h2>
+                        <p className="text-muted-foreground max-w-2xl">
+                            Discover our curated collection of high-quality automotive accessories
+                        </p>
+                    </div>
+
+                    <div className="flex gap-2">
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={handlePrevious}
+                            disabled={isAnimating}
+                            className="rounded-full hover:border-dealership-primary"
+                        >
+                            <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={handleNext}
+                            disabled={isAnimating}
+                            className="rounded-full hover:border-dealership-primary"
+                        >
+                            <ChevronRight className="h-4 w-4" />
+                        </Button>
+                    </div>
                 </div>
 
-                <div className="flex overflow-x-auto pb-3 hide-scrollbar">
-                    <div className="flex space-x-2 mx-auto">
+                {/* Category Pills */}
+                <div className="flex overflow-x-auto hide-scrollbar pb-3 mb-8">
+                    <div className="flex space-x-3 mx-auto">
                         {categories.map((category) => (
-                            <Link
-                                key={category.id}
-                                to={`/accessories?category=${category.id}`}
-                            >
-                                <button
-                                    className="px-4 py-2 bg-white text-gray-700 rounded-full border border-gray-200 whitespace-nowrap hover:border-dealership-primary hover:text-dealership-primary transition-all duration-200"
+                            <Link key={category.id} to={`/accessories?category=${category.id}`}>
+                                <Button
+                                    variant="outline"
+                                    className="rounded-full border-muted hover:border-dealership-primary hover:text-dealership-primary whitespace-nowrap"
                                 >
                                     {category.name}
-                                </button>
+                                </Button>
                             </Link>
                         ))}
 
                         <Link to="/accessories">
-                            <button className="px-4 py-2 bg-dealership-primary/80 text-gray-800 rounded-full font-medium whitespace-nowrap hover:bg-dealership-primary transition-all duration-200 flex items-center">
-                                More spare parts <ChevronRight size={16} className="ml-1" />
-                            </button>
+                            <Button className="rounded-full bg-dealership-primary text-white hover:bg-dealership-primary/80">
+                                More spare parts
+                                <ChevronRight className="ml-1 h-4 w-4" />
+                            </Button>
                         </Link>
                     </div>
                 </div>
 
-                <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-2xl font-bold text-gray-800">
-                        Featured Accessories
-                    </h3>
-
-                    {accessories.length > 0 && (
-                        <div className="flex gap-2">
-                            <button
-                                onClick={handlePrevious}
-                                disabled={isAnimating}
-                                className="p-3 rounded-full bg-white border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50 hover:border-dealership-primary"
-                            >
-                                <ChevronLeft size={20} className="text-gray-700" />
-                            </button>
-                            <button
-                                onClick={handleNext}
-                                disabled={isAnimating}
-                                className="p-3 rounded-full bg-white border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50 hover:border-dealership-primary"
-                            >
-                                <ChevronRight size={20} className="text-gray-700" />
-                            </button>
-                        </div>
-                    )}
-                </div>
-
+                {/* Accessories Grid */}
                 {accessories.length === 0 ? (
-                    <div className="text-center py-12">
-                        <p className="text-gray-500 text-lg">No accessories found.</p>
+                    <div className="text-center py-12 text-muted-foreground">
+                        No accessories found.
                     </div>
                 ) : (
-                    <>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                            {getVisibleAccessories().map((accessory) => (
-                                <Link
-                                    to={`/accessorydetails/${accessory.slug}`}
-                                    key={accessory.id}
-                                    className="block"
-                                >
-                                    <div className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 group relative cursor-pointer">
-                                        <div className="absolute top-3 left-3 z-10 flex gap-2">
-                                            <span className="bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-                                                NEW
-                                            </span>
-                                            <span className="bg-amber-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-                                                FEATURED
-                                            </span>
-                                        </div>
-
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 transition-all duration-500">
+                        {getVisibleAccessories().map((accessory) => (
+                            <Link
+                                to={`/accessorydetails/${accessory.slug}`}
+                                key={accessory.id}
+                                className="block"
+                            >
+                                <Card className="overflow-hidden group cursor-pointer border hover:border-dealership-primary transition-all duration-300">
+                                    <CardContent className="relative p-4 flex flex-col">
+                                        {/* Favorite button */}
                                         <button
                                             onClick={(e) => toggleFavorite(accessory.id, e)}
-                                            className="absolute top-3 right-3 z-10 p-2 bg-white rounded-full shadow-md hover:bg-rose-50 transition-colors"
+                                            className="absolute top-3 right-3 z-10 p-2 bg-white rounded-full shadow-md hover:bg-rose-50 transition"
                                         >
                                             <Heart
                                                 size={18}
                                                 className={
                                                     favorites.includes(accessory.id)
                                                         ? "fill-rose-500 text-rose-500"
-                                                        : "text-gray-400"
+                                                        : "text-muted-foreground"
                                                 }
                                             />
                                         </button>
 
-                                        <div className="h-60 overflow-hidden relative">
+                                        {/* Image */}
+                                        <div className="h-56 flex items-center justify-center overflow-hidden rounded-lg mb-4">
                                             <img
                                                 src={getPrimaryImage(accessory)}
                                                 alt={accessory.name}
-                                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                                                onError={(e) => {
-                                                    
-                                                    e.currentTarget.src = "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8Y2FyfGVufDB8fDB8fHww";
-                                                }}
+                                                className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
                                             />
-                                            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-300" />
                                         </div>
 
-                                        <div className="p-4">
-                                            <h4 className="font-bold text-gray-900 text-center group-hover:text-dealership-primary transition-colors duration-200">
-                                                {accessory.name}
-                                            </h4>
-                                            
-                                        </div>
-                                    </div>
-                                </Link>
-                            ))}
-                        </div>
-
-                        <Link to="/accessories">
-                            <div className="text-center mt-12">
-                                <button className="bg-dealership-primary hover:bg-dealership-primary/80 text-white px-6 py-3 rounded-full font-medium transition-colors shadow-md hover:shadow-lg">
-                                    Browse All Accessories
-                                </button>
-                            </div>
-                        </Link>
-                    </>
+                                        {/* Name */}
+                                        <h4 className="font-semibold text-lg text-center text-dealership-navy group-hover:text-dealership-primary transition-colors">
+                                            {accessory.name}
+                                        </h4>
+                                    </CardContent>
+                                </Card>
+                            </Link>
+                        ))}
+                    </div>
                 )}
+
+                {/* CTA */}
+                <div className="text-center mt-12">
+                    <Link to="/accessories">
+                        <Button className="bg-dealership-primary hover:bg-dealership-primary/80 text-white px-6 py-3 rounded-full font-medium shadow-md hover:shadow-lg">
+                            Browse All Accessories
+                        </Button>
+                    </Link>
+                </div>
             </div>
 
             <style>
                 {`
-    .hide-scrollbar {
-      -ms-overflow-style: none;
-      scrollbar-width: none;
-    }
-    .hide-scrollbar::-webkit-scrollbar {
-      display: none;
-    }
-  `}
+          .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+          }
+          .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+          }
+        `}
             </style>
         </section>
     );

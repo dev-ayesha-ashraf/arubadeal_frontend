@@ -13,6 +13,7 @@ interface DropdownsData {
   makes: DropdownItem[];
   types: DropdownItem[];
   badges: DropdownItem[];
+  fuelTypes: DropdownItem[];
   locations: string[];
   prices: string[];
   colors: string[];
@@ -29,6 +30,7 @@ interface FilterState {
   location?: string;
   color?: string;
   badge?: string;
+  fuelType?: string;
 }
 
 interface Props {
@@ -57,15 +59,15 @@ export const ListingsFilter = ({ dropdowns, filters, setFilters, onApply }: Prop
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-2xl w-full">
+      <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-hidden sm:w-full">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold mb-4">Filter Cars</DialogTitle>
         </DialogHeader>
 
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col space-y-4 max-h-[calc(90vh-120px)] overflow-y-auto pl-3 pr-3">
           {/* Make */}
           <Select value={filters.make} onValueChange={v => setFilters({ ...filters, make: v })}>
-            <SelectTrigger className="w-full"><SelectValue placeholder="Select Make" /></SelectTrigger>
+            <SelectTrigger className="mt-5 w-full"><SelectValue placeholder="Select Make" /></SelectTrigger>
             <SelectContent className="max-h-60 overflow-y-auto bg-white">
               {dropdowns.makes.map(make => <SelectItem key={make.id} value={make.id}>{make.name}</SelectItem>)}
             </SelectContent>
@@ -84,6 +86,17 @@ export const ListingsFilter = ({ dropdowns, filters, setFilters, onApply }: Prop
             <SelectTrigger className="w-full"><SelectValue placeholder="Select Type" /></SelectTrigger>
             <SelectContent className="max-h-60 overflow-y-auto bg-white">
               {dropdowns.types.map(type => <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          {/* Fuel Type */}
+          <Select value={filters.fuelType} onValueChange={v => setFilters({ ...filters, fuelType: v })}>
+            <SelectTrigger className="w-full"><SelectValue placeholder="Select Fuel Type" /></SelectTrigger>
+            <SelectContent className="max-h-60 overflow-y-auto bg-white">
+              {dropdowns.fuelTypes.map(fuelType => (
+                <SelectItem key={fuelType.id} value={fuelType.id}>
+                  {fuelType.name}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
           <div className="flex gap-2">

@@ -20,10 +20,14 @@ import Profile from "./components/common/Profile";
 import { WhatsAppButton } from "./components/landing-page/WhatsAppButton";
 import CarAccessories from "./components/landing-page/CarAccessories";
 import AccessoriesDetails from "./pages/AccessoriesDetails";
-// import SellPage from "./components/common/SellPage";
-// import CreateCarListing from "./components/common/CreareCarListing";
-// import CarAccessories from "./components/landing-page/CarAccessories";
-// import AccessoriesDetails from "./pages/AccessoriesDetails";
+import SellYourCarPage from "./pages/SellPage";
+import LoginPage from "./pages/LoginPage";
+import SellerLayout from "./components/seller/SellerLayout";
+import MyListings from "./components/seller/MyListings";
+import SellerDashboard from "./components/seller/SellerDashboard";
+import SellerPrivateRoute from "./components/SellerPrivateRoute";
+import LoginDialog from "./components/common/Login";
+import SignupDialog from "./components/common/Signup";
 
 const queryClient = new QueryClient();
 initGA();
@@ -36,6 +40,11 @@ const AppContent = () => {
   useScrollToTop();
 
   const location = useLocation();
+  const state = location.state as { background?: Location } | null;
+  let background = state && state.background;
+  if (background && (background.pathname.includes("/login") || background.pathname.includes("/signup"))) {
+    background = { pathname: "/", search: "", hash: "", state: null, key: "default" } as any;
+  }
 
   useEffect(() => {
     if (typeof window !== "undefined" && window.fbq) {
@@ -46,7 +55,7 @@ const AppContent = () => {
 
   return (
     <>
-      <Routes>
+      <Routes location={background || location}>
         {/* Public routes */}
         <Route path="/" element={<Index />} />
         <Route path="/listings" element={<Listings />} />
@@ -54,16 +63,82 @@ const AppContent = () => {
         <Route path="/dealers" element={<Dealers />} />
         <Route path="/types/:typeSlug" element={<TypeDetail />} />
         <Route path="/accessories" element={<CarAccessories />} />
-        {/* <Route path="/sellcar" element={<SellPage />} /> */}
-        {/* <Route path="/list-car" element={<CreateCarListing />} /> */}
+        <Route path="/sellcar" element={<SellYourCarPage />} />
+        <Route element={<SellerPrivateRoute />}>
+          <Route
+            path="/seller/*"
+            element={
+              <SellerLayout>
+                <Routes>
+                  <Route path="/" element={<SellerDashboard />} />
+                  <Route path="listings" element={<MyListings />} />
+                </Routes>
+              </SellerLayout>
+            }
+          />
+        </Route>
+
         <Route path="/accessorydetails/:slug" element={<AccessoriesDetails />} />
-        <Route path="/profile" element={<Profile />} />
+
+        <Route
+          path="/login"
+          element={
+            <>
+              <Index />
+              <LoginDialog
+                showLoginDialog={true}
+                setShowLoginDialog={() => { }}
+                isModal={true}
+              />
+            </>
+          }
+        />
+        <Route
+          path="/signup"
+          element={
+            <>
+              <Index />
+              <SignupDialog
+                showDialog={true}
+                setShowDialog={() => { }}
+                isModal={true}
+              />
+            </>
+          }
+        />
+
         <Route element={<PrivateRoute />}>
+          <Route path="/profile" element={<Profile />} />
           <Route path="/admin/*" element={<AdminPortal />} />
         </Route>
 
         <Route path="*" element={<NotFound />} />
       </Routes>
+
+      {background && (
+        <Routes>
+          <Route
+            path="/login"
+            element={
+              <LoginDialog
+                showLoginDialog={true}
+                setShowLoginDialog={() => { }}
+                isModal={true}
+              />
+            }
+          />
+          <Route
+            path="/signup"
+            element={
+              <SignupDialog
+                showDialog={true}
+                setShowDialog={() => { }}
+                isModal={true}
+              />
+            }
+          />
+        </Routes>
+      )}
 
       {!isAdminRoute && <WhatsAppButton />}
     </>

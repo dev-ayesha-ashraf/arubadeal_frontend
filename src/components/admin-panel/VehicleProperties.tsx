@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Car, Tags, Fuel, Zap, Workflow, Briefcase, Wrench } from "lucide-react";
 import { Link } from "react-router-dom";
-
+import PageHeader from "../common/PageHeader";
 interface PropertyType {
   id: string;
   name: string;
@@ -58,9 +58,11 @@ const VehicleProperties = () => {
 
   return (
     <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Vehicle Properties</h1>
-      </div>
+     <PageHeader
+  title="Vehicle Properties"
+  description="Manage vehicle attributes and configurations"
+  icon={Tags}
+/>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {propertyTypes.map((property) => (

@@ -2,20 +2,28 @@ import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { LogIn, Menu, Search, User, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import LoginDialog from "./Login";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { trackCustomEvent } from "@/lib/init-pixel";
 import { useAuth } from "@/contexts/AuthContext";
+import Fuse from "fuse.js";
+import { SearchSuggestions } from "./SearchSuggestions";
 
 export const Navbar = () => {
-  const [showLoginDialog, setShowLoginDialog] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const isMobile = useIsMobile();
   const [isScrolled, setIsScrolled] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const { user, logout } = useAuth();
+  const [userProfile, setUserProfile] = useState<any>(null);
+
+  // Advanced Search State
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [fuse, setFuse] = useState<Fuse<any> | null>(null);
+  const [isFocused, setIsFocused] = useState(false);
+
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 40);
@@ -24,42 +32,139 @@ export const Navbar = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  useEffect(() => {
+    if (user) {
+      const fetchUserProfile = async () => {
+        try {
+          const response = await fetch(`${import.meta.env.VITE_API_URL1}/me`, {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("access_token")}`
+            },
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            setUserProfile(data);
+          }
+        } catch (error) {
+          console.error("Failed to fetch user profile:", error);
+        }
+      };
+
+      fetchUserProfile();
+    } else {
+      setUserProfile(null);
+    }
+  }, [user]);
+
+  // Fetch cars for search index
+  useEffect(() => {
+    const fetchSearchData = async () => {
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/car_listing/listing?page=1&size=1000`);
+        if (response.ok) {
+          const data = await response.json();
+          const items = data.items || [];
+
+          const fuseInstance = new Fuse(items, {
+            keys: [
+              'title',
+              'make.name',
+              'model',
+              'year',
+              'color',
+              'fuel_type.name',
+              'body_type.name'
+            ],
+            threshold: 0.4,
+            distance: 100,
+          });
+
+          setFuse(fuseInstance);
+        }
+      } catch (error) {
+        console.error("Failed to init search:", error);
+      }
+    };
+    fetchSearchData();
+  }, []);
+
+  const [placeholderText, setPlaceholderText] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [loopNum, setLoopNum] = useState(0);
+  const [typingSpeed, setTypingSpeed] = useState(150);
+
+  const words = [
+    "Color",
+    "Make",
+    "Model",
+    "Year",
+    "Left-hand steering",
+    "Right-hand drive",
+    "Engine type",
+    "Fuel type",
+    "Transmission",
+    "Mileage",
+    "Body Type"
+  ];
+
+  useEffect(() => {
+    const handleType = () => {
+      const i = loopNum % words.length;
+      const fullText = words[i];
+
+      setPlaceholderText(
+        isDeleting
+          ? fullText.substring(0, placeholderText.length - 1)
+          : fullText.substring(0, placeholderText.length + 1)
+      );
+
+      setTypingSpeed(isDeleting ? 50 : 150);
+
+      if (!isDeleting && placeholderText === fullText) {
+        setTimeout(() => setIsDeleting(true), 2000);
+      } else if (isDeleting && placeholderText === "") {
+        setIsDeleting(false);
+        setLoopNum(loopNum + 1);
+      }
+    };
+
+    const timer = setTimeout(handleType, typingSpeed);
+    return () => clearTimeout(timer);
+  }, [placeholderText, isDeleting, loopNum, typingSpeed]);
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
       trackCustomEvent("Search", { search_string: searchQuery.trim() });
       navigate(`/listings?search=${encodeURIComponent(searchQuery.trim())}`);
       setSearchQuery("");
+      setSuggestions([]);
+      setIsFocused(false);
+    }
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchQuery(value);
+
+    if (value.trim() && fuse) {
+      const results = fuse.search(value).slice(0, 5);
+      setSuggestions(results);
+    } else {
+      setSuggestions([]);
     }
   };
 
   const handleLoginClick = () => {
-    setShowLoginDialog(true);
     trackCustomEvent("InitiateLogin", { source: "navbar" });
+    navigate("/login", { state: { background: location } });
   };
 
   const handleMenuOpen = () => {
     setIsSidebarOpen(true);
     trackCustomEvent("OpenMenu", { device: isMobile ? "mobile" : "desktop" });
   };
-
-  const ProfileButton = () => (
-    <button
-      onClick={() => navigate("/profile")}
-      className="flex items-center gap-2 px-4 py-2 text-lg text-primary hover:text-dealership-primary transition-colors"
-    >
-      {user?.image ? (
-        <img
-          src={user.image}
-          alt={user.name}
-          className="w-8 h-8 rounded-full object-cover border border-gray-300"
-        />
-      ) : (
-        <User className="w-6 h-6" />
-      )}
-      <span className="hidden md:inline">{user?.name?.split(" ")[0]}</span>
-    </button>
-  );
 
   const LoginButton = () => (
     <Button
@@ -71,22 +176,51 @@ export const Navbar = () => {
     </Button>
   );
 
+  const ProfileButton = () => {
+    if (!user) return null;
+    const initials = `${user.first_name?.[0] || ""}${user.last_name?.[0] || ""}`.toUpperCase();
+    const [imageError, setImageError] = useState(false);
+
+    useEffect(() => {
+      setImageError(false);
+    }, [user.id, userProfile?.image_url]);
+
+    const getProfileImageUrl = () => {
+      if (!userProfile?.image_url) return null;
+
+      return `${import.meta.env.VITE_MEDIA_URL}${userProfile.image_url}`;
+    };
+
+    const profileImageUrl = getProfileImageUrl();
+
+    return (
+      <Link to="/profile" className="flex items-center gap-2 group">
+        {profileImageUrl && !imageError ? (
+          <img
+            src={profileImageUrl}
+            onError={() => setImageError(true)}
+            className="w-10 h-10 rounded-full object-cover border-2 border-dealership-primary cursor-pointer"
+            alt="Profile"
+          />
+        ) : (
+          <div className="w-10 h-10 rounded-full bg-dealership-primary text-white font-bold flex items-center justify-center cursor-pointer">
+            {initials}
+          </div>
+        )}
+      </Link>
+    );
+  };
+
   const MobileNav = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
     if (!isMobile) return null;
 
     return (
       <>
-        {isOpen && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 z-40" onClick={onClose} />
-        )}
+        {isOpen && <div className="fixed inset-0 bg-black bg-opacity-50 z-40" onClick={onClose} />}
 
         <div
-          className={`
-            fixed top-0 left-0 h-screen bg-white z-50
-            transition-transform duration-300 ease-in-out
-            w-64 transform
-            ${isOpen ? "translate-x-0" : "-translate-x-full"}
-          `}
+          className={`fixed top-0 left-0 h-screen bg-white z-50 transition-transform duration-300 ease-in-out w-64 transform ${isOpen ? "translate-x-0" : "-translate-x-full"
+            }`}
         >
           <div className="p-4 flex justify-between items-center border-b">
             <h2 className="text-xl font-bold text-dealership-primary">Menu</h2>
@@ -116,19 +250,20 @@ export const Navbar = () => {
                   className="text-lg hover:text-dealership-primary"
                   onClick={onClose}
                 >
-                  Accesories
+                  Accessories
                 </Link>
               </li>
-                {/* <li>
+              <li>
                 <Link
                   to="/sellcar"
                   className="text-lg hover:text-dealership-primary"
                   onClick={onClose}
                 >
-                  Sell Cars
+                  Sell My Car
                 </Link>
-              </li> */}
-              <div>{user ? <ProfileButton /> : <LoginButton />}</div>
+              </li>
+
+              {!user && <LoginButton />}
             </ul>
           </nav>
         </div>
@@ -139,11 +274,10 @@ export const Navbar = () => {
   return (
     <>
       <nav
-        className={`bg-white shadow-md py-4 z-50 ${isScrolled || isMobile ? "fixed top-0 left-0 right-0 z-50" : "relative"
+        className={`bg-white relative shadow-md py-4 z-50 ${isScrolled || isMobile ? "fixed top-0 left-0 right-0 z-50" : "relative"
           }`}
       >
         <div className="container mx-auto px-4">
-          {/* Mobile Layout */}
           <div className="md:hidden flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <Link to="/" className="flex items-center group transition-transform duration-300 hover:scale-105">
@@ -161,29 +295,52 @@ export const Navbar = () => {
                 </div>
               </Link>
 
-              <button onClick={handleMenuOpen} className="p-2">
-                <Menu className="w-6 h-6 text-dealership-primary" />
-              </button>
+              <div className="flex items-center gap-2">
+                {user && <ProfileButton />}
+                <button onClick={handleMenuOpen} className="p-2">
+                  <Menu className="w-6 h-6 text-dealership-primary" />
+                </button>
+              </div>
             </div>
 
-            <form onSubmit={handleSearch} className="relative w-full">
-              <input
-                type="text"
-                placeholder="Search cars..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dealership-primary/50"
-              />
-              <button
-                type="submit"
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-dealership-primary"
-              >
-                <Search className="w-5 h-5" />
-              </button>
-            </form>
+            <div className="relative w-full transition-all duration-300">
+              <form onSubmit={handleSearch} className="relative w-full">
+                <div className={`
+                  flex items-center w-full px-4 py-2 
+                  bg-gray-100/50 backdrop-blur-sm border-2 
+                  ${isFocused ? 'border-dealership-primary bg-white shadow-lg ring-4 ring-dealership-primary/10' : 'border-gray-200'} 
+                  rounded-lg transition-all duration-300
+                `}>
+                  <Search className={`w-5 h-5 transition-colors ${isFocused ? 'text-dealership-primary' : 'text-gray-400'}`} />
+                  <input
+                    type="text"
+                    placeholder={`Search car by ${placeholderText}|`}
+                    value={searchQuery}
+                    onChange={handleSearchChange}
+                    onFocus={() => setIsFocused(true)}
+                    onBlur={() => setTimeout(() => setIsFocused(false), 200)}
+                    className="w-full px-3 py-1 bg-transparent border-none focus:outline-none text-gray-800 placeholder-gray-400/70"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => { setSearchQuery(""); setSuggestions([]); }}
+                      className="p-1 hover:bg-gray-200 rounded-full transition-colors"
+                    >
+                      <X className="w-4 h-4 text-gray-400" />
+                    </button>
+                  )}
+                </div>
+
+                <SearchSuggestions
+                  suggestions={suggestions}
+                  visible={isFocused && suggestions.length > 0}
+                  onClose={() => setIsFocused(false)}
+                />
+              </form>
+            </div>
           </div>
 
-          {/* Desktop Layout */}
           <div className="hidden md:flex items-center justify-between gap-6">
             <Link
               to="/"
@@ -216,35 +373,64 @@ export const Navbar = () => {
               >
                 Listings
               </Link>
-               <Link
+              <Link
                 to="/accessories"
                 className="text-dealership-primary text-lg font-medium hover:text-dealership-primary/80 transition-colors"
               >
-                Accesories
+                Accessories
               </Link>
-                 {/* <Link
+              <Link
                 to="/sellcar"
                 className="text-dealership-primary text-lg font-medium hover:text-dealership-primary/80 transition-colors"
               >
-                Sell Cars
-              </Link> */}
+                Sell My Car
+              </Link>
             </div>
 
-            <form onSubmit={handleSearch} className="relative w-64">
-              <input
-                type="text"
-                placeholder="Search cars..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-dealership-primary/50"
-              />
-              <button
-                type="submit"
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-dealership-primary"
-              >
-                <Search className="w-5 h-5" />
-              </button>
-            </form>
+            <div className={`relative w-full md:w-[500px] transition-all duration-300 ${isFocused ? 'scale-[1.02]' : ''}`}>
+              <form onSubmit={handleSearch} className="relative w-full">
+                <div className={`
+                  flex items-center w-full px-4 py-2.5 
+                  bg-gray-100/50 backdrop-blur-sm border-2 
+                  ${isFocused ? 'border-dealership-primary bg-white shadow-lg ring-4 ring-dealership-primary/10' : 'border-transparent hover:border-gray-200'} 
+                  rounded-full transition-all duration-300
+                `}>
+                  <Search className={`w-5 h-5 transition-colors ${isFocused ? 'text-dealership-primary' : 'text-gray-400'}`} />
+                  <input
+                    type="text"
+                    placeholder={`Search car by ${placeholderText}|`}
+                    value={searchQuery}
+                    onChange={handleSearchChange}
+                    onFocus={() => setIsFocused(true)}
+                    onBlur={() => setTimeout(() => setIsFocused(false), 200)}
+                    className="w-full px-3 py-1 bg-transparent border-none focus:outline-none text-gray-800 placeholder-gray-400/70"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => { setSearchQuery(""); setSuggestions([]); }}
+                      className="p-1 hover:bg-gray-200 rounded-full transition-colors"
+                    >
+                      <X className="w-4 h-4 text-gray-400" />
+                    </button>
+                  )}
+                </div>
+
+                <SearchSuggestions
+                  suggestions={suggestions}
+                  visible={isFocused && suggestions.length > 0}
+                  onClose={() => setIsFocused(false)}
+                />
+              </form>
+
+              <div className={`
+                absolute -bottom-6 left-6 text-[10px] text-gray-400 font-medium 
+                transition-all duration-300 pointer-events-none
+                ${isFocused ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'}
+              `}>
+                Try: "Red Toyota", "2023 BMW", "SUV Diesel"...
+              </div>
+            </div>
 
             {user ? <ProfileButton /> : <LoginButton />}
           </div>
@@ -252,8 +438,6 @@ export const Navbar = () => {
           <MobileNav isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
         </div>
       </nav>
-
-      <LoginDialog showLoginDialog={showLoginDialog} setShowLoginDialog={setShowLoginDialog} />
     </>
   );
 };

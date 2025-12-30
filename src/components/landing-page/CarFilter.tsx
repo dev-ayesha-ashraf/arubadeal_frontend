@@ -20,6 +20,7 @@ interface DropdownsData {
   prices: string[];
   colors: string[];
   models?: string[];
+  fuelTypes: DropdownItem[];
 }
 
 interface FilterState {
@@ -32,6 +33,12 @@ interface FilterState {
   location?: string;
   color?: string;
   badge?: string;
+  fuelType?: string;
+}
+
+interface CarFilterProps {
+  selectedBadge?: string;
+  onBadgeChange?: (badge: string) => void;
 }
 
 const makePriceRange = (min?: string, max?: string) => {
@@ -39,52 +46,54 @@ const makePriceRange = (min?: string, max?: string) => {
   return `${min ?? ""}-${max ?? ""}`;
 };
 
-export const CarFilter = () => {
+export const CarFilter = ({ selectedBadge = "all", onBadgeChange }: CarFilterProps) => {
   const navigate = useNavigate();
   const [dropdowns, setDropdowns] = useState<DropdownsData | null>(null);
   const [filters, setFilters] = useState<FilterState>({});
-  const [selectedBadge, setSelectedBadge] = useState<string>("all");
   const [totalListings, setTotalListings] = useState<number>(0);
-useEffect(() => {
-  const fetchFilters = async () => {
-    try {
-      const [makesRes, typesRes, badgesRes] = await Promise.all([
-        fetch(`${import.meta.env.VITE_API_URL}/make/get_all`),
-        fetch(`${import.meta.env.VITE_API_URL}/bodytype/get_all`),
-        fetch(`${import.meta.env.VITE_API_URL}/badge/get_all`), 
-      ]);
+  useEffect(() => {
+    const fetchFilters = async () => {
+      try {
+        const [makesRes, typesRes, badgesRes, fuelTypesRes] = await Promise.all([
+          fetch(`${import.meta.env.VITE_API_URL}/make/get_all`),
+          fetch(`${import.meta.env.VITE_API_URL}/bodytype/get_all`),
+          fetch(`${import.meta.env.VITE_API_URL}/badge/get_all`),
+          fetch(`${import.meta.env.VITE_API_URL}/fueltype/get_all`),
+        ]);
 
-      const [makes, types, badges] = await Promise.all([
-        makesRes.json(),
-        typesRes.json(),
-        badgesRes.json(),
-      ]);
+        const [makes, types, badges, fuelTypes] = await Promise.all([
+          makesRes.json(),
+          typesRes.json(),
+          badgesRes.json(),
+          fuelTypesRes.json(),
+        ]);
 
-      const listingRes = await fetch(`${import.meta.env.VITE_API_URL}/car_listing/listing`);
-      const listingData = await listingRes.json();
-      setTotalListings(listingData.total_items ?? 0);
+        const listingRes = await fetch(`${import.meta.env.VITE_API_URL}/car_listing/listing`);
+        const listingData = await listingRes.json();
+        setTotalListings(listingData.total_items ?? 0);
 
-      const items = listingData.items || [];
-      const uniqueModels = Array.from(new Set(items.map((i: any) => i.model).filter(Boolean)));
-      const uniqueColors = Array.from(new Set(items.map((i: any) => i.color).filter(Boolean)));
-      const uniqueLocations = Array.from(new Set(items.map((i: any) => i.location).filter(Boolean)));
+        const items = listingData.items || [];
+        const uniqueModels = Array.from(new Set(items.map((i: any) => i.model).filter(Boolean))) as string[];
+        const uniqueColors = Array.from(new Set(items.map((i: any) => i.color).filter(Boolean))) as string[];
+        const uniqueLocations = Array.from(new Set(items.map((i: any) => i.location).filter(Boolean))) as string[];
 
-      setDropdowns({
-        makes,
-        types,
-        badges, 
-        locations: uniqueLocations,
-        prices: ["0-3000", "3000-12000", "12000-50000"],
-        colors: uniqueColors,
-        models: uniqueModels,
-      });
-    } catch (err) {
-      console.error("Error fetching filters:", err);
-    }
-  };
+        setDropdowns({
+          makes,
+          types,
+          badges,
+          fuelTypes,
+          locations: uniqueLocations,
+          prices: ["0-3000", "3000-12000", "12000-50000"],
+          colors: uniqueColors,
+          models: uniqueModels,
+        });
+      } catch (err) {
+        console.error("Error fetching filters:", err);
+      }
+    };
 
-  fetchFilters();
-}, []);
+    fetchFilters();
+  }, []);
 
 
   const handleSearch = () => {
@@ -93,6 +102,7 @@ useEffect(() => {
     if (filters.make) params.set("make_id", filters.make);
     if (filters.model) params.set("model", filters.model);
     if (filters.type) params.set("body_type_id", filters.type);
+    if (filters.fuelType) params.set("fuel_type_id", filters.fuelType);
 
     if (filters.minPrice || filters.maxPrice) {
       if (filters.minPrice) params.set("min_price", filters.minPrice);
@@ -107,7 +117,7 @@ useEffect(() => {
 
     if (filters.location) params.set("location", filters.location);
     if (filters.color) params.set("color", filters.color);
-    if (selectedBadge !== "all") params.set("badge", selectedBadge);
+    if (selectedBadge !== "all") params.set("badge_id", selectedBadge);
 
     trackCustomEvent("CarFilterApplied", {
       make: filters.make || null,
@@ -129,7 +139,7 @@ useEffect(() => {
       <div className="flex flex-wrap justify-between items-center">
         <div className="flex flex-wrap gap-4 mb-4 md:mb-0">
           <button
-            onClick={() => setSelectedBadge("all")}
+            onClick={() => onBadgeChange?.("all")}
             className={`text-xs px-3 py-2 rounded-full sm:text-sm capitalize ${selectedBadge === "all"
               ? "bg-dealership-primary text-white"
               : "bg-gray-100 text-gray-600 hover:bg-gray-200"
@@ -139,9 +149,9 @@ useEffect(() => {
           </button>
           {dropdowns.badges.map((badge) => (
             <button
-              key={badge._id}
-              onClick={() => setSelectedBadge(badge._id!)}
-              className={`text-xs px-3 py-2 rounded-full sm:text-sm capitalize ${selectedBadge === badge._id
+              key={badge.id}
+              onClick={() => onBadgeChange?.(badge.id!)}
+              className={`text-xs px-3 py-2 rounded-full sm:text-sm capitalize ${selectedBadge === badge.id
                 ? "bg-dealership-primary text-white"
                 : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
@@ -166,15 +176,14 @@ useEffect(() => {
                 Filter
               </Button>
             </DialogTrigger>
-
-            <DialogContent className="sm:max-w-2xl w-full">
+            <DialogContent className="sm:max-w-2xl w-full max-h-[90vh] overflow-hidden">
               <DialogHeader>
                 <DialogTitle className="text-xl font-semibold mb-4">
                   Filter Cars
                 </DialogTitle>
               </DialogHeader>
 
-              <div className="flex flex-col space-y-4">
+              <div className="flex flex-col space-y-4 max-h-[calc(90vh-120px)] overflow-y-auto pr-3 pl-3">
                 {/* Make */}
                 <Select
                   value={filters.make}
@@ -215,6 +224,21 @@ useEffect(() => {
                     {dropdowns.types.map((type) => (
                       <SelectItem key={type.id} value={type.id}>
                         {type.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select
+                  value={filters.fuelType}
+                  onValueChange={(v) => setFilters((prev) => ({ ...prev, fuelType: v }))}
+                >
+                  <SelectTrigger className="w-full bg-white">
+                    <SelectValue placeholder="Select Fuel Type" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white w-full max-h-60 overflow-y-auto">
+                    {dropdowns.fuelTypes.map((fuelType) => (
+                      <SelectItem key={fuelType.id} value={fuelType.id}>
+                        {fuelType.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
