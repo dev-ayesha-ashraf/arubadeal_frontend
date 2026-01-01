@@ -19,7 +19,6 @@ export const Navbar = () => {
   const { user, logout } = useAuth();
   const [userProfile, setUserProfile] = useState<any>(null);
 
-  // Advanced Search State
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [fuse, setFuse] = useState<Fuse<any> | null>(null);
   const [isFocused, setIsFocused] = useState(false);
@@ -57,7 +56,6 @@ export const Navbar = () => {
     }
   }, [user]);
 
-  // Fetch cars for search index
   useEffect(() => {
     const fetchSearchData = async () => {
       try {
@@ -145,16 +143,17 @@ export const Navbar = () => {
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setSearchQuery(value);
+    setSearchQuery(e.target.value);
+  };
 
-    if (value.trim() && fuse) {
-      const results = fuse.search(value).slice(0, 5);
+  useEffect(() => {
+    if (searchQuery.trim() && fuse) {
+      const results = fuse.search(searchQuery).slice(0, 5);
       setSuggestions(results);
     } else {
       setSuggestions([]);
     }
-  };
+  }, [searchQuery, fuse]);
 
   const handleLoginClick = () => {
     trackCustomEvent("InitiateLogin", { source: "navbar" });

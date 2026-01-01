@@ -31,7 +31,10 @@ export const SearchSuggestions = ({ suggestions, visible, onClose }: SearchSugge
     };
 
     return (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-100 overflow-hidden z-[100] max-h-[400px] overflow-y-auto">
+        <div 
+            onMouseDown={(e) => e.preventDefault()}
+            className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-100 overflow-hidden z-[100] max-h-[400px] overflow-y-auto"
+        >
             <div className="p-2 text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-50/50">
                 Results found: {suggestions.length}
             </div>
