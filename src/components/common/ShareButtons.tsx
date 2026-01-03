@@ -5,12 +5,14 @@ import { trackCustomEvent } from "@/lib/init-pixel";
 
 interface ShareButtonsProps {
   title: string;
-  url: string; 
+  url: string;
   imageUrl?: string;
+  isThirdParty?: boolean;
 }
 
-export const ShareButtons = ({ title, url, imageUrl }: ShareButtonsProps) => {
+export const ShareButtons = ({ title, url, imageUrl, isThirdParty }: ShareButtonsProps) => {
   const getShareUrl = (listingUrl: string) => {
+    if (isThirdParty) return listingUrl;
     try {
       const slug = listingUrl.split("/listings/")[1];
       return slug ? `https://api.arudeal.com/share/${slug}` : listingUrl;

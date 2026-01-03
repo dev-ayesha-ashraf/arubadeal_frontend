@@ -71,68 +71,135 @@ interface CarType {
 }
 
 const fetchCarDetail = async (slug: string): Promise<CarListing> => {
-  const response = await fetch(
-    `${import.meta.env.VITE_API_URL}/car_listing/get_car/${slug}`,
-    {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    }
-  );
-  if (!response.ok) throw new Error("Failed to fetch car detail");
-  const res = await response.json();
+  try {
+    const response = await fetch(
+      `${import.meta.env.VITE_API_URL}/car_listing/get_car/${slug}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    if (!response.ok) throw new Error("Failed to fetch internal car detail");
+    const res = await response.json();
 
-  const sortedImages = (res.images ?? [])
-    .filter((img: any) => img.is_display !== false)
-    .sort((a: any, b: any) => {
-      if (a.is_primary && !b.is_primary) return -1;
-      if (!a.is_primary && b.is_primary) return 1;
-      return (a.position || 0) - (b.position || 0);
-    })
-    .map((img: any, index: number) => ({
-      _id: img.id,
-      image: img.image_url,
-      isPrimary: img.is_primary,
-      isDisplay: img.is_display,
-      position: img.position,
-    }));
+    const sortedImages = (res.images ?? [])
+      .filter((img: any) => img.is_display !== false)
+      .sort((a: any, b: any) => {
+        if (a.is_primary && !b.is_primary) return -1;
+        if (!a.is_primary && b.is_primary) return 1;
+        return (a.position || 0) - (b.position || 0);
+      })
+      .map((img: any, index: number) => ({
+        _id: img.id,
+        image: img.image_url,
+        isPrimary: img.is_primary,
+        isDisplay: img.is_display,
+        position: img.position,
+      }));
 
-  const mapped: CarListing = {
-    _id: res.id,
-    title: res.title,
-    description: res.condition,
-    price: res.price,
-    mileage: res.mileage,
-    vehicleId: res.vehical_id,
-    seats: res.seats,
-    is_sold: res.is_sold,
-    dealer: {
-      _id: res.dealer?.id,
-      name: [res.dealer?.first_name, res.dealer?.last_name].filter(Boolean).join(" "),
-      address: res.location,
-    },
-    address: res.location,
-    features: (res.features ?? []).map((f: any, i: number) => ({
-      _id: `${i}`,
-      name: f.name,
-      value: f.reason ?? "",
-    })),
-    images: sortedImages,
-    technicalSpecification: {
-      make: res.make?.name,
-      type: res.body_type?.name,
-      engine: res.engine_type,
-      transmission: res.transmission?.name,
-      fuelTypes: res.fuel_type?.name ? [res.fuel_type.name] : [],
+    const mapped: CarListing = {
+      _id: res.id,
+      title: res.title,
+      description: res.condition,
+      price: res.price,
+      mileage: res.mileage,
+      vehicleId: res.vehical_id,
       seats: res.seats,
-    },
-    slug: res.slug,
-    badge: res.badge,
-    badges: res.badge ? [res.badge.name] : [],
-  };
+      is_sold: res.is_sold,
+      dealer: {
+        _id: res.dealer?.id,
+        name: [res.dealer?.first_name, res.dealer?.last_name].filter(Boolean).join(" "),
+        address: res.location,
+      },
+      address: res.location,
+      features: (res.features ?? []).map((f: any, i: number) => ({
+        _id: `${i}`,
+        name: f.name,
+        value: f.reason ?? "",
+      })),
+      images: sortedImages,
+      technicalSpecification: {
+        make: res.make?.name,
+        type: res.body_type?.name,
+        engine: res.engine_type,
+        transmission: res.transmission?.name,
+        fuelTypes: res.fuel_type?.name ? [res.fuel_type.name] : [],
+        seats: res.seats,
+      },
+      slug: res.slug,
+      badge: res.badge,
+      badges: res.badge ? [res.badge.name] : [],
+    };
 
-  return mapped;
+    return mapped;
+  } catch (error) {
+    // Try third-party API
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api_listing/public/${slug}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      if (!response.ok) throw new Error("Failed to fetch third-party car detail");
+      const res = await response.json();
+
+      const sortedImages = (res.images ?? [])
+        .sort((a: any, b: any) => {
+          if (a.is_primary && !b.is_primary) return -1;
+          if (!a.is_primary && b.is_primary) return 1;
+          return (a.position || 0) - (b.position || 0);
+        })
+        .map((img: any) => ({
+          _id: img.id,
+          image: img.image_url,
+          isPrimary: img.is_primary,
+          isDisplay: img.is_display ?? true,
+          position: img.position,
+        }));
+
+      const cleanText = (text: string) => text ? text.replace(/\s*\b(lhd|rhd)\b\s*/gi, "").trim() : "";
+
+      const mapped: CarListing = {
+        _id: res.id,
+        title: cleanText(`${res.year} ${res.meta_data?.make || ""} ${res.model}`),
+        description: cleanText(res.history ? `Used ${res.history.usageType || "Car"}` : "Used Car"), // Basic description
+        price: res.price,
+        mileage: res.miles,
+        vehicleId: res.vehical_id,
+        seats: res.seats,
+        is_sold: false, // Default to false/active for now unless 'used' means something else but user said implement 'our cars + these'
+        dealer: {
+          _id: "tp-dealer",
+          name: res.dealer,
+          address: `${res.city}, ${res.state} ${res.zip}`,
+        },
+        address: `${res.city}, ${res.state} ${res.zip}`,
+        features: [], // Third party might not have features list in same format
+        images: sortedImages,
+        technicalSpecification: {
+          make: res.meta_data?.make,
+          type: res.meta_data?.bodyType,
+          engine: res.engine,
+          transmission: cleanText(res.meta_data?.transmission || "N/A"),
+          fuelTypes: res.meta_data?.fuelType ? [res.meta_data.fuelType] : ["N/A"],
+          seats: res.seats,
+        },
+        slug: res.id, // Using ID as slug
+        badge: undefined,
+        badges: [],
+      };
+      return mapped;
+
+    } catch (tpError) {
+      throw tpError; // Re-throw if both fail
+    }
+  }
 };
 
 interface ListingDetailProps {
@@ -1077,7 +1144,11 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
                   )}
                 </div>
                 <div className="flex items-center gap-2 mt-2">
-                  <ShareButtons title={display?.title ?? ""} url={listingUrl} />
+                  <ShareButtons
+                    title={display?.title ?? ""}
+                    url={listingUrl}
+                    isThirdParty={display?.dealer?._id === "tp-dealer"}
+                  />
                   <button
                     onClick={(e) => handleDownload(e, true)}
                     disabled={isDownloading || !displayImages.length}
@@ -1138,7 +1209,7 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
                       {isAdmin ? (
                         <input type="text" value={display?.technicalSpecification?.transmission ?? ""} onChange={(e) => updateTechnicalSpec("transmission", e.target.value)} className="border rounded p-1 w-full" />
                       ) : (
-                        <p className="text-gray-600">{display?.technicalSpecification?.transmission}</p>
+                        <p className="text-gray-600">{display?.technicalSpecification?.transmission || "N/A"}</p>
                       )}
                     </div>
                     <div>
@@ -1219,7 +1290,7 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
                       {isAdmin ? (
                         <input type="text" className="border rounded p-1 w-full" value={(display?.technicalSpecification?.fuelTypes ?? []).join(", ")} onChange={(e) => updateTechnicalSpec("fuelTypes", e.target.value.split(",").map(s => s.trim()))} placeholder="Comma separated" />
                       ) : (
-                        <p className="text-gray-600">{(display?.technicalSpecification?.fuelTypes ?? []).join(", ")}</p>
+                        <p className="text-gray-600">{(display?.technicalSpecification?.fuelTypes?.length ? display.technicalSpecification.fuelTypes.join(", ") : "N/A")}</p>
                       )}
                     </div>
                     {!isAdmin && (display?.features?.length ?? 0) > 0 && (

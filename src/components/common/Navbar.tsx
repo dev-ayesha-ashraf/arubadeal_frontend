@@ -72,7 +72,8 @@ export const Navbar = () => {
               'year',
               'color',
               'fuel_type.name',
-              'body_type.name'
+              'body_type.name',
+              'transmission.name',
             ],
             threshold: 0.4,
             distance: 100,
@@ -102,7 +103,6 @@ export const Navbar = () => {
     "Engine type",
     "Fuel type",
     "Transmission",
-    "Mileage",
     "Body Type"
   ];
 
@@ -333,8 +333,9 @@ export const Navbar = () => {
 
                 <SearchSuggestions
                   suggestions={suggestions}
-                  visible={isFocused && suggestions.length > 0}
+                  visible={isFocused && searchQuery.trim().length > 0}
                   onClose={() => setIsFocused(false)}
+                  searchQuery={searchQuery}
                 />
               </form>
             </div>
@@ -417,8 +418,9 @@ export const Navbar = () => {
 
                 <SearchSuggestions
                   suggestions={suggestions}
-                  visible={isFocused && suggestions.length > 0}
+                  visible={isFocused && searchQuery.trim().length > 0}
                   onClose={() => setIsFocused(false)}
+                  searchQuery={searchQuery}
                 />
               </form>
 
