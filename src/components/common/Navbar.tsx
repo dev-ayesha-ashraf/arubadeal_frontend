@@ -135,7 +135,13 @@ export const Navbar = () => {
     e.preventDefault();
     if (searchQuery.trim()) {
       trackCustomEvent("Search", { search_string: searchQuery.trim() });
-      navigate(`/listings?search=${encodeURIComponent(searchQuery.trim())}`);
+
+      // Route to global listings if user is on that page, otherwise to regular listings
+      const targetRoute = location.pathname === "/united-states-listings"
+        ? "/united-states-listings"
+        : "/listings";
+
+      navigate(`${targetRoute}?search=${encodeURIComponent(searchQuery.trim())}`);
       setSearchQuery("");
       setSuggestions([]);
       setIsFocused(false);
@@ -168,9 +174,9 @@ export const Navbar = () => {
   const LoginButton = () => (
     <Button
       onClick={handleLoginClick}
-      className="flex items-center gap-2 text-lg text-primary bg-gradient-to-r from-dealership-primary/80 to-dealership-primary/100 px-6"
+      className="flex items-center gap-1.5 text-sm text-primary bg-gradient-to-r from-dealership-primary/80 to-dealership-primary/100 px-4 py-1.5 h-auto"
     >
-      <LogIn className="w-5 h-5" />
+      <LogIn className="w-4 h-4" />
       Login
     </Button>
   );
@@ -198,11 +204,11 @@ export const Navbar = () => {
           <img
             src={profileImageUrl}
             onError={() => setImageError(true)}
-            className="w-10 h-10 rounded-full object-cover border-2 border-dealership-primary cursor-pointer"
+            className="w-8 h-8 rounded-full object-cover border-2 border-dealership-primary cursor-pointer"
             alt="Profile"
           />
         ) : (
-          <div className="w-10 h-10 rounded-full bg-dealership-primary text-white font-bold flex items-center justify-center cursor-pointer">
+          <div className="w-8 h-8 rounded-full bg-dealership-primary text-white font-bold flex items-center justify-center cursor-pointer text-xs">
             {initials}
           </div>
         )}
@@ -241,6 +247,15 @@ export const Navbar = () => {
                   onClick={onClose}
                 >
                   Listings
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/united-states-listings"
+                  className="text-lg hover:text-dealership-primary"
+                  onClick={onClose}
+                >
+                  United State Listings
                 </Link>
               </li>
               <li>
@@ -341,7 +356,7 @@ export const Navbar = () => {
             </div>
           </div>
 
-          <div className="hidden md:flex items-center justify-between gap-6">
+          <div className="hidden md:flex items-center justify-between gap-3">
             <Link
               to="/"
               className="flex items-center group transition-transform duration-300 hover:scale-105"
@@ -349,53 +364,59 @@ export const Navbar = () => {
               <img
                 src="/logo.svg"
                 alt="Logo"
-                className="w-12 h-12"
+                className="w-9 h-9"
                 style={{
                   filter:
                     "brightness(0) saturate(100%) invert(48%) sepia(79%) saturate(2476%) hue-rotate(346deg) brightness(118%) contrast(119%)",
                 }}
               />
-              <div className="text-2xl ml-2 font-bold text-dealership-primary group-hover:text-dealership-primary/80 transition-colors">
+              <div className="text-xl ml-1.5 font-bold text-dealership-primary group-hover:text-dealership-primary/80 transition-colors">
                 Arudeal
               </div>
             </Link>
 
-            <div className="flex items-center gap-6 flex-1 justify-center">
+            <div className="flex items-center gap-4 flex-1 justify-center">
               <Link
                 to="/"
-                className="text-dealership-primary text-lg font-medium hover:text-dealership-primary/80 transition-colors"
+                className="text-dealership-primary text-sm font-medium hover:text-dealership-primary/80 transition-colors whitespace-nowrap"
               >
                 Home
               </Link>
               <Link
                 to="/listings"
-                className="text-dealership-primary text-lg font-medium hover:text-dealership-primary/80 transition-colors"
+                className="text-dealership-primary text-sm font-medium hover:text-dealership-primary/80 transition-colors whitespace-nowrap"
               >
                 Listings
               </Link>
               <Link
+                to="/united-states-listings"
+                className="text-dealership-primary text-sm font-medium hover:text-dealership-primary/80 transition-colors whitespace-nowrap"
+              >
+                United States Listings
+              </Link>
+              <Link
                 to="/accessories"
-                className="text-dealership-primary text-lg font-medium hover:text-dealership-primary/80 transition-colors"
+                className="text-dealership-primary text-sm font-medium hover:text-dealership-primary/80 transition-colors whitespace-nowrap"
               >
                 Accessories
               </Link>
               <Link
                 to="/sellcar"
-                className="text-dealership-primary text-lg font-medium hover:text-dealership-primary/80 transition-colors"
+                className="text-dealership-primary text-sm font-medium hover:text-dealership-primary/80 transition-colors whitespace-nowrap"
               >
                 Sell My Car
               </Link>
             </div>
 
-            <div className={`relative w-full md:w-[500px] transition-all duration-300 ${isFocused ? 'scale-[1.02]' : ''}`}>
+            <div className={`relative w-full md:w-[350px] transition-all duration-300 ${isFocused ? 'scale-[1.02]' : ''}`}>
               <form onSubmit={handleSearch} className="relative w-full">
                 <div className={`
-                  flex items-center w-full px-4 py-2.5 
+                  flex items-center w-full px-3 py-1.5 
                   bg-gray-100/50 backdrop-blur-sm border-2 
                   ${isFocused ? 'border-dealership-primary bg-white shadow-lg ring-4 ring-dealership-primary/10' : 'border-transparent hover:border-gray-200'} 
                   rounded-full transition-all duration-300
                 `}>
-                  <Search className={`w-5 h-5 transition-colors ${isFocused ? 'text-dealership-primary' : 'text-gray-400'}`} />
+                  <Search className={`w-4 h-4 transition-colors ${isFocused ? 'text-dealership-primary' : 'text-gray-400'}`} />
                   <input
                     type="text"
                     placeholder={`Search car by ${placeholderText}|`}
@@ -403,7 +424,7 @@ export const Navbar = () => {
                     onChange={handleSearchChange}
                     onFocus={() => setIsFocused(true)}
                     onBlur={() => setTimeout(() => setIsFocused(false), 200)}
-                    className="w-full px-3 py-1 bg-transparent border-none focus:outline-none text-gray-800 placeholder-gray-400/70"
+                    className="w-full px-2 py-0.5 bg-transparent border-none focus:outline-none text-sm text-gray-800 placeholder-gray-400/70"
                   />
                   {searchQuery && (
                     <button
@@ -411,7 +432,7 @@ export const Navbar = () => {
                       onClick={() => { setSearchQuery(""); setSuggestions([]); }}
                       className="p-1 hover:bg-gray-200 rounded-full transition-colors"
                     >
-                      <X className="w-4 h-4 text-gray-400" />
+                      <X className="w-3 h-3 text-gray-400" />
                     </button>
                   )}
                 </div>
@@ -425,7 +446,7 @@ export const Navbar = () => {
               </form>
 
               <div className={`
-                absolute -bottom-6 left-6 text-[10px] text-gray-400 font-medium 
+                absolute -bottom-5 left-6 text-[9px] text-gray-400 font-medium 
                 transition-all duration-300 pointer-events-none
                 ${isFocused ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'}
               `}>

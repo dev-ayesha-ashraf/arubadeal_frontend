@@ -7,6 +7,7 @@ import { useScrollToTop } from "@/hooks/useScrollToTop";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Index from "./pages/Index";
 import Listings from "./pages/Listings";
+import GlobalListings from "./pages/GlobalListings";
 import ListingDetail from "./pages/ListingDetail";
 import Dealers from "./pages/Dealers";
 import TypeDetail from "./pages/TypeDetail";
@@ -59,6 +60,7 @@ const AppContent = () => {
         {/* Public routes */}
         <Route path="/" element={<Index />} />
         <Route path="/listings" element={<Listings />} />
+        <Route path="/united-states-listings" element={<GlobalListings />} />
         <Route path="/listings/:slug" element={<ListingDetail />} />
         <Route path="/dealers" element={<Dealers />} />
         <Route path="/types/:typeSlug" element={<TypeDetail />} />

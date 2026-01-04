@@ -148,10 +148,6 @@ const Listings = () => {
         const initialData = await initialRes.json();
         const totalItems = initialData.total_items || 1000;
 
-        // Fetch third-party listings
-        const tpRes = await fetch(`${import.meta.env.VITE_API_URL}/api_listing/public?page=1&size=100`);
-        const tpData = await tpRes.json();
-
         const listingRes = await fetch(`${listingUrlBase}?page=1&size=${totalItems}`);
         const listingData = await listingRes.json();
 
@@ -182,81 +178,9 @@ const Listings = () => {
           };
         });
 
-        const tpItems: CarAPI[] = (tpData.items || []).map((car: any) => {
-          // Find the primary or first image
-          const primaryImage = car.images?.find((i: any) => i.is_primary) || car.images?.[0];
-
-          // Helper to remove LHD/RHD
-          const cleanText = (text: string) => text.replace(/\s*\b(lhd|rhd)\b\s*/gi, "").trim();
-
-          return {
-            _id: car.id,
-            title: cleanText(`${car.year} ${car.meta_data?.make || ""} ${car.model || ""}`),
-            make: {
-              id: "tp-make", // Placeholder ID
-              name: car.meta_data?.make || "Unknown",
-              slug: car.meta_data?.make?.toLowerCase() || "unknown"
-            },
-            model: cleanText(car.model || "Unknown"),
-            year: car.year,
-            body_type: {
-              id: "tp-body",
-              name: car.meta_data?.bodyType || "Unknown",
-              slug: car.meta_data?.bodyType?.toLowerCase() || "unknown"
-            },
-            fuel_type: {
-              id: "tp-fuel",
-              name: car.meta_data?.fuelType || "N/A"
-            },
-            transmission: {
-              id: "tp-trans",
-              name: cleanText(car.meta_data?.transmission || "N/A")
-            },
-            color: car.exteriorColor,
-            slug: car.id, // Using ID as slug for third-party items
-            price: car.price,
-            mileage: car.miles,
-            status: car.used ? 1 : 1, // mapping 'used' to status if needed, 1 seems to be active
-            image: primaryImage ? `${import.meta.env.VITE_MEDIA_URL}${primaryImage.image_url}` : null,
-            listedAt: car.createdAt,
-            badges: [],
-            badge: undefined,
-            vehicle_id: car.vehical_id || "",
-            location: `${car.city}, ${car.state}` || car.city || "",
-            seats: car.seats,
-            isThirdParty: true,
-          };
-        });
-
-        const makePriority = [
-          "Toyota",
-          "Honda",
-          "Mitsubishi",
-          "Suzuki",
-          "Nissan",
-          "Isuzu",
-          "Benz",
-          "BMW"
-        ];
-
-        tpItems.sort((a, b) => {
-          const makeA = a.make.name;
-          const makeB = b.make.name;
-          const indexA = makePriority.indexOf(makeA);
-          const indexB = makePriority.indexOf(makeB);
-
-          if (indexA !== -1 && indexB !== -1) return indexA - indexB;
-          if (indexA !== -1) return -1;
-          if (indexB !== -1) return 1;
-          return 0;
-        });
-
-        // Combine both lists
-        const combinedItems = [...items, ...tpItems];
-
-        const uniqueModels = Array.from(new Set(combinedItems.map(i => i.model).filter(Boolean)));
-        const uniqueColors = Array.from(new Set(combinedItems.map(i => i.color).filter(Boolean)));
-        const uniqueLocations = Array.from(new Set(combinedItems.map(i => i.location).filter(Boolean)));
+        const uniqueModels = Array.from(new Set(items.map(i => i.model).filter(Boolean)));
+        const uniqueColors = Array.from(new Set(items.map(i => i.color).filter(Boolean)));
+        const uniqueLocations = Array.from(new Set(items.map(i => i.location).filter(Boolean)));
 
         setDropdowns({
           makes,
@@ -269,7 +193,7 @@ const Listings = () => {
           models: uniqueModels
         });
 
-        setAllCars(combinedItems);
+        setAllCars(items);
       } catch (err) {
         console.error(err);
         setError("Failed to load cars.");
@@ -532,7 +456,7 @@ const Listings = () => {
 
                         <div className="flex items-center justify-between mt-auto border-t border-gray-200 pt-2">
                           <p className="text-xl font-bold text-dealership-primary">
-                            {car.isThirdParty ? "USD " : "AWG "}{car.price}
+                            AWG {car.price}
                           </p>
                           <button
                             className="hidden md:inline-flex items-center gap-1 text-dealership-primary hover:text-[#6B4A2B] font-medium"
