@@ -133,6 +133,10 @@ const GlobalListings = () => {
                     fetch(`${import.meta.env.VITE_API_URL}/fueltype/get_all`)
                 ]);
 
+                if (!makesRes.ok || !typesRes.ok || !badgesRes.ok || !fuelTypesRes.ok) {
+                    throw new Error("Failed to load filter data");
+                }
+
                 const [makes, types, badges, fuelTypes] = await Promise.all([
                     makesRes.json(),
                     typesRes.json(),
@@ -142,6 +146,9 @@ const GlobalListings = () => {
 
                 // Fetch third-party listings
                 const tpRes = await fetch(`${import.meta.env.VITE_API_URL}/api_listing/public?page=1&size=1000`);
+                if (!tpRes.ok) {
+                    throw new Error("Failed to load USA listings from server");
+                }
                 const tpData = await tpRes.json();
 
                 // Helper to remove LHD/RHD
@@ -218,14 +225,23 @@ const GlobalListings = () => {
                 const uniqueColors = Array.from(new Set(tpItems.map(i => i.color).filter(Boolean)));
                 const uniqueLocations = Array.from(new Set(tpItems.map(i => i.location).filter(Boolean)));
 
+                // Extract unique makes and body types from actual car data
+                const uniqueMakes = Array.from(
+                    new Set(tpItems.map(i => i.make.name).filter(Boolean))
+                ).map(name => ({ id: name, name }));
+
+                const uniqueTypes = Array.from(
+                    new Set(tpItems.map(i => i.body_type?.name).filter(Boolean))
+                ).map(name => ({ id: name, name }));
+
                 // Extract unique fuel types from actual car data instead of using API
                 const uniqueFuelTypes = Array.from(
                     new Set(tpItems.map(i => i.fuel_type?.name).filter(Boolean))
                 ).map(name => ({ id: name, name }));
 
                 setDropdowns({
-                    makes,
-                    types,
+                    makes: uniqueMakes,
+                    types: uniqueTypes,
                     badges: badges || [],
                     fuelTypes: uniqueFuelTypes,
                     locations: uniqueLocations,
@@ -359,7 +375,7 @@ const GlobalListings = () => {
     const title = useMemo(() => {
         const searchQuery = searchParams.get("search")?.trim();
         if (searchQuery) return `Search Results for "${searchQuery}"`;
-        return "Global Listings";
+        return "USA Listings";
     }, [searchParams]);
 
     const handleSortChange = (value: string) => {

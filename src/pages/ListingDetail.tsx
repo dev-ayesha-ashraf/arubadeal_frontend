@@ -1139,7 +1139,7 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
 
                   ) : (
                     <p className="text-xl font-semibold text-dealership-primary">
-                      AWG {Number(display?.price || 0).toLocaleString()}
+                      {display?.dealer?._id === "tp-dealer" ? "USD" : "AWG"} {Number(display?.price || 0).toLocaleString()}
                     </p>
                   )}
                 </div>
@@ -1358,48 +1358,50 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
           </div>
 
           <div className="space-y-6">
-            <Card className="p-6">
-              <h2 className="text-xl font-semibold mb-4 text-center">Dealer Information</h2>
-              <div className="space-y-4">
-                <div className="flex flex-col items-center text-center">
-                  <p className="font-medium">{dealer?.name}</p>
-                  <p className="text-gray-600">{dealer?.address}</p>
-                </div>
+            {display?.dealer?._id !== "tp-dealer" && (
+              <Card className="p-6">
+                <h2 className="text-xl font-semibold mb-4 text-center">Dealer Information</h2>
+                <div className="space-y-4">
+                  <div className="flex flex-col items-center text-center">
+                    <p className="font-medium">{dealer?.name}</p>
+                    <p className="text-gray-600">{dealer?.address}</p>
+                  </div>
 
-                <div className="space-y-2">
-                  {dealer?.phoneNo && (
+                  <div className="space-y-2">
+                    {dealer?.phoneNo && (
+                      <Button
+                        className="w-full flex items-center gap-2"
+                        onClick={() => {
+                          trackCustomEvent("DealerContactClicked", {
+                            contact_method: "phone",
+                            dealer_name: dealer?.name,
+                            listing_id: listing?._id,
+                            listing_title: listing?.title,
+                          });
+                        }}
+                      >
+                        <Phone className="w-4 h-4" />
+                        {dealer.phoneNo}
+                      </Button>
+                    )}
                     <Button
+                      variant="outline"
                       className="w-full flex items-center gap-2"
                       onClick={() => {
                         trackCustomEvent("DealerContactClicked", {
-                          contact_method: "phone",
+                          contact_method: "email",
                           dealer_name: dealer?.name,
                           listing_id: listing?._id,
                           listing_title: listing?.title,
                         });
                       }}
                     >
-                      <Phone className="w-4 h-4" />
-                      {dealer.phoneNo}
+                      <Mail className="w-4 h-4" /> Email Dealer
                     </Button>
-                  )}
-                  <Button
-                    variant="outline"
-                    className="w-full flex items-center gap-2"
-                    onClick={() => {
-                      trackCustomEvent("DealerContactClicked", {
-                        contact_method: "email",
-                        dealer_name: dealer?.name,
-                        listing_id: listing?._id,
-                        listing_title: listing?.title,
-                      });
-                    }}
-                  >
-                    <Mail className="w-4 h-4" /> Email Dealer
-                  </Button>
+                  </div>
                 </div>
-              </div>
-            </Card>
+              </Card>
+            )}
 
             <Card className="p-6">
               <h2 className="text-xl font-semibold mb-4">Contact Form</h2>

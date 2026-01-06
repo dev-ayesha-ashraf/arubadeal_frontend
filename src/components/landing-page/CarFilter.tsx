@@ -70,7 +70,14 @@ export const CarFilter = ({ selectedBadge = "all", onBadgeChange }: CarFilterPro
 
         const listingRes = await fetch(`${import.meta.env.VITE_API_URL}/car_listing/listing`);
         const listingData = await listingRes.json();
-        setTotalListings(listingData.total_items ?? 0);
+
+        // Fetch third-party count
+        const tpRes = await fetch(`${import.meta.env.VITE_API_URL}/api_listing/public?page=1&size=1`);
+        const tpData = await tpRes.json();
+
+        const localTotal = listingData.total_items ?? 0;
+        const tpTotal = tpData.total_items ?? 0;
+        setTotalListings(localTotal + tpTotal);
 
         const items = listingData.items || [];
         const uniqueModels = Array.from(new Set(items.map((i: any) => i.model).filter(Boolean))) as string[];
