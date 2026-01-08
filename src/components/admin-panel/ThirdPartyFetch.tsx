@@ -17,7 +17,10 @@ import {
     ChevronLeft,
     ChevronRight,
     ChevronsLeft,
-    ChevronsRight
+    ChevronsRight,
+    Calendar,
+    Gauge,
+    Palette
 } from "lucide-react";
 import { toast } from "sonner";
 import PageHeader from "../common/PageHeader";
@@ -139,8 +142,8 @@ const ThirdPartyFetch = () => {
     const [searchTerm, setSearchTerm] = useState("");
     const [stats, setStats] = useState({
         total: 0,
-        makes: 0,
-        lastFetch: "Never"
+        count: 0,
+        makes: 0
     });
 
     const [pagination, setPagination] = useState({
@@ -187,10 +190,11 @@ const ThirdPartyFetch = () => {
             });
 
             setListings(mappedItems);
+            const totalPrice = mappedItems.reduce((sum, car) => sum + (Number(car.price) || 0), 0);
             setStats({
-                total: data.total_items || 0,
-                makes: new Set(mappedItems.map((i: any) => i.make)).size,
-                lastFetch: stats.lastFetch === "Never" ? new Date().toLocaleString() : stats.lastFetch
+                total: totalPrice,
+                count: data.total_items || 0,
+                makes: new Set(mappedItems.map((i: any) => i.make)).size
             });
             setPagination({
                 total_items: data.total_items || 0,
@@ -210,24 +214,17 @@ const ThirdPartyFetch = () => {
         try {
             setFetching(true);
 
-            // Structure the nested body according to API requirements
-            const requestBody: any = {
-                vehicle: {},
-                retailListing: {}
-            };
+            // Structure the body with dot-notation keys as expected by the API
+            const requestBody: any = {};
 
-            if (fetchParams["vehicle.make"]) requestBody.vehicle.make = fetchParams["vehicle.make"];
-            if (fetchParams["vehicle.model"]) requestBody.vehicle.model = fetchParams["vehicle.model"];
-            if (fetchParams["vehicle.year"]) requestBody.vehicle.year = fetchParams["vehicle.year"];
-            if (fetchParams["vehicle.trim"]) requestBody.vehicle.trim = fetchParams["vehicle.trim"];
-            if (fetchParams["vehicle.engine"]) requestBody.vehicle.engine = fetchParams["vehicle.engine"];
+            if (fetchParams["vehicle.make"]) requestBody["vehicle.make"] = fetchParams["vehicle.make"];
+            if (fetchParams["vehicle.model"]) requestBody["vehicle.model"] = fetchParams["vehicle.model"];
+            if (fetchParams["vehicle.year"]) requestBody["vehicle.year"] = fetchParams["vehicle.year"];
+            if (fetchParams["vehicle.trim"]) requestBody["vehicle.trim"] = fetchParams["vehicle.trim"];
+            if (fetchParams["vehicle.engine"]) requestBody["vehicle.engine"] = fetchParams["vehicle.engine"];
 
-            if (fetchParams["retailListing.price"]) requestBody.retailListing.price = fetchParams["retailListing.price"];
-            if (fetchParams["retailListing.miles"]) requestBody.retailListing.miles = fetchParams["retailListing.miles"];
-
-            // Remove empty sections
-            if (Object.keys(requestBody.vehicle).length === 0) delete requestBody.vehicle;
-            if (Object.keys(requestBody.retailListing).length === 0) delete requestBody.retailListing;
+            if (fetchParams["retailListing.price"]) requestBody["retailListing.price"] = fetchParams["retailListing.price"];
+            if (fetchParams["retailListing.miles"]) requestBody["retailListing.miles"] = fetchParams["retailListing.miles"];
 
             const response = await fetch(`${API_URL}/api_listing/fetch?page=${fetchParams.page}&limit=${fetchParams.limit}`, {
                 method: "POST",
@@ -277,21 +274,21 @@ const ThirdPartyFetch = () => {
                 {/* Stats Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <StatsCard
-                        title="Total Third-Party Cars"
-                        value={stats.total}
+                        title="Total Price Value"
+                        value={`$${Number(stats.total).toLocaleString()}`}
                         icon={Car}
                         variant="blue"
+                    />
+                    <StatsCard
+                        title="Total Cars Count"
+                        value={stats.count}
+                        icon={Globe}
+                        variant="green"
                     />
                     <StatsCard
                         title="Unique Makes"
                         value={stats.makes}
                         icon={Globe}
-                        variant="green"
-                    />
-                    <StatsCard
-                        title="Last Sync"
-                        value={stats.lastFetch}
-                        icon={RefreshCw}
                         variant="orange"
                     />
                 </div>
@@ -466,30 +463,63 @@ const ThirdPartyFetch = () => {
                         </Table>
                     </Card>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {filteredListings.map((listing) => (
-                            <Card key={listing.id} className="group overflow-hidden border-slate-200 shadow-sm hover:shadow-md transition-all duration-300">
-                                <div className="relative h-40">
+                            <Card key={listing.id} className="overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 border-slate-200 bg-white group">
+                                <div className="relative h-48 bg-gradient-to-br from-slate-100 to-slate-200 overflow-hidden">
                                     <img
                                         src={listing.image || "/fallback.jpg"}
                                         alt={listing.title}
                                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                                         onError={(e) => (e.currentTarget.src = "/fallback.jpg")}
                                     />
-                                    <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <Link to={`/listings/${listing.slug}`} target="_blank">
-                                            <Button size="sm" variant="secondary" className="h-8 px-2 bg-white/90 backdrop-blur shadow-sm">
-                                                <Eye className="w-4 h-4" />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+                                </div>
+
+                                <CardContent className="p-5">
+                                    {/* Title and Basic Info */}
+                                    <div className="mb-4">
+                                        <h3 className="font-bold text-lg text-slate-900 mb-2 line-clamp-2 group-hover:text-dealership-primary transition-colors">
+                                            {listing.title}
+                                        </h3>
+                                        <p className="text-slate-600 text-sm mb-3">
+                                            {listing.year} • {listing.make} {listing.model}
+                                        </p>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3 mb-4 text-sm">
+                                        <div className="flex flex-col gap-1 text-slate-700">
+                                            <div className="flex items-center gap-1">
+                                                <span className="font-semibold text-slate-900">${Number(listing.price).toLocaleString()}</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-2 text-slate-700">
+                                            <Gauge className="w-4 h-4 text-blue-600" />
+                                            <span>{listing.miles} miles</span>
+                                        </div>
+                                        <div className="flex items-center gap-2 text-slate-700">
+                                            <Car className="w-4 h-4 text-purple-600" />
+                                            <span className="truncate">{listing.body_style}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2 text-slate-700">
+                                            <Palette className="w-4 h-4 text-orange-600" />
+                                            <span className="truncate">{listing.model}</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Actions */}
+                                    <div className="flex gap-2">
+                                        <Link to={`/listings/${listing.slug}`} target="_blank" className="flex-1">
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="w-full border-slate-300 hover:bg-slate-50 hover:border-slate-400 text-slate-700 transition-colors"
+                                            >
+                                                <Eye className="w-4 h-4 mr-2" />
+                                                View Details
                                             </Button>
                                         </Link>
-                                    </div>
-                                </div>
-                                <CardContent className="p-4">
-                                    <div className="text-xs font-semibold text-dealership-primary uppercase mb-1">{listing.make}</div>
-                                    <h3 className="font-bold text-slate-900 line-clamp-1 mb-2" title={listing.title}>{listing.title}</h3>
-                                    <div className="flex justify-between items-center text-sm">
-                                        <span className="text-slate-600">{listing.year}</span>
-                                        <span className="font-bold text-slate-900">${Number(listing.price).toLocaleString()}</span>
                                     </div>
                                 </CardContent>
                             </Card>

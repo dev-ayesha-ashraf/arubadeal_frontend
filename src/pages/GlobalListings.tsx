@@ -5,7 +5,7 @@ import { Navbar } from "@/components/common/Navbar";
 import { GlobalListingsFilter } from "@/components/common/GlobalListingsFilter";
 import { Footer } from "@/components/common/Footer";
 import { Card, CardContent } from "@/components/ui/card";
-import { Share2, ArrowRight } from "lucide-react";
+import { Share2, ArrowRight, Globe } from "lucide-react";
 import { SharePreview } from "@/components/common/SharePreview";
 import { Pagination } from "@/components/common/Pagination";
 import {
