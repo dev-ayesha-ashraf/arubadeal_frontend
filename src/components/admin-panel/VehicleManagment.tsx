@@ -951,6 +951,7 @@ function AddVehicleModal({ open, onOpenChange, onSaved, lookups, showNotificatio
     color: "",
     seats: undefined,
     mileage: "",
+    mileage_unit: "KM",
     location: "",
     city: "",
     address: "",
@@ -1028,7 +1029,11 @@ function AddVehicleModal({ open, onOpenChange, onSaved, lookups, showNotificatio
       images.forEach((f) => fd.append("images", f));
 
       Object.entries(form).forEach(([k, v]) => {
-        if (v == null || v === "") return;
+        if (v == null || v === "" || k === "mileage_unit") return;
+        if (k === "mileage") {
+          fd.append(k, `${v} ${form.mileage_unit}`.trim());
+          return;
+        }
         fd.append(k, String(v));
       });
 
@@ -1048,6 +1053,7 @@ function AddVehicleModal({ open, onOpenChange, onSaved, lookups, showNotificatio
         color: "",
         seats: undefined,
         mileage: "",
+        mileage_unit: "KM",
         location: "",
         city: "",
         address: "",
@@ -1127,12 +1133,28 @@ function AddVehicleModal({ open, onOpenChange, onSaved, lookups, showNotificatio
             </div>
             <div className="space-y-2">
               <Label htmlFor="mileage">Mileage</Label>
-              <Input
-                id="mileage"
-                type="number"
-                value={form.mileage ?? ""}
-                onChange={(e) => updateField("mileage", e.target.value)}
-              />
+              <div className="flex gap-2">
+                <Input
+                  id="mileage"
+                  type="number"
+                  placeholder="e.g., 50000"
+                  className="flex-1"
+                  value={form.mileage ?? ""}
+                  onChange={(e) => updateField("mileage", e.target.value)}
+                />
+                <Select
+                  value={form.mileage_unit}
+                  onValueChange={(v) => updateField("mileage_unit", v)}
+                >
+                  <SelectTrigger className="w-24">
+                    <SelectValue placeholder="Unit" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white">
+                    <SelectItem value="KM">KM</SelectItem>
+                    <SelectItem value="Miles">Miles</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="location">Location</Label>
@@ -1421,7 +1443,8 @@ function EditVehicleModal({
         body_type_id: vehicle.body_type?.id || "",
         badge_id: vehicle.badge?.id || "",
         color: vehicle.color || "",
-        mileage: vehicle.mileage || "",
+        mileage_value: vehicle.mileage ? vehicle.mileage.split(" ")[0] : "",
+        mileage_unit: (vehicle.mileage && vehicle.mileage.split(" ").length > 1) ? vehicle.mileage.split(" ")[1] : "KM",
         price: vehicle.price ?? "",
         year: vehicle.year ?? "",
         description: vehicle.description || "",
@@ -1498,7 +1521,7 @@ function EditVehicleModal({
         body_type_id: form.body_type_id || null,
         badge_id: form.badge_id || null,
         color: form.color || null,
-        mileage: form.mileage || null,
+        mileage: form.mileage_value ? `${form.mileage_value} ${form.mileage_unit}`.trim() : null,
         price: form.price !== "" ? Number(form.price) : null,
         year: form.year !== "" ? Number(form.year) : null,
         description: form.description || null,
@@ -1719,14 +1742,30 @@ function EditVehicleModal({
             />
           </div>
 
-          {/* Mileage */}
           <div className="space-y-2">
             <Label htmlFor="edit-mileage">Mileage</Label>
-            <Input
-              id="edit-mileage"
-              value={form.mileage || ""}
-              onChange={(e) => updateField("mileage", e.target.value)}
-            />
+            <div className="flex gap-2">
+              <Input
+                id="edit-mileage"
+                type="number"
+                placeholder="e.g., 50000"
+                className="flex-1"
+                value={form.mileage_value || ""}
+                onChange={(e) => updateField("mileage_value", e.target.value)}
+              />
+              <Select
+                value={form.mileage_unit}
+                onValueChange={(v) => updateField("mileage_unit", v)}
+              >
+                <SelectTrigger className="w-24">
+                  <SelectValue placeholder="Unit" />
+                </SelectTrigger>
+                <SelectContent className="bg-white">
+                  <SelectItem value="KM">KM</SelectItem>
+                  <SelectItem value="Miles">Miles</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {/* Price */}
