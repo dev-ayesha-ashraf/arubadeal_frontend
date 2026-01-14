@@ -372,6 +372,22 @@ const GlobalListings = () => {
     const totalPages = Math.ceil(filteredCars.length / pageSize);
 
 
+    const dynamicDropdowns = useMemo(() => {
+        if (!dropdowns) return null;
+        if (!filters.make) return dropdowns;
+
+        const filteredItems = allCars.filter(car => car.make?.name.toLowerCase() === filters.make?.toLowerCase());
+
+        return {
+            ...dropdowns,
+            models: Array.from(new Set(filteredItems.map(i => i.model).filter(Boolean))),
+            types: dropdowns.types.filter(t => filteredItems.some(i => i.body_type?.name.toLowerCase() === t.name?.toLowerCase())),
+            fuelTypes: dropdowns.fuelTypes.filter(f => filteredItems.some(i => i.fuel_type?.name.toLowerCase() === f.name?.toLowerCase())),
+            locations: Array.from(new Set(filteredItems.map(i => i.location).filter(Boolean))),
+            colors: Array.from(new Set(filteredItems.map(i => i.color).filter(Boolean))),
+        };
+    }, [dropdowns, filters.make, allCars]);
+
     const title = useMemo(() => {
         const searchQuery = searchParams.get("search")?.trim();
         if (searchQuery) return `Search Results for "${searchQuery}"`;
@@ -417,9 +433,9 @@ const GlobalListings = () => {
             <div className="container mx-auto px-4 py-8">
                 <div className="flex flex-col gap-8 mt-[20px] md:mt-0">
                     <div className="w-full flex justify-center">
-                        {dropdowns && (
+                        {dynamicDropdowns && (
                             <GlobalListingsFilter
-                                dropdowns={dropdowns}
+                                dropdowns={dynamicDropdowns}
                                 filters={filters}
                                 setFilters={setFilters}
                                 onApply={handleApplyFilters}

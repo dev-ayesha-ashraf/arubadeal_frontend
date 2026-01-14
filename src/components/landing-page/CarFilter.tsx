@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
@@ -51,6 +51,7 @@ export const CarFilter = ({ selectedBadge = "all", onBadgeChange }: CarFilterPro
   const [dropdowns, setDropdowns] = useState<DropdownsData | null>(null);
   const [filters, setFilters] = useState<FilterState>({});
   const [totalListings, setTotalListings] = useState<number>(0);
+  const [allItems, setAllItems] = useState<any[]>([]);
   useEffect(() => {
     const fetchFilters = async () => {
       try {
@@ -68,18 +69,23 @@ export const CarFilter = ({ selectedBadge = "all", onBadgeChange }: CarFilterPro
           fuelTypesRes.json(),
         ]);
 
-        const listingRes = await fetch(`${import.meta.env.VITE_API_URL}/car_listing/listing`);
+        // Fetch all listings to ensure we have all models/colors/etc.
+        const initialListingRes = await fetch(`${import.meta.env.VITE_API_URL}/car_listing/listing?page=1&size=1`);
+        const initialListingData = await initialListingRes.json();
+        const localTotal = initialListingData.total_items ?? 0;
+
+        const listingRes = await fetch(`${import.meta.env.VITE_API_URL}/car_listing/listing?page=1&size=${localTotal || 1000}`);
         const listingData = await listingRes.json();
+        const items = listingData.items || [];
+        setAllItems(items);
 
         // Fetch third-party count
         const tpRes = await fetch(`${import.meta.env.VITE_API_URL}/api_listing/public?page=1&size=1`);
         const tpData = await tpRes.json();
-
-        const localTotal = listingData.total_items ?? 0;
         const tpTotal = tpData.total_items ?? 0;
+
         setTotalListings(localTotal + tpTotal);
 
-        const items = listingData.items || [];
         const uniqueModels = Array.from(new Set(items.map((i: any) => i.model).filter(Boolean))) as string[];
         const uniqueColors = Array.from(new Set(items.map((i: any) => i.color).filter(Boolean))) as string[];
         const uniqueLocations = Array.from(new Set(items.map((i: any) => i.location).filter(Boolean))) as string[];
@@ -139,7 +145,23 @@ export const CarFilter = ({ selectedBadge = "all", onBadgeChange }: CarFilterPro
     navigate(`/listings?${params.toString()}`);
   };
 
-  if (!dropdowns) return null;
+  const dynamicDropdowns = useMemo(() => {
+    if (!dropdowns) return null;
+    if (!filters.make) return dropdowns;
+
+    const filteredItems = allItems.filter(item => item.make.id === filters.make);
+
+    return {
+      ...dropdowns,
+      models: Array.from(new Set(filteredItems.map(i => i.model).filter(Boolean))) as string[],
+      types: dropdowns.types.filter(t => filteredItems.some(i => i.body_type?.id === t.id)),
+      fuelTypes: dropdowns.fuelTypes.filter(f => filteredItems.some(i => i.fuel_type?.id === f.id)),
+      locations: Array.from(new Set(filteredItems.map(i => i.location).filter(Boolean))) as string[],
+      colors: Array.from(new Set(filteredItems.map(i => i.color).filter(Boolean))) as string[],
+    };
+  }, [dropdowns, filters.make, allItems]);
+
+  if (!dynamicDropdowns) return null;
 
   return (
     <div className="bg-white px-4 sm:px-8 py-4 rounded-lg shadow-lg max-w-7xl mx-auto -mt-30 relative z-10">
@@ -214,7 +236,7 @@ export const CarFilter = ({ selectedBadge = "all", onBadgeChange }: CarFilterPro
                     <SelectValue placeholder="Select Model" />
                   </SelectTrigger>
                   <SelectContent className="bg-white w-full max-h-60 overflow-y-auto">
-                    {dropdowns.models?.map((model) => (
+                    {dynamicDropdowns.models?.map((model) => (
                       <SelectItem key={model} value={model}>
                         {model}
                       </SelectItem>
@@ -228,7 +250,7 @@ export const CarFilter = ({ selectedBadge = "all", onBadgeChange }: CarFilterPro
                     <SelectValue placeholder="Select Type" />
                   </SelectTrigger>
                   <SelectContent className="bg-white w-full max-h-60 overflow-y-auto">
-                    {dropdowns.types.map((type) => (
+                    {dynamicDropdowns.types.map((type) => (
                       <SelectItem key={type.id} value={type.id}>
                         {type.name}
                       </SelectItem>
@@ -243,7 +265,7 @@ export const CarFilter = ({ selectedBadge = "all", onBadgeChange }: CarFilterPro
                     <SelectValue placeholder="Select Fuel Type" />
                   </SelectTrigger>
                   <SelectContent className="bg-white w-full max-h-60 overflow-y-auto">
-                    {dropdowns.fuelTypes.map((fuelType) => (
+                    {dynamicDropdowns.fuelTypes.map((fuelType) => (
                       <SelectItem key={fuelType.id} value={fuelType.id}>
                         {fuelType.name}
                       </SelectItem>
@@ -288,7 +310,7 @@ export const CarFilter = ({ selectedBadge = "all", onBadgeChange }: CarFilterPro
                     <SelectValue placeholder="Location" />
                   </SelectTrigger>
                   <SelectContent className="bg-white w-full max-h-60 overflow-y-auto">
-                    {dropdowns.locations.map((loc) => (
+                    {dynamicDropdowns.locations.map((loc) => (
                       <SelectItem key={loc} value={loc}>
                         {loc}
                       </SelectItem>
@@ -313,7 +335,7 @@ export const CarFilter = ({ selectedBadge = "all", onBadgeChange }: CarFilterPro
                     <SelectValue placeholder="Color" />
                   </SelectTrigger>
                   <SelectContent className="bg-white w-full max-h-60 overflow-y-auto">
-                    {dropdowns.colors.map((color) => (
+                    {dynamicDropdowns.colors.map((color) => (
                       <SelectItem key={color} value={color}>
                         {color}
                       </SelectItem>

@@ -65,7 +65,7 @@ export const GlobalListingsFilter = ({ dropdowns, filters, setFilters, onApply }
 
                 <div className="flex flex-col space-y-4 max-h-[calc(90vh-120px)] overflow-y-auto pl-3 pr-3">
                     {/* Make - Using name instead of id */}
-                    <Select value={filters.make} onValueChange={v => setFilters({ ...filters, make: v })}>
+                    <Select value={filters.make} onValueChange={v => setFilters({ ...filters, make: v, model: undefined })}>
                         <SelectTrigger className="mt-5 w-full"><SelectValue placeholder="Select Make" /></SelectTrigger>
                         <SelectContent className="max-h-60 overflow-y-auto bg-white">
                             {dropdowns.makes.map(make => <SelectItem key={make.id} value={make.name || ""}>{make.name}</SelectItem>)}
