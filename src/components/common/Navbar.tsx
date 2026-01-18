@@ -276,6 +276,15 @@ export const Navbar = () => {
                   Sell My Car
                 </Link>
               </li>
+              <li>
+                <Link
+                  to="/buy-car-history"
+                  className="text-lg hover:text-dealership-primary"
+                  onClick={onClose}
+                >
+                  Car History
+                </Link>
+              </li>
 
               {!user && <LoginButton />}
             </ul>
@@ -405,6 +414,12 @@ export const Navbar = () => {
                 className="text-dealership-primary text-sm font-medium hover:text-dealership-primary/80 transition-colors whitespace-nowrap"
               >
                 Sell My Car
+              </Link>
+              <Link
+                to="/buy-car-history"
+                className="text-dealership-primary text-sm font-medium hover:text-dealership-primary/80 transition-colors whitespace-nowrap"
+              >
+                Car History
               </Link>
             </div>
 
