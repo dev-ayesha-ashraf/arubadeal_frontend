@@ -55,7 +55,7 @@ const formatPrice = (price: number) => {
               {listing.title}
             </h3>
             <p className="text-slate-600 text-sm mb-3">
-              {listing.year} • {listing.make?.name} {listing.model?.name || listing.model}
+              {listing.year} • {listing.make?.name} {listing.fuel_type?.name || "N/A"}
             </p>
           </div>
 

@@ -24,6 +24,7 @@ interface Car {
   mileage: string;
   make: { id: string; name: string; slug: string };
   model?: string;
+  fuel_type?: { id: string; name: string };
   transmission?: { id: string; name: string };
   engine_type?: string;
   vehical_id: string;
@@ -312,9 +313,9 @@ export const OurCars = ({ badgeFilter = "all" }: OurCarsProps) => {
                               {car.badge.name}
                             </span>
                           )}
-                          {car.model && (
+                          {car.fuel_type?.name && (
                             <span className="px-1 py-0.5 bg-blue-100 rounded capitalize">
-                              {car.model}
+                              {car.fuel_type.name}
                             </span>
                           )}
                         </div>
