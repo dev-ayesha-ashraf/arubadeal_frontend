@@ -3,8 +3,11 @@ export interface CarfaxPackage {
   name: string;
   description: string;
   price: number;
+  pricePerReport: number;
+  reportCount: number;
   features: string[];
   popular?: boolean;
+  badge?: string;
 }
 
 export interface CarfaxFormData {

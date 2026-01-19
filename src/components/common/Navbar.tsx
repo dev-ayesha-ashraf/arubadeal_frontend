@@ -59,28 +59,79 @@ export const Navbar = () => {
   useEffect(() => {
     const fetchSearchData = async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/car_listing/listing?page=1&size=1000`);
-        if (response.ok) {
-          const data = await response.json();
-          const items = data.items || [];
+        // Helper to remove LHD/RHD from text
+        const cleanText = (text: string) => text.replace(/\s*\b(lhd|rhd)\b\s*/gi, "").trim();
 
-          const fuseInstance = new Fuse(items, {
-            keys: [
-              'title',
-              'make.name',
-              'model',
-              'year',
-              'color',
-              'fuel_type.name',
-              'body_type.name',
-              'transmission.name',
-            ],
-            threshold: 0.4,
-            distance: 100,
-          });
+        // Fetch local listings
+        const localResponse = await fetch(`${import.meta.env.VITE_API_URL}/car_listing/listing?page=1&size=1000`);
+        const localData = localResponse.ok ? await localResponse.json() : { items: [] };
+        const localItems = localData.items || [];
 
-          setFuse(fuseInstance);
-        }
+        // Fetch USA listings (third-party)
+        const usaResponse = await fetch(`${import.meta.env.VITE_API_URL}/api_listing/public?page=1&size=1000`);
+        const usaData = usaResponse.ok ? await usaResponse.json() : { items: [] };
+        
+        const usaItems = (usaData.items || []).map((car: any) => {
+          const primaryImage = car.images?.find((i: any) => i.is_primary) || car.images?.[0];
+          return {
+            _id: car.id,
+            title: cleanText(`${car.year} ${car.meta_data?.make || ""} ${car.model || ""}`),
+            make: {
+              id: "usa-make",
+              name: car.meta_data?.make || "Unknown",
+              slug: car.meta_data?.make?.toLowerCase() || "unknown"
+            },
+            model: cleanText(car.model || "Unknown"),
+            year: car.year,
+            body_type: {
+              id: "usa-body",
+              name: car.meta_data?.bodyType || "Unknown",
+              slug: car.meta_data?.bodyType?.toLowerCase() || "unknown"
+            },
+            fuel_type: {
+              id: "usa-fuel",
+              name: car.meta_data?.fuelType || "N/A"
+            },
+            transmission: {
+              id: "usa-trans",
+              name: cleanText(car.meta_data?.transmission || "N/A")
+            },
+            color: car.exteriorColor,
+            slug: car.id,
+            price: car.price,
+            mileage: car.miles,
+            status: 1,
+            image: primaryImage ? `${import.meta.env.VITE_MEDIA_URL}${primaryImage.image_url}` : null,
+            listedAt: car.createdAt,
+            badges: [],
+            badge: undefined,
+            vehicle_id: car.vehical_id || "",
+            location: `${car.city}, ${car.state}` || car.city || "",
+            seats: car.seats,
+            isThirdParty: true,
+          };
+        });
+
+        // Combine all items
+        const allItems = [...localItems, ...usaItems];
+
+        const fuseInstance = new Fuse(allItems, {
+          keys: [
+            'title',
+            'make.name',
+            'model',
+            'year',
+            'color',
+            'fuel_type.name',
+            'body_type.name',
+            'transmission.name',
+            'location',
+          ],
+          threshold: 0.4,
+          distance: 100,
+        });
+
+        setFuse(fuseInstance);
       } catch (error) {
         console.error("Failed to init search:", error);
       }
@@ -154,7 +205,7 @@ export const Navbar = () => {
 
   useEffect(() => {
     if (searchQuery.trim() && fuse) {
-      const results = fuse.search(searchQuery).slice(0, 5);
+      const results = fuse.search(searchQuery).slice(0, 10);
       setSuggestions(results);
     } else {
       setSuggestions([]);

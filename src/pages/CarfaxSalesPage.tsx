@@ -24,43 +24,55 @@ import { CarfaxPackage, CarfaxFormData, CarfaxOrder } from "@/types/carfax";
 
 const CARFAX_PACKAGES: CarfaxPackage[] = [
   {
-    id: "basic",
-    name: "Basic Report",
-    description: "Essential vehicle history information",
-    price: 29.99,
+    id: "standard",
+    name: "STANDARD",
+    description: "1 Car History Report",
+    price: 44.99,
+    pricePerReport: 44.99,
+    reportCount: 1,
+    badge: undefined,
     features: [
-      "Accident history",
+      "Complete vehicle history",
+      "Accident and damage records",
       "Ownership history",
       "Title information",
-      "Mileage records",
+      "Service records",
+      "Mileage verification",
     ],
   },
   {
-    id: "premium",
-    name: "Premium Report",
-    description: "Comprehensive vehicle information",
-    price: 49.99,
+    id: "two-reports",
+    name: "SAVE $30",
+    description: "2 Car History Reports",
+    price: 59.99,
+    pricePerReport: 30.00,
+    reportCount: 2,
+    badge: "Best Value",
     features: [
-      "All Basic features",
-      "Service records",
-      "Recalls information",
-      "Market value estimate",
-      "No. of previous owners",
+      "All Standard features",
+      "Best for comparing two cars",
+      "Save $30 vs buying separately",
+      "Complete vehicle history per report",
+      "Accident and damage records",
+      "Ownership history",
     ],
     popular: true,
   },
   {
-    id: "ultimate",
-    name: "Ultimate Report",
-    description: "Most detailed vehicle analysis",
-    price: 79.99,
+    id: "four-reports",
+    name: "SAVE $70",
+    description: "4 Car History Reports",
+    price: 109.99,
+    pricePerReport: 27.50,
+    reportCount: 4,
+    badge: "Best for Dealers",
     features: [
-      "All Premium features",
-      "Detailed accident records",
-      "Photo history",
-      "Price history",
-      "Expert summary report",
-      "30-day guarantee",
+      "All Standard features",
+      "Best for comparing multiple cars",
+      "Save $70 vs buying separately",
+      "Complete vehicle history per report",
+      "Accident and damage records",
+      "Bulk pricing advantage",
     ],
   },
 ];
@@ -193,41 +205,41 @@ export default function CarfaxSalesPage() {
         <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white py-12">
           <div className="container mx-auto px-4">
             {/* Header */}
-            <div className="text-center mb-12">
-              <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+            <div className="text-center mb-8 md:mb-12 px-2">
+              <h1 className="text-2xl sm:text-3xl md:text-5xl font-bold text-gray-900 mb-3 md:mb-4">
                 Get Your Vehicle Report
               </h1>
-              <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-                Choose the perfect Carfax package to get detailed information about any vehicle
+              <p className="text-base sm:text-lg text-gray-600 max-w-2xl mx-auto">
+                Choose the perfect package to get detailed information about any vehicle
               </p>
             </div>
 
             {/* Step Indicator */}
-            <div className="mb-12 flex justify-center items-center gap-8">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-dealership-primary text-white flex items-center justify-center font-bold">
+            <div className="mb-8 md:mb-12 flex justify-center items-center gap-2 md:gap-8 px-2">
+              <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-3">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-dealership-primary text-white flex items-center justify-center font-bold text-xs sm:text-base">
                   1
                 </div>
-                <span className="text-sm font-semibold text-gray-700">Select Package</span>
+                <span className="hidden sm:inline text-xs sm:text-sm font-semibold text-gray-700">Select Package</span>
               </div>
-              <div className="w-12 h-1 bg-gray-300"></div>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gray-300 text-gray-600 flex items-center justify-center font-bold">
+              <div className="w-6 h-0.5 sm:w-12 sm:h-1 bg-gray-300"></div>
+              <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-3">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gray-300 text-gray-600 flex items-center justify-center font-bold text-xs sm:text-base">
                   2
                 </div>
-                <span className="text-sm font-medium text-gray-500">Enter Details</span>
+                <span className="hidden sm:inline text-xs sm:text-sm font-medium text-gray-500">Enter Details</span>
               </div>
-              <div className="w-12 h-1 bg-gray-300"></div>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gray-300 text-gray-600 flex items-center justify-center font-bold">
+              <div className="w-6 h-0.5 sm:w-12 sm:h-1 bg-gray-300"></div>
+              <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-3">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gray-300 text-gray-600 flex items-center justify-center font-bold text-xs sm:text-base">
                   3
                 </div>
-                <span className="text-sm font-medium text-gray-500">Confirmation</span>
+                <span className="hidden sm:inline text-xs sm:text-sm font-medium text-gray-500">Confirmation</span>
               </div>
             </div>
 
             {/* Packages Grid */}
-            <div className="grid md:grid-cols-3 gap-8 mb-12">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8 mb-8 md:mb-12 px-2">
               {CARFAX_PACKAGES.map((pkg) => (
                 <Card
                   key={pkg.id}
@@ -241,7 +253,15 @@ export default function CarfaxSalesPage() {
                   {pkg.popular && (
                     <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
                       <Badge className="bg-dealership-primary text-white px-4 py-1">
-                        Most Popular
+                        Best Value
+                      </Badge>
+                    </div>
+                  )}
+                  
+                  {pkg.badge && !pkg.popular && (
+                    <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                      <Badge className="bg-amber-500 text-white px-4 py-1">
+                        {pkg.badge}
                       </Badge>
                     </div>
                   )}
@@ -263,7 +283,7 @@ export default function CarfaxSalesPage() {
                       <div className="text-3xl font-bold text-gray-900">
                         ${pkg.price.toFixed(2)}
                       </div>
-                      <p className="text-sm text-gray-500 mt-1">One-time payment</p>
+                      <p className="text-sm text-gray-500 mt-1">(${pkg.pricePerReport.toFixed(2)}/Report)</p>
                     </div>
 
                     <div className="space-y-3">
@@ -288,11 +308,11 @@ export default function CarfaxSalesPage() {
             </div>
 
             {/* Next Button */}
-            <div className="flex justify-center">
+            <div className="flex justify-center px-2">
               <Button
                 onClick={handleNextStep}
                 size="lg"
-                className="bg-dealership-primary hover:bg-dealership-primary/90 text-white px-8"
+                className="w-full sm:w-auto bg-dealership-primary hover:bg-dealership-primary/90 text-white px-6 sm:px-8"
               >
                 Continue <ChevronRight className="w-5 h-5 ml-2" />
               </Button>
@@ -310,54 +330,54 @@ export default function CarfaxSalesPage() {
       <>
         <Navbar />
         <Header />
-        <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white py-12">
-          <div className="container mx-auto px-4 max-w-2xl">
+        <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white py-8 md:py-12">
+          <div className="container mx-auto px-3 sm:px-4 max-w-2xl">
             {/* Header */}
-            <div className="text-center mb-12">
-              <h1 className="text-4xl font-bold text-gray-900 mb-2">Enter Your Details</h1>
-              <p className="text-gray-600">
-                Provide your information to get the Carfax report
+            <div className="text-center mb-8 md:mb-12">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-3 md:mb-2">Enter Your Details</h1>
+              <p className="text-sm sm:text-base text-gray-600">
+                Provide your information to get the Cars history
               </p>
             </div>
 
             {/* Step Indicator */}
-            <div className="mb-12 flex justify-center items-center gap-8">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-dealership-primary text-white flex items-center justify-center font-bold">
-                  <Check className="w-6 h-6" />
+            <div className="mb-8 md:mb-12 flex justify-center items-center gap-2 md:gap-8 overflow-x-auto">
+              <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-3 flex-shrink-0">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-dealership-primary text-white flex items-center justify-center font-bold text-xs sm:text-base">
+                  <Check className="w-4 h-4 sm:w-6 sm:h-6" />
                 </div>
-                <span className="text-sm font-semibold text-gray-700">Select Package</span>
+                <span className="hidden sm:inline text-xs sm:text-sm font-semibold text-gray-700">Select Package</span>
               </div>
-              <div className="w-12 h-1 bg-dealership-primary"></div>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-dealership-primary text-white flex items-center justify-center font-bold">
+              <div className="w-6 h-0.5 sm:w-12 sm:h-1 bg-dealership-primary flex-shrink-0"></div>
+              <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-3 flex-shrink-0">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-dealership-primary text-white flex items-center justify-center font-bold text-xs sm:text-base">
                   2
                 </div>
-                <span className="text-sm font-semibold text-gray-700">Enter Details</span>
+                <span className="hidden sm:inline text-xs sm:text-sm font-semibold text-gray-700">Enter Details</span>
               </div>
-              <div className="w-12 h-1 bg-gray-300"></div>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gray-300 text-gray-600 flex items-center justify-center font-bold">
+              <div className="w-6 h-0.5 sm:w-12 sm:h-1 bg-gray-300 flex-shrink-0"></div>
+              <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-3 flex-shrink-0">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gray-300 text-gray-600 flex items-center justify-center font-bold text-xs sm:text-base">
                   3
                 </div>
-                <span className="text-sm font-medium text-gray-500">Confirmation</span>
+                <span className="hidden sm:inline text-xs sm:text-sm font-medium text-gray-500">Confirmation</span>
               </div>
             </div>
 
             {/* Selected Package Summary */}
-            <Card className="mb-8 bg-gradient-to-r from-dealership-primary/10 to-dealership-primary/5 border-dealership-primary/20">
-              <CardContent className="pt-6">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">
+            <Card className="mb-6 md:mb-8 bg-gradient-to-r from-dealership-primary/10 to-dealership-primary/5 border-dealership-primary/20">
+              <CardContent className="pt-4 md:pt-6">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="flex-1">
+                    <h3 className="text-base sm:text-lg font-semibold text-gray-900">
                       {selectedPackage?.name}
                     </h3>
-                    <p className="text-sm text-gray-600 mt-1">
+                    <p className="text-xs sm:text-sm text-gray-600 mt-1">
                       {selectedPackage?.description}
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-3xl font-bold text-dealership-primary">
+                    <p className="text-2xl sm:text-3xl font-bold text-dealership-primary">
                       ${selectedPackage?.price.toFixed(2)}
                     </p>
                   </div>
@@ -367,7 +387,7 @@ export default function CarfaxSalesPage() {
 
             {/* Form */}
             <Card>
-              <CardContent className="pt-8 space-y-6">
+              <CardContent className="pt-6 md:pt-8 space-y-4 md:space-y-6">
                 {/* VIN Input */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -382,7 +402,7 @@ export default function CarfaxSalesPage() {
                     }
                     placeholder="17-character VIN"
                     maxLength={17}
-                    className="text-lg font-mono tracking-wider"
+                    className="text-base md:text-lg font-mono tracking-wider"
                   />
                   <p className="text-xs text-gray-500 mt-2">
                     The VIN can be found on your vehicle's dashboard or registration
@@ -401,7 +421,7 @@ export default function CarfaxSalesPage() {
                     value={formData.email}
                     onChange={handleInputChange}
                     placeholder="your@email.com"
-                    className="text-lg"
+                    className="text-base md:text-lg"
                   />
                   <p className="text-xs text-gray-500 mt-2">
                     The report will be sent to this email address
@@ -420,7 +440,7 @@ export default function CarfaxSalesPage() {
                     value={formData.whatsapp}
                     onChange={handleInputChange}
                     placeholder="+1 (555) 000-0000"
-                    className="text-lg"
+                    className="text-base md:text-lg"
                   />
                   <p className="text-xs text-gray-500 mt-2">
                     We'll send a notification via WhatsApp when your report is ready
@@ -433,7 +453,7 @@ export default function CarfaxSalesPage() {
                     <DollarSign className="w-4 h-4 inline mr-2" />
                     Payment Method *
                   </label>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3">
                     {PAYMENT_METHODS.map((method) => (
                       <button
                         key={method.id}
@@ -443,40 +463,40 @@ export default function CarfaxSalesPage() {
                             paymentMethod: method.id as any,
                           })
                         }
-                        className={`p-4 rounded-lg border-2 transition-all ${
+                        className={`p-3 md:p-4 rounded-lg border-2 transition-all text-center ${
                           formData.paymentMethod === method.id
                             ? "border-dealership-primary bg-dealership-primary/5"
                             : "border-gray-200 hover:border-gray-300"
                         }`}
                       >
-                        <div className="text-2xl mb-2">{method.icon}</div>
-                        <p className="text-sm font-semibold text-gray-900">{method.label}</p>
+                        <div className="text-xl md:text-2xl mb-1 md:mb-2">{method.icon}</div>
+                        <p className="text-xs md:text-sm font-semibold text-gray-900">{method.label}</p>
                       </button>
                     ))}
                   </div>
                 </div>
 
                 {/* Security Info */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 md:p-4 flex items-start gap-3">
                   <Shield className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-blue-900">
+                  <p className="text-xs md:text-sm text-blue-900">
                     Your payment information is secure and encrypted. We never store full credit
                     card details.
                   </p>
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex gap-3 pt-6">
+                <div className="flex flex-col sm:flex-row gap-2 md:gap-3 pt-4 md:pt-6">
                   <Button
                     variant="outline"
                     onClick={() => setCurrentStep("select")}
-                    className="flex-1"
+                    className="flex-1 text-sm md:text-base py-2 md:py-3"
                   >
                     Back
                   </Button>
                   <Button
                     onClick={handleNextStep}
-                    className="flex-1 bg-dealership-primary hover:bg-dealership-primary/90"
+                    className="flex-1 bg-dealership-primary hover:bg-dealership-primary/90 text-sm md:text-base py-2 md:py-3"
                   >
                     Review Order <ChevronRight className="w-5 h-5 ml-2" />
                   </Button>
@@ -496,69 +516,69 @@ export default function CarfaxSalesPage() {
       <>
         <Navbar />
         <Header />
-        <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white py-12">
-          <div className="container mx-auto px-4 max-w-2xl">
+        <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white py-8 md:py-12">
+          <div className="container mx-auto px-3 sm:px-4 max-w-2xl">
             {/* Header */}
-            <div className="text-center mb-12">
-              <h1 className="text-4xl font-bold text-gray-900 mb-2">Confirm Your Order</h1>
-              <p className="text-gray-600">
+            <div className="text-center mb-8 md:mb-12">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-2">Confirm Your Order</h1>
+              <p className="text-sm sm:text-base text-gray-600">
                 Review your details before completing your purchase
               </p>
             </div>
 
             {/* Step Indicator */}
-            <div className="mb-12 flex justify-center items-center gap-8">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-dealership-primary text-white flex items-center justify-center font-bold">
-                  <Check className="w-6 h-6" />
+            <div className="mb-8 md:mb-12 flex justify-center items-center gap-2 md:gap-8 overflow-x-auto">
+              <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-3 flex-shrink-0">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-dealership-primary text-white flex items-center justify-center font-bold text-xs sm:text-base">
+                  <Check className="w-4 h-4 sm:w-6 sm:h-6" />
                 </div>
-                <span className="text-sm font-semibold text-gray-700">Select Package</span>
+                <span className="hidden sm:inline text-xs sm:text-sm font-semibold text-gray-700">Select Package</span>
               </div>
-              <div className="w-12 h-1 bg-dealership-primary"></div>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-dealership-primary text-white flex items-center justify-center font-bold">
-                  <Check className="w-6 h-6" />
+              <div className="w-6 h-0.5 sm:w-12 sm:h-1 bg-dealership-primary flex-shrink-0"></div>
+              <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-3 flex-shrink-0">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-dealership-primary text-white flex items-center justify-center font-bold text-xs sm:text-base">
+                  <Check className="w-4 h-4 sm:w-6 sm:h-6" />
                 </div>
-                <span className="text-sm font-semibold text-gray-700">Enter Details</span>
+                <span className="hidden sm:inline text-xs sm:text-sm font-semibold text-gray-700">Enter Details</span>
               </div>
-              <div className="w-12 h-1 bg-dealership-primary"></div>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-dealership-primary text-white flex items-center justify-center font-bold">
+              <div className="w-6 h-0.5 sm:w-12 sm:h-1 bg-dealership-primary flex-shrink-0"></div>
+              <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-3 flex-shrink-0">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-dealership-primary text-white flex items-center justify-center font-bold text-xs sm:text-base">
                   3
                 </div>
-                <span className="text-sm font-semibold text-gray-700">Confirmation</span>
+                <span className="hidden sm:inline text-xs sm:text-sm font-semibold text-gray-700">Confirmation</span>
               </div>
             </div>
 
             {/* Order Summary */}
-            <div className="space-y-6 mb-8">
+            <div className="space-y-4 md:space-y-6 mb-6 md:mb-8">
               {/* Package Card */}
               <Card className="border-2 border-dealership-primary">
-                <CardHeader>
-                  <CardTitle>Package Details</CardTitle>
+                <CardHeader className="pb-3 md:pb-4">
+                  <CardTitle className="text-base md:text-lg">Package Details</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex justify-between items-start">
+                <CardContent className="space-y-3 md:space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
                     <div>
-                      <p className="text-sm font-medium text-gray-600">Package</p>
-                      <p className="text-lg font-semibold text-gray-900">
+                      <p className="text-xs md:text-sm font-medium text-gray-600">Package</p>
+                      <p className="text-base md:text-lg font-semibold text-gray-900">
                         {selectedPackage?.name}
                       </p>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-medium text-gray-600">Price</p>
-                      <p className="text-3xl font-bold text-dealership-primary">
+                    <div className="text-left sm:text-right">
+                      <p className="text-xs md:text-sm font-medium text-gray-600">Price</p>
+                      <p className="text-2xl md:text-3xl font-bold text-dealership-primary">
                         ${selectedPackage?.price.toFixed(2)}
                       </p>
                     </div>
                   </div>
-                  <hr className="my-4" />
+                  <hr className="my-3 md:my-4" />
                   <div>
-                    <p className="text-sm font-medium text-gray-600 mb-3">Includes:</p>
-                    <ul className="space-y-2">
+                    <p className="text-xs md:text-sm font-medium text-gray-600 mb-2 md:mb-3">Includes:</p>
+                    <ul className="space-y-1 md:space-y-2">
                       {selectedPackage?.features.map((feature, idx) => (
-                        <li key={idx} className="flex items-center gap-2 text-sm text-gray-700">
-                          <Check className="w-4 h-4 text-green-500" />
+                        <li key={idx} className="flex items-center gap-2 text-xs md:text-sm text-gray-700">
+                          <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
                           {feature}
                         </li>
                       ))}
@@ -569,28 +589,28 @@ export default function CarfaxSalesPage() {
 
               {/* Customer Info Card */}
               <Card>
-                <CardHeader>
-                  <CardTitle>Your Information</CardTitle>
+                <CardHeader className="pb-3 md:pb-4">
+                  <CardTitle className="text-base md:text-lg">Your Information</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid md:grid-cols-2 gap-4">
+                <CardContent className="space-y-3 md:space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
                     <div>
-                      <p className="text-sm font-medium text-gray-600">VIN Number</p>
-                      <p className="text-lg font-semibold text-gray-900 font-mono">
+                      <p className="text-xs md:text-sm font-medium text-gray-600">VIN Number</p>
+                      <p className="text-sm md:text-base font-semibold text-gray-900 font-mono break-all">
                         {formData.vin}
                       </p>
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-600">Email</p>
-                      <p className="text-lg font-semibold text-gray-900">{formData.email}</p>
+                      <p className="text-xs md:text-sm font-medium text-gray-600">Email</p>
+                      <p className="text-sm md:text-base font-semibold text-gray-900 break-all">{formData.email}</p>
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-600">WhatsApp Number</p>
-                      <p className="text-lg font-semibold text-gray-900">{formData.whatsapp}</p>
+                      <p className="text-xs md:text-sm font-medium text-gray-600">WhatsApp Number</p>
+                      <p className="text-sm md:text-base font-semibold text-gray-900">{formData.whatsapp}</p>
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-600">Payment Method</p>
-                      <p className="text-lg font-semibold text-gray-900">
+                      <p className="text-xs md:text-sm font-medium text-gray-600">Payment Method</p>
+                      <p className="text-sm md:text-base font-semibold text-gray-900">
                         {PAYMENT_METHODS.find((m) => m.id === formData.paymentMethod)?.label}
                       </p>
                     </div>
@@ -600,20 +620,20 @@ export default function CarfaxSalesPage() {
 
               {/* Pricing Card */}
               <Card className="bg-gradient-to-r from-gray-50 to-white">
-                <CardContent className="pt-6">
-                  <div className="space-y-3">
-                    <div className="flex justify-between text-gray-700">
+                <CardContent className="pt-4 md:pt-6">
+                  <div className="space-y-2 md:space-y-3">
+                    <div className="flex justify-between text-xs md:text-base text-gray-700">
                       <span>Subtotal</span>
                       <span className="font-semibold">${selectedPackage?.price.toFixed(2)}</span>
                     </div>
-                    <div className="flex justify-between text-gray-700">
+                    <div className="flex justify-between text-xs md:text-base text-gray-700">
                       <span>Tax</span>
                       <span className="font-semibold">$0.00</span>
                     </div>
                     <hr />
-                    <div className="flex justify-between text-lg">
+                    <div className="flex justify-between text-base md:text-lg">
                       <span className="font-bold text-gray-900">Total</span>
-                      <span className="font-bold text-dealership-primary text-2xl">
+                      <span className="font-bold text-dealership-primary text-xl md:text-2xl">
                         ${selectedPackage?.price.toFixed(2)}
                       </span>
                     </div>
@@ -622,9 +642,9 @@ export default function CarfaxSalesPage() {
               </Card>
 
               {/* Terms */}
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 md:p-4 flex items-start gap-2 md:gap-3">
                 <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-amber-900">
+                <p className="text-xs md:text-sm text-amber-900">
                   By completing this purchase, you agree to our Terms of Service. Your report
                   will be delivered within 24 hours via email and WhatsApp.
                 </p>
@@ -632,18 +652,18 @@ export default function CarfaxSalesPage() {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-2 md:gap-3">
               <Button
                 variant="outline"
                 onClick={() => setCurrentStep("details")}
-                className="flex-1"
+                className="flex-1 text-sm md:text-base py-2 md:py-3"
               >
                 Back
               </Button>
               <Button
                 onClick={handleSubmitOrder}
                 disabled={isLoading}
-                className="flex-1 bg-dealership-primary hover:bg-dealership-primary/90 text-lg py-6"
+                className="flex-1 bg-dealership-primary hover:bg-dealership-primary/90 text-sm md:text-base py-2 md:py-3 md:py-6"
               >
                 {isLoading ? "Processing..." : "Complete Purchase"}{" "}
                 {!isLoading && <ChevronRight className="w-5 h-5 ml-2" />}
@@ -662,42 +682,42 @@ export default function CarfaxSalesPage() {
       <>
         <Navbar />
         <Header />
-        <div className="min-h-screen bg-gradient-to-b from-green-50 to-white py-12">
-          <div className="container mx-auto px-4 max-w-2xl">
+        <div className="min-h-screen bg-gradient-to-b from-green-50 to-white py-8 md:py-12">
+          <div className="container mx-auto px-3 sm:px-4 max-w-2xl">
             {/* Success Icon */}
-            <div className="text-center mb-8">
-              <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-100 mb-6">
-                <CheckCircle2 className="w-12 h-12 text-green-600" />
+            <div className="text-center mb-6 md:mb-8">
+              <div className="inline-flex items-center justify-center w-16 h-16 md:w-20 md:h-20 rounded-full bg-green-100 mb-4 md:mb-6">
+                <CheckCircle2 className="w-10 h-10 md:w-12 md:h-12 text-green-600" />
               </div>
 
-              <h1 className="text-4xl font-bold text-gray-900 mb-3">Order Confirmed!</h1>
-              <p className="text-lg text-gray-600">
-                Thank you for your purchase. Your Carfax report will be delivered soon.
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-2 md:mb-3">Order Confirmed!</h1>
+              <p className="text-sm sm:text-base md:text-lg text-gray-600">
+                Thank you for your purchase. Your Car History report will be delivered soon.
               </p>
             </div>
 
             {/* Order Details */}
-            <div className="space-y-6 mb-8">
+            <div className="space-y-4 md:space-y-6 mb-6 md:mb-8">
               <Card className="border-2 border-green-200 bg-green-50">
-                <CardContent className="pt-6">
-                  <div className="space-y-4">
+                <CardContent className="pt-4 md:pt-6">
+                  <div className="space-y-3 md:space-y-4">
                     <div>
-                      <p className="text-sm text-gray-600">Order Number</p>
-                      <p className="text-2xl font-bold text-gray-900 font-mono">
+                      <p className="text-xs md:text-sm text-gray-600">Order Number</p>
+                      <p className="text-xl md:text-2xl font-bold text-gray-900 font-mono break-all">
                         {orderConfirmation.orderNumber}
                       </p>
                     </div>
                     <hr className="border-green-200" />
-                    <div className="grid md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
                       <div>
-                        <p className="text-sm text-gray-600">Package</p>
-                        <p className="text-lg font-semibold text-gray-900">
+                        <p className="text-xs md:text-sm text-gray-600">Package</p>
+                        <p className="text-base md:text-lg font-semibold text-gray-900">
                           {orderConfirmation.packageName}
                         </p>
                       </div>
                       <div>
-                        <p className="text-sm text-gray-600">Amount Paid</p>
-                        <p className="text-lg font-semibold text-gray-900">
+                        <p className="text-xs md:text-sm text-gray-600">Amount Paid</p>
+                        <p className="text-base md:text-lg font-semibold text-gray-900">
                           ${orderConfirmation.amount.toFixed(2)}
                         </p>
                       </div>
@@ -708,29 +728,29 @@ export default function CarfaxSalesPage() {
 
               {/* Contact Information */}
               <Card>
-                <CardHeader>
-                  <CardTitle>Contact Information</CardTitle>
+                <CardHeader className="pb-3 md:pb-4">
+                  <CardTitle className="text-base md:text-lg">Contact Information</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <Mail className="w-5 h-5 text-gray-500" />
-                    <div>
-                      <p className="text-sm text-gray-600">Email</p>
-                      <p className="text-gray-900 font-semibold">{orderConfirmation.email}</p>
+                <CardContent className="space-y-3 md:space-y-4">
+                  <div className="flex items-start gap-2 md:gap-3">
+                    <Mail className="w-5 h-5 text-gray-500 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs md:text-sm text-gray-600">Email</p>
+                      <p className="text-sm md:text-base text-gray-900 font-semibold break-all">{orderConfirmation.email}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <MessageCircle className="w-5 h-5 text-gray-500" />
-                    <div>
-                      <p className="text-sm text-gray-600">WhatsApp</p>
-                      <p className="text-gray-900 font-semibold">{orderConfirmation.whatsapp}</p>
+                  <div className="flex items-start gap-2 md:gap-3">
+                    <MessageCircle className="w-5 h-5 text-gray-500 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs md:text-sm text-gray-600">WhatsApp</p>
+                      <p className="text-sm md:text-base text-gray-900 font-semibold">{orderConfirmation.whatsapp}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <FileText className="w-5 h-5 text-gray-500" />
-                    <div>
-                      <p className="text-sm text-gray-600">Vehicle VIN</p>
-                      <p className="text-gray-900 font-semibold font-mono">
+                  <div className="flex items-start gap-2 md:gap-3">
+                    <FileText className="w-5 h-5 text-gray-500 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs md:text-sm text-gray-600">Vehicle VIN</p>
+                      <p className="text-sm md:text-base text-gray-900 font-semibold font-mono break-all">
                         {orderConfirmation.vin}
                       </p>
                     </div>
@@ -741,17 +761,17 @@ export default function CarfaxSalesPage() {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-2 md:gap-3">
               <Button
                 variant="outline"
                 onClick={() => (window.location.href = "/")}
-                className="flex-1"
+                className="flex-1 text-sm md:text-base py-2 md:py-3"
               >
                 Back to Home
               </Button>
               <Button
                 onClick={handleStartOver}
-                className="flex-1 bg-dealership-primary hover:bg-dealership-primary/90"
+                className="flex-1 bg-dealership-primary hover:bg-dealership-primary/90 text-sm md:text-base py-2 md:py-3"
               >
                 Get Another Report
               </Button>

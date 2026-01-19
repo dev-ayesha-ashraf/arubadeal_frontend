@@ -365,13 +365,13 @@ const SellYourCarPage = () => {
                 onRemoveImage={handleRemoveImage}
               />
 
-              {user && (
+             
                 <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg">
                   <p className="text-blue-700 text-xs font-medium leading-relaxed italic text-center">
                     "If you don't have images yet fill the form and we will contact you after the submission"
                   </p>
                 </div>
-              )}
+             
 
               <div className="flex gap-3 pt-2">
                 <Button
