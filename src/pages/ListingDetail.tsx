@@ -1,6 +1,6 @@
 // ListingDetail.tsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -62,6 +62,8 @@ interface CarListing {
   badge?: { id: string; name: string };
   seats?: number;
   is_sold?: boolean;
+  is_active?: boolean;
+  isThirdParty?: boolean;
 }
 
 interface CarType {
@@ -174,6 +176,8 @@ const fetchCarDetail = async (slug: string): Promise<CarListing> => {
         vehicleId: res.vehical_id,
         seats: res.seats,
         is_sold: false, // Default to false/active for now unless 'used' means something else but user said implement 'our cars + these'
+        is_active: res.is_active !== false, // Default to true if not specified
+        isThirdParty: true,
         dealer: {
           _id: "tp-dealer",
           name: res.dealer,
@@ -223,8 +227,13 @@ const parseMileage = (m: number | string | undefined): { value: number | ""; uni
   return { value: "", unit: "miles" };
 };
 
-const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
+const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin: isAdminProp = false }) => {
   const { slug } = useParams<{ slug: string }>();
+  const [searchParams] = useSearchParams();
+  
+  // Determine admin mode from prop or query parameter
+  const isAdminFromQuery = searchParams.get('admin') === 'true';
+  const isAdmin = isAdminProp || isAdminFromQuery;
   const { data: carTypes = [], isLoading: typesLoading } = useQuery<CarType[]>({
     queryKey: ["carTypes"],
     queryFn: async () => {
@@ -248,6 +257,7 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
   const [isReordering, setIsReordering] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isAccessDenied, setIsAccessDenied] = useState(false);
 
   const { data: listing, isLoading, refetch } = useQuery({
     queryKey: ["carDetail", slug],
@@ -383,6 +393,13 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
       });
     }
   }, [listing]);
+
+  // Check access control for inactive listings (both internal and third-party)
+  useEffect(() => {
+    if (listing && listing.is_active === false && !isAdmin) {
+      setIsAccessDenied(true);
+    }
+  }, [listing, isAdmin]);
 
   useEffect(() => {
     const fetchLookupData = async () => {
@@ -556,16 +573,17 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
       const token = localStorage.getItem("access_token")?.replace(/(^"|"$)/g, "");
       if (!token) throw new Error("Login required");
 
-      const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/car_listing/update_images?image_id=${imageId}&make_primary=true`,
-        {
-          method: "PUT",
-          headers: {
-            "accept": "application/json",
-            "Authorization": `Bearer ${token}`,
-          },
-        }
-      );
+      const endpoint = listing?.isThirdParty 
+        ? `${import.meta.env.VITE_API_URL}/car_listing/update_images?image_id=${imageId}&make_primary=true`
+        : `${import.meta.env.VITE_API_URL}/car_listing/update_images?image_id=${imageId}&make_primary=true`;
+
+      const res = await fetch(endpoint, {
+        method: "PUT",
+        headers: {
+          "accept": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+      });
 
       if (!res.ok) throw new Error("Failed to set primary image");
 
@@ -596,10 +614,10 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
         setSelectedImageIndex(selectedImageIndex - 1);
       }
 
-      alert("Primary image updated successfully!");
+      toast.success("Primary image updated successfully!");
     } catch (error) {
       console.error("Error setting primary image:", error);
-      alert("Failed to set primary image");
+      toast.error("Failed to set primary image");
     }
   };
 
@@ -610,17 +628,22 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
       const token = localStorage.getItem("access_token")?.replace(/(^"|"$)/g, "");
       if (!token) throw new Error("Login required");
 
+      // Use appropriate endpoint based on listing type
+      const endpoint = (imageId: string) => {
+        const baseEndpoint = `image_id=${imageId}&mark_not_to_show=true&make_primary=false`;
+        return listing?.isThirdParty
+          ? `${import.meta.env.VITE_API_URL}/car_listing/update_images?${baseEndpoint}`
+          : `${import.meta.env.VITE_API_URL}/car_listing/update_images?${baseEndpoint}`;
+      };
+
       const deletePromises = selectedImages.map(imageId =>
-        fetch(
-          `${import.meta.env.VITE_API_URL}/car_listing/update_images?image_id=${imageId}&mark_not_to_show=true&make_primary=false`,
-          {
-            method: "PUT",
-            headers: {
-              'accept': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-          }
-        )
+        fetch(endpoint(imageId), {
+          method: "PUT",
+          headers: {
+            'accept': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+        })
       );
 
       const responses = await Promise.all(deletePromises);
@@ -637,10 +660,10 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
         setSelectedImageIndex(updatedImages.length > 0 ? 0 : null);
       }
 
-      alert("Selected images deleted successfully!");
+      toast.success("Selected images deleted successfully!");
     } catch (err) {
       console.error("Error deleting images:", err);
-      alert("Failed to delete some images. Check console for details.");
+      toast.error("Failed to delete some images. Check console for details.");
     }
   };
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -826,6 +849,24 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin = false }) => {
 
   if (isLoading) return <div>Loading...</div>;
   if (!listing && !editableListing) return <div>Listing not found</div>;
+  if (isAccessDenied) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <Navbar />
+        <div className="container mx-auto px-4 py-8 mt-16 md:mt-0 flex flex-col items-center justify-center min-h-[400px]">
+          <Card className="p-8 text-center max-w-md">
+            <h1 className="text-2xl font-bold text-red-600 mb-4">Access Denied</h1>
+            <p className="text-gray-600 mb-4">This third-party listing is currently inactive and cannot be viewed by regular users. Please contact an administrator if you have questions.</p>
+            <Button onClick={() => window.history.back()} className="bg-dealership-primary text-white">
+              Go Back
+            </Button>
+          </Card>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
 
   const display = isAdmin ? editableListing ?? listing : listing ?? editableListing;
   const listingUrl = `${window.location.origin}/listings/${slug}`;

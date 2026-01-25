@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
     Search,
     Zap,
@@ -24,6 +25,8 @@ import {
     ChevronsRight,
     Calendar,
     Gauge,
+    Check,
+    X,
 } from "lucide-react";
 import {
     Dialog,
@@ -152,6 +155,7 @@ interface TPListing {
     slug: string;
     vdp: string;
     dealer: string;
+    is_active: boolean;
 }
 
 interface SavedFilter {
@@ -186,6 +190,11 @@ const ThirdPartyFetch = () => {
         count: 0,
         makes: 0
     });
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [isUpdating, setIsUpdating] = useState<string | null>(null);
+    const [selectedListingForDetail, setSelectedListingForDetail] = useState<TPListing | null>(null);
+    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
     const [savedFilters, setSavedFilters] = useState<SavedFilter[]>([]);
     const [isSavingFilter, setIsSavingFilter] = useState(false);
@@ -250,7 +259,8 @@ const ThirdPartyFetch = () => {
                     image: primaryImage ? `${import.meta.env.VITE_MEDIA_URL}${primaryImage.image_url}` : "",
                     slug: car.id,
                     vdp: car.vdp || "",
-                    dealer: car.dealer || "Unknown"
+                    dealer: car.dealer || "Unknown",
+                    is_active: car.is_active !== false
                 };
             });
 
@@ -592,6 +602,139 @@ const ThirdPartyFetch = () => {
         fetchExistingListings(1);
         fetchSavedFilters();
     }, []);
+
+    const handleBulkDelete = async () => {
+        if (selectedIds.size === 0) {
+            toast.error("Please select listings to delete");
+            return;
+        }
+
+        try {
+            setIsDeleting(true);
+            const ids = Array.from(selectedIds);
+            const response = await fetch(`${API_URL}/api_listing/admin`, {
+                method: "DELETE",
+                headers: {
+                    "accept": "application/json",
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${localStorage.getItem("access_token") || ""}`,
+                },
+                body: JSON.stringify(ids),
+            });
+
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData?.detail || "Failed to delete listings");
+            }
+
+            toast.success(`Successfully deleted ${selectedIds.size} listing(s)`);
+            setSelectedIds(new Set());
+            fetchExistingListings(pagination.page);
+        } catch (error: any) {
+            toast.error(error.message);
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+    const handleToggleActive = async (listingId: string, newIsActive: boolean) => {
+        try {
+            setIsUpdating(listingId);
+
+            const queryParams = new URLSearchParams({
+                is_active: String(newIsActive),
+                is_featured: 'false'
+            });
+
+            const response = await fetch(`${API_URL}/api_listing/admin?${queryParams.toString()}`, {
+                method: "PUT",
+                headers: {
+                    "accept": "application/json",
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${localStorage.getItem("access_token") || ""}`,
+                },
+                body: JSON.stringify([listingId]),
+            });
+
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData?.detail || "Failed to update listing");
+            }
+
+            // Update local state
+            setListings(listings.map(l => 
+                l.id === listingId ? { ...l, is_active: newIsActive } : l
+            ));
+
+            toast.success(newIsActive ? "Listing activated" : "Listing deactivated");
+        } catch (error: any) {
+            toast.error(error.message);
+        } finally {
+            setIsUpdating(null);
+        }
+    };
+
+    const toggleListingSelection = (id: string) => {
+        const newSelection = new Set(selectedIds);
+        if (newSelection.has(id)) {
+            newSelection.delete(id);
+        } else {
+            newSelection.add(id);
+        }
+        setSelectedIds(newSelection);
+    };
+
+    const toggleSelectAll = () => {
+        if (selectedIds.size === filteredListings.length) {
+            setSelectedIds(new Set());
+        } else {
+            setSelectedIds(new Set(filteredListings.map(l => l.id)));
+        }
+    };
+
+    const handleBulkToggleActive = async (newIsActive: boolean) => {
+        if (selectedIds.size === 0) {
+            toast.error("Please select listings");
+            return;
+        }
+
+        try {
+            setIsDeleting(true);
+            const ids = Array.from(selectedIds);
+
+            const queryParams = new URLSearchParams({
+                is_active: String(newIsActive),
+                is_featured: 'false'
+            });
+
+            const response = await fetch(`${API_URL}/api_listing/admin?${queryParams.toString()}`, {
+                method: "PUT",
+                headers: {
+                    "accept": "application/json",
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${localStorage.getItem("access_token") || ""}`,
+                },
+                body: JSON.stringify(ids),
+            });
+
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData?.detail || "Failed to update listings");
+            }
+
+            // Update local state
+            setListings(listings.map(l => 
+                selectedIds.has(l.id) ? { ...l, is_active: newIsActive } : l
+            ));
+
+            toast.success(newIsActive ? `Activated ${selectedIds.size} listing(s)` : `Deactivated ${selectedIds.size} listing(s)`);
+            setSelectedIds(new Set());
+        } catch (error: any) {
+            toast.error(error.message);
+        } finally {
+            setIsDeleting(false);
+        }
+    };
 
     const filteredListings = listings.filter(l =>
         l.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -971,23 +1114,85 @@ const ThirdPartyFetch = () => {
                         </div>
 
                         {/* List Header & Search */}
-                        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                            <div className="relative w-full md:w-96">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                <Input
-                                    placeholder="Search synced cars..."
-                                    className="pl-10"
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                />
+                        <div className="flex flex-col gap-4">
+                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                                <div className="relative w-full md:w-96">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                    <Input
+                                        placeholder="Search synced cars..."
+                                        className="pl-10"
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                    />
+                                </div>
+                                <div className="flex items-center gap-4">
+                                    <Button variant="outline" onClick={() => fetchExistingListings(pagination.page)} size="sm">
+                                        <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                                        Refresh List
+                                    </Button>
+                                    <LayoutToggle viewMode={viewMode} onViewModeChange={setViewMode} />
+                                </div>
                             </div>
-                            <div className="flex items-center gap-4">
-                                <Button variant="outline" onClick={() => fetchExistingListings(pagination.page)} size="sm">
-                                    <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                                    Refresh List
-                                </Button>
-                                <LayoutToggle viewMode={viewMode} onViewModeChange={setViewMode} />
-                            </div>
+
+                            {/* Bulk Actions Bar */}
+                            {selectedIds.size > 0 && (
+                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center justify-between gap-4">
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-sm font-medium text-slate-700">
+                                            {selectedIds.size} listing{selectedIds.size !== 1 ? 's' : ''} selected
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setSelectedIds(new Set())}
+                                            className="border-blue-300 hover:bg-white"
+                                        >
+                                            Clear Selection
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => handleBulkToggleActive(true)}
+                                            disabled={isDeleting}
+                                            className="border-green-300 text-green-600 hover:bg-green-50"
+                                        >
+                                            {isDeleting ? (
+                                                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Activating...</>
+                                            ) : (
+                                                <><Check className="w-4 h-4 mr-2" /> Activate</>
+                                            )}
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => handleBulkToggleActive(false)}
+                                            disabled={isDeleting}
+                                            className="border-orange-300 text-orange-600 hover:bg-orange-50"
+                                        >
+                                            {isDeleting ? (
+                                                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Deactivating...</>
+                                            ) : (
+                                                <><X className="w-4 h-4 mr-2" /> Deactivate</>
+                                            )}
+                                        </Button>
+                                        <Button
+                                            variant="destructive"
+                                            size="sm"
+                                            onClick={handleBulkDelete}
+                                            disabled={isDeleting}
+                                            className="bg-red-600 hover:bg-red-700"
+                                        >
+                                            {isDeleting ? (
+                                                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Deleting...</>
+                                            ) : (
+                                                <><Trash2 className="w-4 h-4 mr-2" /> Delete Selected</>
+                                            )}
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {/* Content Section */}
@@ -1007,18 +1212,33 @@ const ThirdPartyFetch = () => {
                                 <Table>
                                     <TableHeader>
                                         <TableRow className="bg-slate-50/50">
+                                            <TableHead className="w-12">
+                                                <Checkbox
+                                                    checked={selectedIds.size === filteredListings.length && filteredListings.length > 0}
+                                                    onCheckedChange={toggleSelectAll}
+                                                    className="rounded"
+                                                />
+                                            </TableHead>
                                             <TableHead className="w-[100px]">Image</TableHead>
                                             <TableHead>Vehicle Details</TableHead>
                                             <TableHead>Year</TableHead>
                                             <TableHead>Price (USD)</TableHead>
                                             <TableHead>Mileage</TableHead>
+                                            <TableHead>Status</TableHead>
                                             <TableHead>Source</TableHead>
                                             <TableHead className="text-right">Action</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {filteredListings.map((listing) => (
-                                            <TableRow key={listing.id}>
+                                            <TableRow key={listing.id} className={selectedIds.has(listing.id) ? "bg-blue-50" : ""}>
+                                                <TableCell>
+                                                    <Checkbox
+                                                        checked={selectedIds.has(listing.id)}
+                                                        onCheckedChange={() => toggleListingSelection(listing.id)}
+                                                        className="rounded"
+                                                    />
+                                                </TableCell>
                                                 <TableCell>
                                                     <img
                                                         src={listing.image || "/fallback.jpg"}
@@ -1037,6 +1257,33 @@ const ThirdPartyFetch = () => {
                                                 </TableCell>
                                                 <TableCell>{listing.miles} miles</TableCell>
                                                 <TableCell>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => handleToggleActive(listing.id, !listing.is_active)}
+                                                        disabled={isUpdating === listing.id}
+                                                        className={`${listing.is_active 
+                                                            ? 'text-green-600 hover:bg-green-50' 
+                                                            : 'text-red-600 hover:bg-red-50'
+                                                        }`}
+                                                        title={listing.is_active ? "Click to deactivate" : "Click to activate"}
+                                                    >
+                                                        {isUpdating === listing.id ? (
+                                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                                        ) : listing.is_active ? (
+                                                            <>
+                                                                <Check className="w-4 h-4 mr-1" />
+                                                                Active
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <X className="w-4 h-4 mr-1" />
+                                                                Inactive
+                                                            </>
+                                                        )}
+                                                    </Button>
+                                                </TableCell>
+                                                <TableCell>
                                                     <Badge variant="outline" className="bg-slate-50">
                                                         {listing.dealer}
                                                     </Badge>
@@ -1050,11 +1297,18 @@ const ThirdPartyFetch = () => {
                                                                 </Button>
                                                             </a>
                                                         )}
-                                                        <Link to={`/listings/${listing.slug}`} target="_blank">
-                                                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="View Detail">
-                                                                <Eye className="w-4 h-4 text-slate-600" />
-                                                            </Button>
-                                                        </Link>
+                                                        <Button 
+                                                            variant="ghost" 
+                                                            size="sm" 
+                                                            className="h-8 w-8 p-0" 
+                                                            title="View Details"
+                                                            onClick={() => {
+                                                                setSelectedListingForDetail(listing);
+                                                                setIsDetailModalOpen(true);
+                                                            }}
+                                                        >
+                                                            <Eye className="w-4 h-4 text-slate-600" />
+                                                        </Button>
                                                     </div>
                                                 </TableCell>
                                             </TableRow>
@@ -1065,7 +1319,16 @@ const ThirdPartyFetch = () => {
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {filteredListings.map((listing) => (
-                                    <Card key={listing.id} className="overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 border-slate-200 bg-white group">
+                                    <Card key={listing.id} className={`overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 border-slate-200 bg-white group relative ${selectedIds.has(listing.id) ? "ring-2 ring-blue-500" : ""}`}>
+                                        {/* Selection Checkbox */}
+                                        <div className="absolute top-3 left-3 z-10">
+                                            <Checkbox
+                                                checked={selectedIds.has(listing.id)}
+                                                onCheckedChange={() => toggleListingSelection(listing.id)}
+                                                className="rounded"
+                                            />
+                                        </div>
+
                                         <div className="relative h-48 bg-gradient-to-br from-slate-100 to-slate-200 overflow-hidden">
                                             <img
                                                 src={listing.image || "/fallback.jpg"}
@@ -1074,6 +1337,13 @@ const ThirdPartyFetch = () => {
                                                 onError={(e) => (e.currentTarget.src = "/fallback.jpg")}
                                             />
                                             <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+                                            
+                                            {/* Status Badge */}
+                                            <div className="absolute bottom-3 right-3">
+                                                <Badge className={`${listing.is_active ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600'} text-white`}>
+                                                    {listing.is_active ? 'Active' : 'Inactive'}
+                                                </Badge>
+                                            </div>
                                         </div>
 
                                         <CardContent className="p-5">
@@ -1108,10 +1378,50 @@ const ThirdPartyFetch = () => {
                                                 </div>
                                             </div>
 
+                                            {/* Toggle Active Status */}
+                                            <div className="mb-4">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => handleToggleActive(listing.id, !listing.is_active)}
+                                                    disabled={isUpdating === listing.id}
+                                                    className={`w-full ${listing.is_active 
+                                                        ? 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100 hover:border-green-300' 
+                                                        : 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100 hover:border-red-300'
+                                                    }`}
+                                                >
+                                                    {isUpdating === listing.id ? (
+                                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                                    ) : listing.is_active ? (
+                                                        <>
+                                                            <Check className="w-4 h-4 mr-2" />
+                                                            Active - Click to Deactivate
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <X className="w-4 h-4 mr-2" />
+                                                            Inactive - Click to Activate
+                                                        </>
+                                                    )}
+                                                </Button>
+                                            </div>
+
                                             {/* Actions */}
-                                            <div className="flex gap-2">
+                                            <div className="flex flex-col gap-2">
+                                                <Button
+                                                    variant="default"
+                                                    size="sm"
+                                                    onClick={() => {
+                                                        setSelectedListingForDetail(listing);
+                                                        setIsDetailModalOpen(true);
+                                                    }}
+                                                    className="w-full bg-dealership-primary hover:bg-dealership-primary/90 text-white"
+                                                >
+                                                    <Edit2 className="w-4 h-4 mr-2" />
+                                                    View Details
+                                                </Button>
                                                 {listing.vdp && (
-                                                    <a href={listing.vdp} target="_blank" rel="noopener noreferrer" className="flex-1">
+                                                    <a href={listing.vdp} target="_blank" rel="noopener noreferrer" className="w-full">
                                                         <Button
                                                             variant="outline"
                                                             size="sm"
@@ -1122,16 +1432,6 @@ const ThirdPartyFetch = () => {
                                                         </Button>
                                                     </a>
                                                 )}
-                                                <Link to={`/listings/${listing.slug}`} target="_blank" className="flex-1">
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        className="w-full border-slate-300 hover:bg-slate-50 hover:border-slate-400 text-slate-700 transition-colors"
-                                                    >
-                                                        <Eye className="w-4 h-4 mr-2" />
-                                                        View Details
-                                                    </Button>
-                                                </Link>
                                             </div>
                                         </CardContent>
                                     </Card>
@@ -1146,6 +1446,101 @@ const ThirdPartyFetch = () => {
                         />
                     </TabsContent>
                 </Tabs>
+
+                {/* Listing Detail Modal */}
+                <Dialog open={isDetailModalOpen} onOpenChange={setIsDetailModalOpen}>
+                    <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                        <DialogHeader>
+                            <DialogTitle>{selectedListingForDetail?.title}</DialogTitle>
+                        </DialogHeader>
+                        
+                        {selectedListingForDetail && (
+                            <div className="space-y-6">
+                                {/* Image Section */}
+                                <div className="space-y-4">
+                                    <h3 className="font-semibold text-slate-900">Images</h3>
+                                    <div className="bg-slate-100 rounded-lg p-4 h-64 flex items-center justify-center">
+                                        <img 
+                                            src={selectedListingForDetail.image || "/fallback.jpg"} 
+                                            alt={selectedListingForDetail.title}
+                                            className="h-full object-contain"
+                                            onError={(e) => (e.currentTarget.src = "/fallback.jpg")}
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Details Grid */}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="text-sm font-medium text-slate-600">Make</label>
+                                        <p className="text-slate-900">{selectedListingForDetail.make}</p>
+                                    </div>
+                                    <div>
+                                        <label className="text-sm font-medium text-slate-600">Model</label>
+                                        <p className="text-slate-900">{selectedListingForDetail.model}</p>
+                                    </div>
+                                    <div>
+                                        <label className="text-sm font-medium text-slate-600">Year</label>
+                                        <p className="text-slate-900">{selectedListingForDetail.year}</p>
+                                    </div>
+                                    <div>
+                                        <label className="text-sm font-medium text-slate-600">Body Style</label>
+                                        <p className="text-slate-900">{selectedListingForDetail.body_style}</p>
+                                    </div>
+                                    <div>
+                                        <label className="text-sm font-medium text-slate-600">Price</label>
+                                        <p className="text-slate-900 font-semibold text-dealership-primary">${Number(selectedListingForDetail.price).toLocaleString()}</p>
+                                    </div>
+                                    <div>
+                                        <label className="text-sm font-medium text-slate-600">Mileage</label>
+                                        <p className="text-slate-900">{selectedListingForDetail.miles} miles</p>
+                                    </div>
+                                    <div className="col-span-2">
+                                        <label className="text-sm font-medium text-slate-600">Location</label>
+                                        <p className="text-slate-900">{selectedListingForDetail.dealer}</p>
+                                    </div>
+                                    <div className="col-span-2">
+                                        <label className="text-sm font-medium text-slate-600">VDP Link</label>
+                                        {selectedListingForDetail.vdp ? (
+                                            <a href={selectedListingForDetail.vdp} target="_blank" rel="noopener noreferrer" className="text-dealership-primary hover:underline break-all">
+                                                {selectedListingForDetail.vdp}
+                                            </a>
+                                        ) : (
+                                            <p className="text-slate-500">N/A</p>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Actions */}
+                                <div className="flex gap-2 pt-4 border-t">
+                                    <Button
+                                        variant="default"
+                                        onClick={() => window.open(`/listings/${selectedListingForDetail.slug}?admin=true`, '_blank')}
+                                        className="flex-1 bg-dealership-primary hover:bg-dealership-primary/90 text-white"
+                                    >
+                                        <Edit2 className="w-4 h-4 mr-2" />
+                                        Edit & Manage Images
+                                    </Button>
+                                    {selectedListingForDetail.vdp && (
+                                        <Button
+                                            variant="outline"
+                                            onClick={() => window.open(selectedListingForDetail.vdp, '_blank')}
+                                        >
+                                            <Globe className="w-4 h-4 mr-2" />
+                                            Original Listing
+                                        </Button>
+                                    )}
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => setIsDetailModalOpen(false)}
+                                    >
+                                        Close
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+                    </DialogContent>
+                </Dialog>
             </div>
         </div>
     );
