@@ -319,7 +319,7 @@ const CarfaxReportOrder = () => {
                     >
                       Customer Agreement
                     </button>{' '}
-                    and understand that CARFAX may not have the complete history of every vehicle.
+                    and understand that Car History may not have the complete history of every vehicle.
                   </span>
                 </label>
 
