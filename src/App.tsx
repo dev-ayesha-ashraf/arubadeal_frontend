@@ -29,7 +29,7 @@ import SellerDashboard from "./components/seller/SellerDashboard";
 import SellerPrivateRoute from "./components/SellerPrivateRoute";
 import LoginDialog from "./components/common/Login";
 import SignupDialog from "./components/common/Signup";
-import CarfaxSalesPage from "./pages/CarfaxSalesPage";
+import CarfaxReportOrder from "./pages/CarfaxSalesPage";
 
 const queryClient = new QueryClient();
 initGA();
@@ -66,7 +66,7 @@ const AppContent = () => {
         <Route path="/dealers" element={<Dealers />} />
         <Route path="/types/:typeSlug" element={<TypeDetail />} />
         <Route path="/accessories" element={<CarAccessories />} />
-        <Route path="/buy-car-history" element={<CarfaxSalesPage />} />
+        <Route path="/buy-car-history" element={<CarfaxReportOrder />} />
         <Route path="/sellcar" element={<SellYourCarPage />} />
         <Route element={<SellerPrivateRoute />}>
           <Route
