@@ -117,7 +117,7 @@ const CarfaxReportOrder = () => {
               <h1 className="text-center text-4xl font-bold text-black mb-2">
                 Order Car History Reports
               </h1>
-              <p className="text-center text-gray-600">Get detailed vehicle history with CARFAX Reports</p>
+              <p className="text-center text-gray-600">Get detailed vehicle history with car history Reports</p>
             </div>
 
             {/* Step 1: Package Selection */}
@@ -364,17 +364,6 @@ const CarfaxReportOrder = () => {
                   </svg>
                 )}
               </div>
-              <span className="text-gray-700 text-sm">
-                Send me special offers and other helpful information from CARFAX.{' '}
-                <a
-                  href="https://www.carfax.com/company/privacy-statement"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-dealership-gold hover:underline font-bold"
-                >
-                  Privacy Statement
-                </a>
-              </span>
             </label>
           </>
         ) : (
