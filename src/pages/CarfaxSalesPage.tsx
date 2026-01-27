@@ -334,13 +334,6 @@ const CarfaxReportOrder = () => {
 
             {/* Special Offers Checkbox */}
             <label className="flex items-start gap-3 cursor-pointer max-w-2xl">
-              <input
-                type="checkbox"
-                id="special-offers-input"
-                checked={specialOffers}
-                onChange={(e) => setSpecialOffers(e.target.checked)}
-                className="sr-only"
-              />
               <div
                 className={`flex-shrink-0 w-5 h-5 border-2 rounded flex items-center justify-center mt-1 ${
                   specialOffers
