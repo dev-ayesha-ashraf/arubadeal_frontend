@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,10 +11,8 @@ import {
     Car,
     Globe,
     AlertCircle,
-    Palette,
     Save,
     Edit2,
-    Plus,
     Filter,
     ArrowRight,
     Eye,
@@ -23,10 +21,10 @@ import {
     ChevronRight,
     ChevronsLeft,
     ChevronsRight,
-    Calendar,
-    Gauge,
     Check,
     X,
+    Upload,
+    FileSpreadsheet,
 } from "lucide-react";
 import {
     Dialog,
@@ -56,7 +54,6 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Link } from "react-router-dom";
 
 interface PaginationProps {
     currentPage: number;
@@ -140,7 +137,6 @@ const Pagination = ({ currentPage, totalPages, onPageChange }: PaginationProps) 
 };
 
 const API_URL = import.meta.env.VITE_API_URL;
-const MEDIA_URL = import.meta.env.VITE_MEDIA_URL;
 
 interface TPListing {
     id: string;
@@ -156,32 +152,22 @@ interface TPListing {
     vdp: string;
     dealer: string;
     is_active: boolean;
-    is_featured?: boolean;
     status?: string;
 }
 
 interface SavedFilter {
     id: string;
     title: string;
-    "vehicle.make"?: string;
-    "vehicle.year"?: string;
-    "vehicle.model"?: string;
-    "vehicle.trim"?: string;
-    "vehicle.bodyStyle"?: string;
-    "vehicle.engine"?: string;
-    "vehicle.transmission"?: string;
-    "vehicle.interiorColor"?: string;
-    "vehicle.exteriorColor"?: string;
-    "vehicle.doors"?: number;
-    "zip"?: number;
-    "distance"?: number;
-    "retailListing.price"?: string;
-    "retailListing.miles"?: string;
-    "retailListing.state"?: string;
-    "retailListing.used"?: boolean;
+    limit: number;
+    Year?: string;
+    Make?: string;
+    "Fuel Type"?: string;
+    Transmission?: string;
+    "Sale Title Type"?: string;
+    "Est. Retail Value"?: string;
 }
 
-const ThirdPartyFetch = () => {
+const CopartFetch = () => {
     const [loading, setLoading] = useState(true);
     const [fetching, setFetching] = useState(false);
     const [listings, setListings] = useState<TPListing[]>([]);
@@ -198,17 +184,19 @@ const ThirdPartyFetch = () => {
     const [selectedListingForDetail, setSelectedListingForDetail] = useState<TPListing | null>(null);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
-    // Bulk Update State
-    const [isBulkUpdateDialogOpen, setIsBulkUpdateDialogOpen] = useState(false);
-    const [bulkStatus, setBulkStatus] = useState<string>("Approved");
-    const [bulkIsActive, setBulkIsActive] = useState<boolean>(true);
-    const [bulkIsFeatured, setBulkIsFeatured] = useState<boolean>(false);
-
     const [savedFilters, setSavedFilters] = useState<SavedFilter[]>([]);
     const [isSavingFilter, setIsSavingFilter] = useState(false);
     const [filterTitle, setFilterTitle] = useState("");
     const [selectedFilterId, setSelectedFilterId] = useState<string | null>(null);
     const [showSaveDialog, setShowSaveDialog] = useState(false);
+    const [file, setFile] = useState<File | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Bulk Update State
+    const [isBulkUpdateDialogOpen, setIsBulkUpdateDialogOpen] = useState(false);
+    const [bulkStatus, setBulkStatus] = useState<string>("Approved");
+    const [bulkIsActive, setBulkIsActive] = useState<boolean>(true);
+    const [bulkIsFeatured, setBulkIsFeatured] = useState<boolean>(false);
 
     const [pagination, setPagination] = useState({
         total_items: 0,
@@ -219,33 +207,19 @@ const ThirdPartyFetch = () => {
 
     // Form state for fetch API
     const [fetchParams, setFetchParams] = useState({
-        "vehicle.make": "",
-        "vehicle.year_min": "",
-        "vehicle.year_max": "",
-        "vehicle.model": "",
-        "vehicle.trim": "",
-        "vehicle.engine": "",
-        "vehicle.transmission": "",
-        "vehicle.bodyStyle": "",
-        "vehicle.exteriorColor": "",
-        "vehicle.interiorColor": "",
-        "vehicle.squishVin": "",
-        "vehicle.doors": "",
-        "retailListing.price_min": "",
-        "retailListing.price_max": "",
-        "retailListing.miles": "",
-        "retailListing.state": "",
-        "retailListing.used": true,
-        "zip": "",
-        "distance": "",
-        limit: 50,
-        page: 1
+        limit: 5,
+        Year: "",
+        Make: "",
+        fuel_type: "",
+        Transmission: "",
+        sale_title_type: "",
+        est_retail_value: ""
     });
 
     const fetchExistingListings = async (page = pagination.page) => {
         try {
             setLoading(true);
-            const res = await fetch(`${API_URL}/api_listing/admin?page=${page}&size=${pagination.size}`, {
+            const res = await fetch(`${API_URL}/copart_listing/admin?page=${page}&size=${pagination.size}`, {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem("access_token") || ""}`,
                 },
@@ -257,29 +231,28 @@ const ThirdPartyFetch = () => {
                 const primaryImage = car.images?.find((i: any) => i.is_primary) || car.images?.[0];
                 return {
                     id: car.id,
-                    title: car.title,
-                    make: car.meta_data?.make || "Unknown",
-                    model: car.model || "Unknown",
+                    title: `${car.year} ${car.make} ${car.model_detail || car.model_group}`,
+                    make: car.make || "Unknown",
+                    model: car.model_detail || car.model_group || "Unknown",
                     year: car.year,
-                    price: car.price,
-                    miles: car.miles,
-                    body_style: car.meta_data?.bodyType || "Unknown",
-                    image: primaryImage ? `${import.meta.env.VITE_MEDIA_URL}${primaryImage.image_url}` : "",
+                    price: car.est_retail_value || "0",
+                    miles: car.odometer,
+                    body_style: car.body_style || "Unknown",
+                    image: primaryImage ? (primaryImage.image_url?.startsWith("http") ? primaryImage.image_url : `${import.meta.env.VITE_MEDIA_URL}${primaryImage.image_url}`) : "",
                     slug: car.id,
-                    vdp: car.vdp || "",
-                    dealer: car.dealer || "Unknown",
+                    vdp: "", // Copart VDP link logic if available
+                    dealer: `Copart - ${car.yard_name || car.yard_number}`,
                     is_active: car.is_active !== false,
-                    is_featured: car.is_featured,
-                    status: car.status
+                    status: car.status || "Pending"
                 };
             });
 
             setListings(mappedItems);
-            const totalPrice = mappedItems.reduce((sum, car) => sum + (Number(car.price) || 0), 0);
+            const totalPrice = mappedItems.reduce((sum: number, car: TPListing) => sum + (Number(car.price) || 0), 0);
             setStats({
                 total: totalPrice,
                 count: data.total_items || 0,
-                makes: new Set(mappedItems.map((i: any) => i.make)).size
+                makes: new Set(mappedItems.map((i: TPListing) => i.make)).size
             });
             setPagination({
                 total_items: data.total_items || 0,
@@ -289,7 +262,7 @@ const ThirdPartyFetch = () => {
             });
         } catch (error) {
             console.error(error);
-            toast.error("Failed to load third-party listings");
+            toast.error("Failed to load Copart listings");
         } finally {
             setLoading(false);
         }
@@ -297,7 +270,7 @@ const ThirdPartyFetch = () => {
 
     const fetchSavedFilters = async () => {
         try {
-            const res = await fetch(`${API_URL}/api_listing/filters`, {
+            const res = await fetch(`${API_URL}/copart_listing/filters`, {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem("access_token") || ""}`,
                 },
@@ -320,72 +293,25 @@ const ThirdPartyFetch = () => {
             setIsSavingFilter(true);
             const requestBody: any = {
                 title: filterTitle,
-                ...fetchParams // Include all current form values
+                limit: Number(fetchParams.limit),
+                "Year": fetchParams.Year,
+                "Make": fetchParams.Make,
+                "Fuel Type": fetchParams.fuel_type,
+                "Transmission": fetchParams.Transmission,
+                "Sale Title Type": fetchParams.sale_title_type,
+                "Est. Retail Value": fetchParams.est_retail_value,
             };
 
-            // Convert string years to range if applicable (though we already handle this in fetchParams logic usually)
-            if (requestBody["vehicle.year_min"] && requestBody["vehicle.year_max"]) {
-                requestBody["vehicle.year"] = `${requestBody["vehicle.year_min"]}-${requestBody["vehicle.year_max"]}`;
-                delete requestBody["vehicle.year_min"];
-                delete requestBody["vehicle.year_max"];
-            } else if (requestBody["vehicle.year_min"]) {
-                requestBody["vehicle.year"] = requestBody["vehicle.year_min"];
-                delete requestBody["vehicle.year_min"];
-            } else if (requestBody["vehicle.year_max"]) {
-                requestBody["vehicle.year"] = requestBody["vehicle.year_max"];
-                delete requestBody["vehicle.year_max"];
-            }
-
-            // Price range
-            if (requestBody["retailListing.price_min"] && requestBody["retailListing.price_max"]) {
-                requestBody["retailListing.price"] = `${requestBody["retailListing.price_min"]}-${requestBody["retailListing.price_max"]}`;
-                delete requestBody["retailListing.price_min"];
-                delete requestBody["retailListing.price_max"];
-            } else if (requestBody["retailListing.price_min"]) {
-                requestBody["retailListing.price"] = requestBody["retailListing.price_min"];
-                delete requestBody["retailListing.price_min"];
-            } else if (requestBody["retailListing.price_max"]) {
-                requestBody["retailListing.price"] = requestBody["retailListing.price_max"];
-                delete requestBody["retailListing.price_max"];
-            }
-
-            // Convert numeric strings to numbers for specific fields if they exist
-            if (requestBody["vehicle.doors"]) {
-                const val = parseInt(requestBody["vehicle.doors"]);
-                if (!isNaN(val)) requestBody["vehicle.doors"] = val;
-                else delete requestBody["vehicle.doors"]; // Remove if not a valid number
-            }
-            if (requestBody["zip"]) {
-                const val = parseInt(requestBody["zip"]);
-                if (!isNaN(val)) requestBody["zip"] = val;
-                else delete requestBody["zip"];
-            }
-            if (requestBody["distance"]) {
-                const val = parseInt(requestBody["distance"]);
-                if (!isNaN(val)) requestBody["distance"] = val;
-                else delete requestBody["distance"];
-            }
-            if (requestBody["limit"]) {
-                const val = parseInt(requestBody["limit"]);
-                if (!isNaN(val)) requestBody["limit"] = val;
-                else delete requestBody["limit"];
-            }
-            if (requestBody["page"]) {
-                const val = parseInt(requestBody["page"]);
-                if (!isNaN(val)) requestBody["page"] = val;
-                else delete requestBody["page"];
-            }
-
-            // Clean up empty string values from requestBody to avoid sending them to API
+            // Clean up empty string values from requestBody
             for (const key in requestBody) {
-                if (requestBody[key] === "") {
+                if (requestBody[key] === "" || requestBody[key] === null || requestBody[key] === undefined) {
                     delete requestBody[key];
                 }
             }
 
             const url = selectedFilterId
-                ? `${API_URL}/api_listing/filters/${selectedFilterId}`
-                : `${API_URL}/api_listing/filters`;
+                ? `${API_URL}/copart_listing/filters/${selectedFilterId}`
+                : `${API_URL}/copart_listing/filters`;
             const method = selectedFilterId ? "PUT" : "POST";
 
             const response = await fetch(url, {
@@ -413,7 +339,7 @@ const ThirdPartyFetch = () => {
 
     const handleDeleteFilter = async (id: string) => {
         try {
-            const response = await fetch(`${API_URL}/api_listing/filters/${id}`, {
+            const response = await fetch(`${API_URL}/copart_listing/filters/${id}`, {
                 method: "DELETE",
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem("access_token") || ""}`,
@@ -421,7 +347,6 @@ const ThirdPartyFetch = () => {
             });
 
             if (!response.ok) {
-                // The API might return 204 for success, check status
                 if (response.status !== 204 && response.status !== 200) {
                     throw new Error("Failed to delete filter");
                 }
@@ -440,155 +365,84 @@ const ThirdPartyFetch = () => {
 
     const getFilterSummary = (filter: SavedFilter) => {
         const parts = [];
-        if (filter["vehicle.make"]) parts.push(filter["vehicle.make"]);
-        if (filter["vehicle.model"]) parts.push(filter["vehicle.model"]);
-        if (filter["vehicle.year"]) parts.push(filter["vehicle.year"]);
-        if (filter["vehicle.trim"]) parts.push(filter["vehicle.trim"]);
-        if (filter["vehicle.bodyStyle"]) parts.push(filter["vehicle.bodyStyle"]);
-        if (filter["vehicle.exteriorColor"]) parts.push(filter["vehicle.exteriorColor"]);
-        if (filter["retailListing.price"]) parts.push(`$${filter["retailListing.price"]}`);
-        if (filter["retailListing.miles"]) parts.push(`${filter["retailListing.miles"]} miles`);
+        if (filter.Year) parts.push(filter.Year);
+        if (filter.Make) parts.push(filter.Make);
+        if (filter["Fuel Type"]) parts.push(filter["Fuel Type"]);
+        if (filter.Transmission) parts.push(filter.Transmission);
+        if (filter["Sale Title Type"]) parts.push(filter["Sale Title Type"]);
+        if (filter["Est. Retail Value"]) parts.push(filter["Est. Retail Value"]);
+        if (filter.limit) parts.push(`Limit: ${filter.limit}`);
 
-        // Filter out placeholders like "string" or "Any"
-        return parts
-            .filter(p => p && String(p).toLowerCase() !== "string" && String(p).toLowerCase() !== "any")
-            .join(" • ") || "No specific criteria";
+        return parts.join(" • ") || "No specific criteria";
     };
 
     const handleClearForm = () => {
-        const cleared = { ...fetchParams };
-        for (const key in cleared) {
-            if (Object.prototype.hasOwnProperty.call(cleared, key)) {
-                (cleared as any)[key] = "";
-            }
+        setFetchParams({
+            limit: 5,
+            Year: "",
+            Make: "",
+            fuel_type: "",
+            Transmission: "",
+            sale_title_type: "",
+            est_retail_value: ""
+        });
+        setFile(null);
+        if (fileInputRef.current) {
+            fileInputRef.current.value = "";
         }
-        cleared.limit = 50;
-        cleared.page = 1;
-        cleared["retailListing.used"] = true;
-        setFetchParams(cleared);
         setSelectedFilterId(null);
         setFilterTitle("");
         toast.info("Form cleared");
     };
 
     const applyFilter = (filter: SavedFilter) => {
-        const newParams = { ...fetchParams };
+        setFetchParams({
+            limit: filter.limit || 5,
+            Year: filter.Year || "",
+            Make: filter.Make || "",
+            fuel_type: filter["Fuel Type"] || "",
+            Transmission: filter.Transmission || "",
+            sale_title_type: filter["Sale Title Type"] || "",
+            est_retail_value: filter["Est. Retail Value"] || ""
+        });
 
-        // Reset all params first to ensure clean application of filter
-        for (const key in newParams) {
-            if (Object.prototype.hasOwnProperty.call(newParams, key)) {
-                (newParams as any)[key] = "";
-            }
-        }
-        newParams.limit = 50; // Default limit
-        newParams.page = 1; // Default page
-        newParams["retailListing.used"] = true; // Default used
-
-        // Apply filter values
-        for (const key in filter) {
-            if (Object.prototype.hasOwnProperty.call(filter, key) && key !== "id" && key !== "title") {
-                const filterValue = (filter as any)[key];
-                if (filterValue !== undefined && filterValue !== null) {
-                    if (key === "vehicle.year") {
-                        const [min, max] = String(filterValue).split("-");
-                        newParams["vehicle.year_min"] = min || "";
-                        newParams["vehicle.year_max"] = max || "";
-                    } else if (key === "retailListing.price") {
-                        const [min, max] = String(filterValue).split("-");
-                        newParams["retailListing.price_min"] = min || "";
-                        newParams["retailListing.price_max"] = max || "";
-                    } else if (typeof filterValue === "number") {
-                        (newParams as any)[key] = String(filterValue);
-                    } else {
-                        (newParams as any)[key] = filterValue;
-                    }
-                }
-            }
-        }
-
-        setFetchParams(newParams);
         setSelectedFilterId(filter.id);
         setFilterTitle(filter.title);
         toast.info(`Applied filter: ${filter.title}`);
     };
 
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            setFile(e.target.files[0]);
+        }
+    };
+
     const handleExecuteFetch = async () => {
+        if (!file) {
+            toast.error("Please upload a CSV file");
+            return;
+        }
+
         try {
             setFetching(true);
+            const formData = new FormData();
+            formData.append("file", file);
 
-            // Structure the body with dot-notation keys as expected by the API
-            const requestBody: any = {};
+            const queryParams = new URLSearchParams();
+            if (fetchParams.limit) queryParams.append("limit", String(fetchParams.limit));
+            if (fetchParams.Year) queryParams.append("Year", fetchParams.Year);
+            if (fetchParams.Make) queryParams.append("Make", fetchParams.Make);
+            if (fetchParams.fuel_type) queryParams.append("fuel_type", fetchParams.fuel_type);
+            if (fetchParams.Transmission) queryParams.append("Transmission", fetchParams.Transmission);
+            if (fetchParams.sale_title_type) queryParams.append("sale_title_type", fetchParams.sale_title_type);
+            if (fetchParams.est_retail_value) queryParams.append("est_retail_value", fetchParams.est_retail_value);
 
-            // Copy all fetchParams to requestBody, then refine ranges and types
-            for (const key in fetchParams) {
-                if (Object.prototype.hasOwnProperty.call(fetchParams, key)) {
-                    const value = (fetchParams as any)[key];
-                    if (value !== "" && value !== null && value !== undefined) {
-                        requestBody[key] = value;
-                    }
-                }
-            }
-
-            // Handle Year Range
-            if (requestBody["vehicle.year_min"] && requestBody["vehicle.year_max"]) {
-                requestBody["vehicle.year"] = `${requestBody["vehicle.year_min"]}-${requestBody["vehicle.year_max"]}`;
-                delete requestBody["vehicle.year_min"];
-                delete requestBody["vehicle.year_max"];
-            } else if (requestBody["vehicle.year_min"]) {
-                requestBody["vehicle.year"] = requestBody["vehicle.year_min"];
-                delete requestBody["vehicle.year_min"];
-            } else if (requestBody["vehicle.year_max"]) {
-                requestBody["vehicle.year"] = requestBody["vehicle.year_max"];
-                delete requestBody["vehicle.year_max"];
-            }
-
-            // Handle Price Range
-            if (requestBody["retailListing.price_min"] && requestBody["retailListing.price_max"]) {
-                requestBody["retailListing.price"] = `${requestBody["retailListing.price_min"]}-${requestBody["retailListing.price_max"]}`;
-                delete requestBody["retailListing.price_min"];
-                delete requestBody["retailListing.price_max"];
-            } else if (requestBody["retailListing.price_min"]) {
-                requestBody["retailListing.price"] = requestBody["retailListing.price_min"];
-                delete requestBody["retailListing.price_min"];
-            } else if (requestBody["retailListing.price_max"]) {
-                requestBody["retailListing.price"] = requestBody["retailListing.price_max"];
-                delete requestBody["retailListing.price_max"];
-            }
-
-            // Convert numeric strings to numbers for specific fields if they exist
-            if (requestBody["vehicle.doors"]) {
-                const val = parseInt(requestBody["vehicle.doors"]);
-                if (!isNaN(val)) requestBody["vehicle.doors"] = val;
-                else delete requestBody["vehicle.doors"];
-            }
-            if (requestBody["zip"]) {
-                const val = parseInt(requestBody["zip"]);
-                if (!isNaN(val)) requestBody["zip"] = val;
-                else delete requestBody["zip"];
-            }
-            if (requestBody["distance"]) {
-                const val = parseInt(requestBody["distance"]);
-                if (!isNaN(val)) requestBody["distance"] = val;
-                else delete requestBody["distance"];
-            }
-            if (requestBody["limit"]) {
-                const val = parseInt(requestBody["limit"]);
-                if (!isNaN(val)) requestBody["limit"] = val;
-                else delete requestBody["limit"];
-            }
-            if (requestBody["page"]) {
-                const val = parseInt(requestBody["page"]);
-                if (!isNaN(val)) requestBody["page"] = val;
-                else delete requestBody["page"];
-            }
-
-            const response = await fetch(`${API_URL}/api_listing/fetch?page=${fetchParams.page}&limit=${fetchParams.limit}`, {
+            const response = await fetch(`${API_URL}/copart_listing/fetch?${queryParams.toString()}`, {
                 method: "POST",
                 headers: {
-                    "Content-Type": "application/json",
                     Authorization: `Bearer ${localStorage.getItem("access_token") || ""}`,
                 },
-                body: JSON.stringify(requestBody),
+                body: formData,
             });
 
             if (!response.ok) {
@@ -597,7 +451,7 @@ const ThirdPartyFetch = () => {
             }
 
             const result = await response.json();
-            toast.success(result.message || "Third-party listings fetch started in background!");
+            toast.success(result.message || "Copart listings processing started in the background.");
 
             // Wait a bit and refresh since it's a background process
             setTimeout(fetchExistingListings, 3000);
@@ -629,7 +483,8 @@ const ThirdPartyFetch = () => {
                 status: bulkStatus
             });
 
-            const response = await fetch(`${API_URL}/api_listing/admin?${queryParams.toString()}`, {
+            // Using Copart admin update endpoint which likely follows same pattern
+            const response = await fetch(`${API_URL}/copart_listing/admin?${queryParams.toString()}`, {
                 method: "PUT",
                 headers: {
                     "accept": "application/json",
@@ -664,7 +519,7 @@ const ThirdPartyFetch = () => {
         try {
             setIsDeleting(true);
             const ids = Array.from(selectedIds);
-            const response = await fetch(`${API_URL}/api_listing/admin`, {
+            const response = await fetch(`${API_URL}/copart_listing/admin`, {
                 method: "DELETE",
                 headers: {
                     "accept": "application/json",
@@ -675,8 +530,9 @@ const ThirdPartyFetch = () => {
             });
 
             if (!response.ok) {
-                const errData = await response.json();
-                throw new Error(errData?.detail || "Failed to delete listings");
+                if (response.status !== 204 && response.status !== 200) {
+                    throw new Error("Failed to delete listings");
+                }
             }
 
             toast.success(`Successfully deleted ${selectedIds.size} listing(s)`);
@@ -698,7 +554,7 @@ const ThirdPartyFetch = () => {
                 is_featured: 'false'
             });
 
-            const response = await fetch(`${API_URL}/api_listing/admin?${queryParams.toString()}`, {
+            const response = await fetch(`${API_URL}/copart_listing/admin?${queryParams.toString()}`, {
                 method: "PUT",
                 headers: {
                     "accept": "application/json",
@@ -713,7 +569,6 @@ const ThirdPartyFetch = () => {
                 throw new Error(errData?.detail || "Failed to update listing");
             }
 
-            // Update local state
             setListings(listings.map(l =>
                 l.id === listingId ? { ...l, is_active: newIsActive } : l
             ));
@@ -744,50 +599,6 @@ const ThirdPartyFetch = () => {
         }
     };
 
-    const handleBulkToggleActive = async (newIsActive: boolean) => {
-        if (selectedIds.size === 0) {
-            toast.error("Please select listings");
-            return;
-        }
-
-        try {
-            setIsDeleting(true);
-            const ids = Array.from(selectedIds);
-
-            const queryParams = new URLSearchParams({
-                is_active: String(newIsActive),
-                is_featured: 'false'
-            });
-
-            const response = await fetch(`${API_URL}/api_listing/admin?${queryParams.toString()}`, {
-                method: "PUT",
-                headers: {
-                    "accept": "application/json",
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${localStorage.getItem("access_token") || ""}`,
-                },
-                body: JSON.stringify(ids),
-            });
-
-            if (!response.ok) {
-                const errData = await response.json();
-                throw new Error(errData?.detail || "Failed to update listings");
-            }
-
-            // Update local state
-            setListings(listings.map(l =>
-                selectedIds.has(l.id) ? { ...l, is_active: newIsActive } : l
-            ));
-
-            toast.success(newIsActive ? `Activated ${selectedIds.size} listing(s)` : `Deactivated ${selectedIds.size} listing(s)`);
-            setSelectedIds(new Set());
-        } catch (error: any) {
-            toast.error(error.message);
-        } finally {
-            setIsDeleting(false);
-        }
-    };
-
     const filteredListings = listings.filter(l =>
         l.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         l.make?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -798,8 +609,8 @@ const ThirdPartyFetch = () => {
         <div className="min-h-screen bg-slate-50/50 p-6">
             <div className="max-w-7xl mx-auto space-y-8">
                 <PageHeader
-                    title="Fetch Third Party Listings"
-                    description="Sync Arudeal database with unique third-party data sources"
+                    title="Fetch Copart Listings"
+                    description="Sync Arudeal database with Copart inventory"
                     icon={Zap}
                 />
 
@@ -829,7 +640,7 @@ const ThirdPartyFetch = () => {
                             <div className="flex items-center gap-2">
                                 <Car className="w-4 h-4" />
                                 <span className="relative">
-                                    Synced Cars
+                                    Synced Copart Cars
                                     <span className="absolute bottom-[-5px] left-0 w-full h-0.5 bg-dealership-primary transition-all duration-300 ease-out transform scale-x-0 group-data-[state=active]:scale-x-100 origin-center" />
                                 </span>
                                 {stats.count > 0 && (
@@ -876,122 +687,71 @@ const ThirdPartyFetch = () => {
                                         <label className="text-sm font-medium text-slate-700">Make</label>
                                         <Input
                                             placeholder="e.g. Toyota"
-                                            value={fetchParams["vehicle.make"]}
-                                            onChange={(e) => setFetchParams({ ...fetchParams, "vehicle.make": e.target.value })}
+                                            value={fetchParams.Make}
+                                            onChange={(e) => setFetchParams({ ...fetchParams, Make: e.target.value })}
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700">Model</label>
+                                        <label className="text-sm font-medium text-slate-700">Year</label>
                                         <Input
-                                            placeholder="e.g. Camry"
-                                            value={fetchParams["vehicle.model"]}
-                                            onChange={(e) => setFetchParams({ ...fetchParams, "vehicle.model": e.target.value })}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700">Trim</label>
-                                        <Input
-                                            placeholder="e.g. LE"
-                                            value={fetchParams["vehicle.trim"]}
-                                            onChange={(e) => setFetchParams({ ...fetchParams, "vehicle.trim": e.target.value })}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700">Year Range</label>
-                                        <div className="flex items-center gap-2">
-                                            <Input
-                                                placeholder="Min (2014)"
-                                                value={fetchParams["vehicle.year_min"]}
-                                                onChange={(e) => setFetchParams({ ...fetchParams, "vehicle.year_min": e.target.value })}
-                                            />
-                                            <span className="text-slate-400">-</span>
-                                            <Input
-                                                placeholder="Max (2022)"
-                                                value={fetchParams["vehicle.year_max"]}
-                                                onChange={(e) => setFetchParams({ ...fetchParams, "vehicle.year_max": e.target.value })}
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700">Engine</label>
-                                        <Input
-                                            placeholder="e.g. 2.5L"
-                                            value={fetchParams["vehicle.engine"]}
-                                            onChange={(e) => setFetchParams({ ...fetchParams, "vehicle.engine": e.target.value })}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700">Price Range (USD)</label>
-                                        <div className="flex items-center gap-2">
-                                            <Input
-                                                placeholder="Min (2000)"
-                                                value={fetchParams["retailListing.price_min"]}
-                                                onChange={(e) => setFetchParams({ ...fetchParams, "retailListing.price_min": e.target.value })}
-                                            />
-                                            <span className="text-slate-400">-</span>
-                                            <Input
-                                                placeholder="Max (10000)"
-                                                value={fetchParams["retailListing.price_max"]}
-                                                onChange={(e) => setFetchParams({ ...fetchParams, "retailListing.price_max": e.target.value })}
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700">Max Miles</label>
-                                        <Input
-                                            placeholder="e.g. 50000"
-                                            value={fetchParams["retailListing.miles"]}
-                                            onChange={(e) => setFetchParams({ ...fetchParams, "retailListing.miles": e.target.value })}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700">Limit</label>
-                                        <Input
-                                            type="number"
-                                            placeholder="e.g. 50"
-                                            value={fetchParams.limit}
-                                            onChange={(e) => setFetchParams({ ...fetchParams, limit: parseInt(e.target.value) || 50 })}
+                                            placeholder="e.g. 2020"
+                                            value={fetchParams.Year}
+                                            onChange={(e) => setFetchParams({ ...fetchParams, Year: e.target.value })}
                                         />
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-sm font-medium text-slate-700">Transmission</label>
                                         <Input
                                             placeholder="e.g. Automatic"
-                                            value={fetchParams["vehicle.transmission"]}
-                                            onChange={(e) => setFetchParams({ ...fetchParams, "vehicle.transmission": e.target.value })}
+                                            value={fetchParams.Transmission}
+                                            onChange={(e) => setFetchParams({ ...fetchParams, Transmission: e.target.value })}
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700">Body Style</label>
+                                        <label className="text-sm font-medium text-slate-700">Fuel Type</label>
                                         <Input
-                                            placeholder="e.g. Sedan"
-                                            value={fetchParams["vehicle.bodyStyle"]}
-                                            onChange={(e) => setFetchParams({ ...fetchParams, "vehicle.bodyStyle": e.target.value })}
+                                            placeholder="e.g. Gas"
+                                            value={fetchParams.fuel_type}
+                                            onChange={(e) => setFetchParams({ ...fetchParams, fuel_type: e.target.value })}
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700">Exterior Color</label>
+                                        <label className="text-sm font-medium text-slate-700">Sale Title Type</label>
                                         <Input
-                                            placeholder="e.g. Blue"
-                                            value={fetchParams["vehicle.exteriorColor"]}
-                                            onChange={(e) => setFetchParams({ ...fetchParams, "vehicle.exteriorColor": e.target.value })}
+                                            placeholder="e.g. CT"
+                                            value={fetchParams.sale_title_type}
+                                            onChange={(e) => setFetchParams({ ...fetchParams, sale_title_type: e.target.value })}
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700">ZIP Code</label>
+                                        <label className="text-sm font-medium text-slate-700">Est. Retail Value</label>
                                         <Input
-                                            placeholder="e.g. 90210"
-                                            value={fetchParams["zip"]}
-                                            onChange={(e) => setFetchParams({ ...fetchParams, "zip": e.target.value })}
+                                            placeholder="e.g. 10000-30000"
+                                            value={fetchParams.est_retail_value}
+                                            onChange={(e) => setFetchParams({ ...fetchParams, est_retail_value: e.target.value })}
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700">Distance (miles)</label>
+                                        <label className="text-sm font-medium text-slate-700">Limit</label>
                                         <Input
-                                            placeholder="e.g. 50"
-                                            value={fetchParams["distance"]}
-                                            onChange={(e) => setFetchParams({ ...fetchParams, "distance": e.target.value })}
+                                            type="number"
+                                            placeholder="e.g. 5"
+                                            value={fetchParams.limit}
+                                            onChange={(e) => setFetchParams({ ...fetchParams, limit: parseInt(e.target.value) || 5 })}
                                         />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium text-slate-700">CSV File <span className="text-red-500">*</span></label>
+                                        <div className="relative">
+                                            <Input
+                                                ref={fileInputRef}
+                                                type="file"
+                                                accept=".csv"
+                                                onChange={handleFileChange}
+                                                className="pl-10"
+                                            />
+                                            <FileSpreadsheet className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="mt-6 flex justify-end gap-3">
@@ -1021,7 +781,7 @@ const ThirdPartyFetch = () => {
                                                 <div className="space-y-2">
                                                     <label className="text-sm font-medium">Filter Title</label>
                                                     <Input
-                                                        placeholder="e.g. Toyota Camry 2020+"
+                                                        placeholder="e.g. Toyota Clean Title"
                                                         value={filterTitle}
                                                         onChange={(e) => setFilterTitle(e.target.value)}
                                                     />
@@ -1204,42 +964,6 @@ const ThirdPartyFetch = () => {
                                             Clear Selection
                                         </Button>
                                         <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => handleBulkToggleActive(true)}
-                                            disabled={isDeleting}
-                                            className="border-green-300 text-green-600 hover:bg-green-50"
-                                        >
-                                            {isDeleting ? (
-                                                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Activating...</>
-                                            ) : (
-                                                <><Check className="w-4 h-4 mr-2" /> Activate</>
-                                            )}
-                                        </Button>
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => handleBulkToggleActive(false)}
-                                            disabled={isDeleting}
-                                            className="border-orange-300 text-orange-600 hover:bg-orange-50"
-                                        >
-                                            {isDeleting ? (
-                                                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Deactivating...</>
-                                            ) : (
-                                                <><X className="w-4 h-4 mr-2" /> Deactivate</>
-                                            )}
-                                        </Button>
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => setIsBulkUpdateDialogOpen(true)}
-                                            disabled={isDeleting}
-                                            className="bg-dealership-primary text-white hover:bg-dealership-primary/90 border-transparent"
-                                        >
-                                            <Edit2 className="w-4 h-4 mr-2" />
-                                            Bulk Update
-                                        </Button>
-                                        <Button
                                             variant="destructive"
                                             size="sm"
                                             onClick={handleBulkDelete}
@@ -1252,6 +976,70 @@ const ThirdPartyFetch = () => {
                                                 <><Trash2 className="w-4 h-4 mr-2" /> Delete Selected</>
                                             )}
                                         </Button>
+
+                                        <Dialog open={isBulkUpdateDialogOpen} onOpenChange={setIsBulkUpdateDialogOpen}>
+                                            <DialogTrigger asChild>
+                                                <Button size="sm" className="bg-dealership-primary hover:bg-dealership-primary/90">
+                                                    <Edit2 className="w-4 h-4 mr-2" />
+                                                    Bulk Update
+                                                </Button>
+                                            </DialogTrigger>
+                                            <DialogContent>
+                                                <DialogHeader>
+                                                    <DialogTitle>Update {selectedIds.size} Listings</DialogTitle>
+                                                    <DialogDescription>
+                                                        Apply status and visibility changes to all selected listings.
+                                                    </DialogDescription>
+                                                </DialogHeader>
+                                                <div className="space-y-6 py-4">
+                                                    <div className="flex items-center space-x-2">
+                                                        <Checkbox
+                                                            id="bulk-active"
+                                                            checked={bulkIsActive}
+                                                            onCheckedChange={(c) => setBulkIsActive(!!c)}
+                                                        />
+                                                        <label htmlFor="bulk-active" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                                            Mark as Active
+                                                        </label>
+                                                    </div>
+
+                                                    <div className="flex flex-col space-y-2">
+                                                        <label htmlFor="bulk-status" className="text-sm font-medium leading-none">
+                                                            Set Status
+                                                        </label>
+                                                        <select
+                                                            id="bulk-status"
+                                                            className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                                            value={bulkStatus || ""}
+                                                            onChange={(e) => setBulkStatus(e.target.value)}
+                                                        >
+                                                            <option value="" disabled>Select Status</option>
+                                                            <option value="Approved">Approved</option>
+                                                            <option value="Pending">Pending</option>
+                                                            <option value="In Review">In Review</option>
+                                                            <option value="Decline">Decline</option>
+                                                        </select>
+                                                    </div>
+
+                                                    <div className="flex items-center space-x-2">
+                                                        <Checkbox
+                                                            id="bulk-featured"
+                                                            checked={bulkIsFeatured}
+                                                            onCheckedChange={(c) => setBulkIsFeatured(!!c)}
+                                                        />
+                                                        <label htmlFor="bulk-featured" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                                            Mark as Featured
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                                <DialogFooter>
+                                                    <Button variant="outline" onClick={() => setIsBulkUpdateDialogOpen(false)}>Cancel</Button>
+                                                    <Button onClick={handleBulkUpdate} disabled={isDeleting} className="bg-dealership-primary">
+                                                        {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Update Listings"}
+                                                    </Button>
+                                                </DialogFooter>
+                                            </DialogContent>
+                                        </Dialog>
                                     </div>
                                 </div>
                             )}
@@ -1319,6 +1107,15 @@ const ThirdPartyFetch = () => {
                                                 </TableCell>
                                                 <TableCell>{listing.miles} miles</TableCell>
                                                 <TableCell>
+                                                    <Badge variant="outline" className={`${listing.status === 'Approved' ? 'bg-green-50 text-green-700 border-green-200' :
+                                                        listing.status === 'Decline' ? 'bg-red-50 text-red-700 border-red-200' :
+                                                            listing.status === 'In Review' ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                                                                'bg-slate-50 text-slate-700 border-slate-200'
+                                                        }`}>
+                                                        {listing.status || "Pending"}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell>
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
@@ -1352,13 +1149,6 @@ const ThirdPartyFetch = () => {
                                                 </TableCell>
                                                 <TableCell className="text-right">
                                                     <div className="flex justify-end gap-2">
-                                                        {listing.vdp && (
-                                                            <a href={listing.vdp} target="_blank" rel="noopener noreferrer">
-                                                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Original Listing">
-                                                                    <Globe className="w-4 h-4 text-blue-600" />
-                                                                </Button>
-                                                            </a>
-                                                        )}
                                                         <Button
                                                             variant="ghost"
                                                             size="sm"
@@ -1427,16 +1217,8 @@ const ThirdPartyFetch = () => {
                                                 </div>
 
                                                 <div className="flex items-center gap-2 text-slate-700">
-                                                    <Gauge className="w-4 h-4 text-blue-600" />
-                                                    <span>{listing.miles} miles</span>
-                                                </div>
-                                                <div className="flex items-center gap-2 text-slate-700">
                                                     <Car className="w-4 h-4 text-purple-600" />
                                                     <span className="truncate">{listing.body_style}</span>
-                                                </div>
-                                                <div className="flex items-center gap-2 text-slate-700">
-                                                    <Palette className="w-4 h-4 text-orange-600" />
-                                                    <span className="truncate">{listing.model}</span>
                                                 </div>
                                             </div>
 
@@ -1482,18 +1264,6 @@ const ThirdPartyFetch = () => {
                                                     <Edit2 className="w-4 h-4 mr-2" />
                                                     View Details
                                                 </Button>
-                                                {listing.vdp && (
-                                                    <a href={listing.vdp} target="_blank" rel="noopener noreferrer" className="w-full">
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            className="w-full border-blue-200 hover:bg-blue-50 hover:border-blue-300 text-blue-700 transition-colors"
-                                                        >
-                                                            <Globe className="w-4 h-4 mr-2" />
-                                                            Original Listing
-                                                        </Button>
-                                                    </a>
-                                                )}
                                             </div>
                                         </CardContent>
                                     </Card>
@@ -1508,78 +1278,6 @@ const ThirdPartyFetch = () => {
                         />
                     </TabsContent>
                 </Tabs>
-
-                {/* Bulk Update Dialog */}
-                <Dialog open={isBulkUpdateDialogOpen} onOpenChange={setIsBulkUpdateDialogOpen}>
-                    <DialogContent className="sm:max-w-[425px]">
-                        <DialogHeader>
-                            <DialogTitle>Bulk Update Listings</DialogTitle>
-                            <DialogDescription>
-                                Update status, active state, and featured state for {selectedIds.size} selected listing{selectedIds.size !== 1 ? 's' : ''}.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <div className="grid gap-6 py-4">
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                    Status
-                                </label>
-                                <select
-                                    className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                    value={bulkStatus || ""}
-                                    onChange={(e) => setBulkStatus(e.target.value)}
-                                >
-                                    <option value="" disabled>Select Status</option>
-                                    <option value="Approved">Approved</option>
-                                    <option value="Pending">Pending</option>
-                                    <option value="In Review">In Review</option>
-                                    <option value="Decline">Decline</option>
-                                </select>
-                            </div>
-
-                            <div className="flex items-center space-x-2">
-                                <Checkbox
-                                    id="bulk-active"
-                                    checked={bulkIsActive}
-                                    onCheckedChange={(checked) => setBulkIsActive(checked as boolean)}
-                                />
-                                <label
-                                    htmlFor="bulk-active"
-                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                >
-                                    Is Active
-                                </label>
-                            </div>
-
-                            <div className="flex items-center space-x-2">
-                                <Checkbox
-                                    id="bulk-featured"
-                                    checked={bulkIsFeatured}
-                                    onCheckedChange={(checked) => setBulkIsFeatured(checked as boolean)}
-                                />
-                                <label
-                                    htmlFor="bulk-featured"
-                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                >
-                                    Is Featured
-                                </label>
-                            </div>
-                        </div>
-                        <DialogFooter>
-                            <Button variant="outline" onClick={() => setIsBulkUpdateDialogOpen(false)}>Cancel</Button>
-                            <Button
-                                onClick={handleBulkUpdate}
-                                disabled={isDeleting}
-                                className="bg-dealership-primary text-white"
-                            >
-                                {isDeleting ? (
-                                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Updating...</>
-                                ) : (
-                                    "Update Listings"
-                                )}
-                            </Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
 
                 {/* Listing Detail Modal */}
                 <Dialog open={isDetailModalOpen} onOpenChange={setIsDetailModalOpen}>
@@ -1633,16 +1331,6 @@ const ThirdPartyFetch = () => {
                                         <label className="text-sm font-medium text-slate-600">Location</label>
                                         <p className="text-slate-900">{selectedListingForDetail.dealer}</p>
                                     </div>
-                                    <div className="col-span-2">
-                                        <label className="text-sm font-medium text-slate-600">VDP Link</label>
-                                        {selectedListingForDetail.vdp ? (
-                                            <a href={selectedListingForDetail.vdp} target="_blank" rel="noopener noreferrer" className="text-dealership-primary hover:underline break-all">
-                                                {selectedListingForDetail.vdp}
-                                            </a>
-                                        ) : (
-                                            <p className="text-slate-500">N/A</p>
-                                        )}
-                                    </div>
                                 </div>
 
                                 {/* Actions */}
@@ -1655,15 +1343,6 @@ const ThirdPartyFetch = () => {
                                         <Edit2 className="w-4 h-4 mr-2" />
                                         Edit & Manage Images
                                     </Button>
-                                    {selectedListingForDetail.vdp && (
-                                        <Button
-                                            variant="outline"
-                                            onClick={() => window.open(selectedListingForDetail.vdp, '_blank')}
-                                        >
-                                            <Globe className="w-4 h-4 mr-2" />
-                                            Original Listing
-                                        </Button>
-                                    )}
                                     <Button
                                         variant="outline"
                                         onClick={() => setIsDetailModalOpen(false)}
@@ -1676,8 +1355,8 @@ const ThirdPartyFetch = () => {
                     </DialogContent>
                 </Dialog>
             </div>
-        </div >
+        </div>
     );
 };
 
-export default ThirdPartyFetch;
+export default CopartFetch;

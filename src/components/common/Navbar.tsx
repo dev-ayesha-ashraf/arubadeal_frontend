@@ -70,7 +70,7 @@ export const Navbar = () => {
         // Fetch USA listings (third-party)
         const usaResponse = await fetch(`${import.meta.env.VITE_API_URL}/api_listing/public?page=1&size=1000`);
         const usaData = usaResponse.ok ? await usaResponse.json() : { items: [] };
-        
+
         const usaItems = (usaData.items || []).map((car: any) => {
           const primaryImage = car.images?.find((i: any) => i.is_primary) || car.images?.[0];
           return {
@@ -112,8 +112,53 @@ export const Navbar = () => {
           };
         });
 
+        // Fetch Copart listings
+        const copartResponse = await fetch(`${import.meta.env.VITE_API_URL}/copart_listing/public?page=1&size=1000`);
+        const copartData = copartResponse.ok ? await copartResponse.json() : { items: [] };
+
+        const copartItems = (copartData.items || []).map((car: any) => {
+          const primaryImage = car.images?.find((i: any) => i.is_primary) || car.images?.[0];
+          return {
+            _id: car.id,
+            title: cleanText(`${car.year} ${car.make || ""} ${car.model_group || ""} ${car.model_detail || ""}`),
+            make: {
+              id: "cp-make",
+              name: car.make || "Unknown",
+              slug: car.make?.toLowerCase() || "unknown"
+            },
+            model: cleanText(car.model_detail || car.model_group || "Unknown"),
+            year: Number(car.year),
+            body_type: {
+              id: "cp-body",
+              name: car.body_style || "Unknown",
+              slug: car.body_style?.toLowerCase() || "unknown"
+            },
+            fuel_type: {
+              id: "cp-fuel",
+              name: car.fuel_type || "N/A"
+            },
+            transmission: {
+              id: "cp-trans",
+              name: cleanText(car.transmission || "N/A")
+            },
+            color: car.color,
+            slug: car.id,
+            price: car.buy_it_now_price || car.est_retail_value || 0,
+            mileage: car.odometer,
+            status: 1,
+            image: primaryImage ? `${import.meta.env.VITE_MEDIA_URL}${primaryImage.image_url}` : null,
+            listedAt: car.create_date_time,
+            badges: [],
+            badge: undefined,
+            vehicle_id: car.vehical_id || "",
+            location: `${car.location_city}, ${car.location_state}` || car.location_city || "",
+            seats: null,
+            isCopart: true,
+          };
+        });
+
         // Combine all items
-        const allItems = [...localItems, ...usaItems];
+        const allItems = [...localItems, ...usaItems, ...copartItems];
 
         const fuseInstance = new Fuse(allItems, {
           keys: [
@@ -187,10 +232,13 @@ export const Navbar = () => {
     if (searchQuery.trim()) {
       trackCustomEvent("Search", { search_string: searchQuery.trim() });
 
-      // Route to global listings if user is on that page, otherwise to regular listings
-      const targetRoute = location.pathname === "/united-states-listings"
-        ? "/united-states-listings"
-        : "/listings";
+      // Route to appropriate page
+      let targetRoute = "/listings";
+      if (location.pathname === "/united-states-listings") {
+        targetRoute = "/united-states-listings";
+      } else if (location.pathname === "/auction-vehicles") {
+        targetRoute = "/auction-vehicles";
+      }
 
       navigate(`${targetRoute}?search=${encodeURIComponent(searchQuery.trim())}`);
       setSearchQuery("");
@@ -307,6 +355,15 @@ export const Navbar = () => {
                   onClick={onClose}
                 >
                   United State Listings
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/auction-vehicles"
+                  className="text-lg hover:text-dealership-primary"
+                  onClick={onClose}
+                >
+                  Auction Vehicles
                 </Link>
               </li>
               <li>
@@ -455,10 +512,10 @@ export const Navbar = () => {
                 United States Listings
               </Link>
               <Link
-                to="/accessories"
+                to="/auction-vehicles"
                 className="text-dealership-primary text-sm font-medium hover:text-dealership-primary/80 transition-colors whitespace-nowrap"
               >
-                Accessories
+                Auction Vehicles
               </Link>
               <Link
                 to="/sellcar"

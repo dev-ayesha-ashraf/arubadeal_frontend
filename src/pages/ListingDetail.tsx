@@ -64,6 +64,7 @@ interface CarListing {
   is_sold?: boolean;
   is_active?: boolean;
   isThirdParty?: boolean;
+  isCopart?: boolean;
 }
 
 interface CarType {
@@ -201,7 +202,72 @@ const fetchCarDetail = async (slug: string): Promise<CarListing> => {
       return mapped;
 
     } catch (tpError) {
-      throw tpError; // Re-throw if both fail
+      // Try Copart API
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL}/copart_listing/public/${slug}`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
+        if (!response.ok) throw new Error("Failed to fetch Copart car detail");
+        const res = await response.json();
+
+        const sortedImages = (res.images ?? [])
+          .sort((a: any, b: any) => {
+            if (a.is_primary && !b.is_primary) return -1;
+            if (!a.is_primary && b.is_primary) return 1;
+            return (a.position || 0) - (b.position || 0);
+          })
+          .map((img: any) => ({
+            _id: img.id,
+            image: img.image_url,
+            isPrimary: img.is_primary,
+            isDisplay: img.is_display ?? true,
+            position: img.position,
+          }));
+
+        const cleanText = (text: string) => text ? text.replace(/\s*\b(lhd|rhd)\b\s*/gi, "").trim() : "";
+
+        const mapped: CarListing = {
+          _id: res.id,
+          title: cleanText(`${res.year} ${res.make || ""} ${res.model_detail || res.model_group || ""}`),
+          description: cleanText(res.special_note || "Auction Vehicle"),
+          price: res.buy_it_now_price || res.est_retail_value || 0,
+          mileage: res.odometer,
+          vehicleId: res.vehical_id,
+          seats: null,
+          is_sold: false,
+          is_active: res.is_active !== false,
+          isThirdParty: true, // Treating Copart as third party for image updates
+          isCopart: true,
+          dealer: {
+            _id: "cp-dealer",
+            name: `Copart - ${res.yard_name || res.yard_number || res.location_city || "Auction"}`,
+            address: `${res.location_city || ""}, ${res.location_state || ""}`,
+          },
+          address: `${res.location_city || ""}, ${res.location_state || ""}`,
+          features: [],
+          images: sortedImages,
+          technicalSpecification: {
+            make: res.make,
+            type: res.body_style,
+            engine: res.engine,
+            transmission: cleanText(res.transmission || "N/A"),
+            fuelTypes: res.fuel_type ? [res.fuel_type] : ["N/A"],
+            seats: null,
+          },
+          slug: res.slug || res.id,
+          badge: undefined,
+          badges: [],
+        };
+        return mapped;
+      } catch (cpError) {
+        throw cpError; // Re-throw if all fail
+      }
     }
   }
 };
@@ -230,7 +296,7 @@ const parseMileage = (m: number | string | undefined): { value: number | ""; uni
 const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin: isAdminProp = false }) => {
   const { slug } = useParams<{ slug: string }>();
   const [searchParams] = useSearchParams();
-  
+
   // Determine admin mode from prop or query parameter
   const isAdminFromQuery = searchParams.get('admin') === 'true';
   const isAdmin = isAdminProp || isAdminFromQuery;
@@ -573,7 +639,7 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin: isAdminProp = fa
       const token = localStorage.getItem("access_token")?.replace(/(^"|"$)/g, "");
       if (!token) throw new Error("Login required");
 
-      const endpoint = listing?.isThirdParty 
+      const endpoint = listing?.isThirdParty
         ? `${import.meta.env.VITE_API_URL}/car_listing/update_images?image_id=${imageId}&make_primary=true`
         : `${import.meta.env.VITE_API_URL}/car_listing/update_images?image_id=${imageId}&make_primary=true`;
 
@@ -1399,7 +1465,7 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin: isAdminProp = fa
           </div>
 
           <div className="space-y-6">
-            {display?.dealer?._id !== "tp-dealer" && (
+            {display?.dealer?._id !== "tp-dealer" && display?.dealer?._id !== "cp-dealer" && (
               <Card className="p-6">
                 <h2 className="text-xl font-semibold mb-4 text-center">Dealer Information</h2>
                 <div className="space-y-4">

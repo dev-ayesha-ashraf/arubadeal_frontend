@@ -59,6 +59,7 @@ import CarAccessory from "@/components/admin-panel/CarAccessories";
 import CategoryPage from "@/components/admin-panel/CategoryPage";
 import CarListingRequests from "@/components/admin-panel/CarListingRequests";
 import ThirdPartyFetch from "@/components/admin-panel/ThirdPartyFetch";
+import CopartFetch from "@/components/admin-panel/CopartFetch";
 
 const Sidebar = ({
   isOpen,
@@ -78,6 +79,7 @@ const Sidebar = ({
   const navItems = [
     { path: "/", icon: Globe, label: "Explore Site" },
     { path: "/admin/fetch-third-party", icon: Zap, label: "Fetch Third Party Listings" },
+    { path: "/admin/fetch-copart", icon: Zap, label: "Fetch Copart Listings" },
     { path: "/admin", icon: LayoutDashboard, label: "Dashboard" },
     { path: "/admin/vehicles", icon: Car, label: "Vehicle Management" },
     { path: "/admin/vehicle-properties", icon: Tags, label: "Properties" },
@@ -252,6 +254,7 @@ const AdminPortal = () => {
             <Route path="/subscriptions" element={<SubscriptionsManagement />} />
             <Route path="/car-requests" element={<CarListingRequests />} />
             <Route path="/fetch-third-party" element={<ThirdPartyFetch />} />
+            <Route path="/fetch-copart" element={<CopartFetch />} />
             <Route path="/users" element={<UserManagement />} />
             <Route path="/listings/:slug" element={<ListingDetail isAdmin />} />
           </Routes>

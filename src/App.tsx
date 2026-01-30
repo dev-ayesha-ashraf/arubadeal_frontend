@@ -62,6 +62,7 @@ const AppContent = () => {
         <Route path="/" element={<Index />} />
         <Route path="/listings" element={<Listings />} />
         <Route path="/united-states-listings" element={<GlobalListings />} />
+        <Route path="/auction-vehicles" element={<AuctionVehicles />} />
         <Route path="/listings/:slug" element={<ListingDetail />} />
         <Route path="/dealers" element={<Dealers />} />
         <Route path="/types/:typeSlug" element={<TypeDetail />} />
@@ -148,6 +149,8 @@ const AppContent = () => {
     </>
   );
 };
+
+import AuctionVehicles from "./pages/AuctionVehicles";
 
 const App = () => (
   <BrowserRouter>
