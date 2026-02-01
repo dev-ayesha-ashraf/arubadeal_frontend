@@ -12,6 +12,8 @@ import { ImageZoom } from "@/components/common/ImageZoom";
 import { ShareButtons } from "@/components/common/ShareButtons";
 import { trackCustomEvent } from "@/lib/init-pixel";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
+import LoginDialog from "@/components/common/Login";
 
 interface Feature {
   _id: string;
@@ -65,6 +67,30 @@ interface CarListing {
   is_active?: boolean;
   isThirdParty?: boolean;
   isCopart?: boolean;
+  // Auction specific fields
+  lot_number?: string;
+  vin?: string;
+  grid_row?: string;
+  sale_status?: string;
+  location_zip?: string;
+  runs_drives?: string;
+  damage_description?: string;
+  secondary_damage?: string;
+  cylinders?: string;
+  color?: string;
+  has_keys?: string;
+  engine?: string;
+  vehicle_type?: string;
+  drive?: string;
+  fuel_type?: string;
+  body_style?: string;
+  sale_date?: string;
+  buy_it_now_price?: number | string;
+  high_bid?: number | string;
+  make_offer_eligible?: string;
+  special_note?: string;
+  sale_title_state?: string;
+  sale_title_type?: string;
 }
 
 interface CarType {
@@ -263,6 +289,30 @@ const fetchCarDetail = async (slug: string): Promise<CarListing> => {
           slug: res.slug || res.id,
           badge: undefined,
           badges: [],
+          // Auction fields
+          lot_number: res.vehical_id,
+          vin: res.vin,
+          grid_row: res.grid_row,
+          sale_status: res.sale_status,
+          location_zip: res.location_zip,
+          runs_drives: res.runs_drives,
+          damage_description: res.damage_description,
+          secondary_damage: res.secondary_damage,
+          cylinders: res.cylinders,
+          color: res.color,
+          has_keys: res.has_keys,
+          engine: res.engine,
+          vehicle_type: res.vehicle_type === "V" ? "Automobile" : res.vehicle_type,
+          drive: res.drive,
+          fuel_type: res.fuel_type,
+          body_style: res.body_style,
+          sale_date: res.sale_date ? `${res.sale_date} ${res.sale_time || ""}` : undefined,
+          buy_it_now_price: res.buy_it_now_price,
+          high_bid: res.high_bid,
+          make_offer_eligible: res.make_offer_eligible,
+          special_note: res.special_note,
+          sale_title_state: res.sale_title_state,
+          sale_title_type: res.sale_title_type,
         };
         return mapped;
       } catch (cpError) {
@@ -324,6 +374,8 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin: isAdminProp = fa
   const [isUploading, setIsUploading] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isAccessDenied, setIsAccessDenied] = useState(false);
+  const [showLoginDialog, setShowLoginDialog] = useState(false);
+  const { user } = useAuth();
 
   const { data: listing, isLoading, refetch } = useQuery({
     queryKey: ["carDetail", slug],
@@ -338,6 +390,9 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin: isAdminProp = fa
     transmissions: [] as any[],
     badges: [] as any[]
   });
+
+  const display = isAdmin ? editableListing ?? listing : listing ?? editableListing;
+
   const getFilename = (url: string, alt: string, index?: number) => {
     try {
       const parts = url.split("/");
@@ -639,8 +694,8 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin: isAdminProp = fa
       const token = localStorage.getItem("access_token")?.replace(/(^"|"$)/g, "");
       if (!token) throw new Error("Login required");
 
-      const endpoint = listing?.isThirdParty
-        ? `${import.meta.env.VITE_API_URL}/car_listing/update_images?image_id=${imageId}&make_primary=true`
+      const endpoint = display?.isCopart
+        ? `${import.meta.env.VITE_API_URL}/car_images/update?image_id=${imageId}&make_primary=true`
         : `${import.meta.env.VITE_API_URL}/car_listing/update_images?image_id=${imageId}&make_primary=true`;
 
       const res = await fetch(endpoint, {
@@ -694,29 +749,42 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin: isAdminProp = fa
       const token = localStorage.getItem("access_token")?.replace(/(^"|"$)/g, "");
       if (!token) throw new Error("Login required");
 
-      // Use appropriate endpoint based on listing type
-      const endpoint = (imageId: string) => {
-        const baseEndpoint = `image_id=${imageId}&mark_not_to_show=true&make_primary=false`;
-        return listing?.isThirdParty
-          ? `${import.meta.env.VITE_API_URL}/car_listing/update_images?${baseEndpoint}`
-          : `${import.meta.env.VITE_API_URL}/car_listing/update_images?${baseEndpoint}`;
-      };
-
-      const deletePromises = selectedImages.map(imageId =>
-        fetch(endpoint(imageId), {
-          method: "PUT",
+      if (display?.isCopart) {
+        // New batch delete for Copart
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/car_images/delete`, {
+          method: "DELETE",
           headers: {
             'accept': 'application/json',
-            'Authorization': `Bearer ${token}`
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
           },
-        })
-      );
+          body: JSON.stringify(selectedImages)
+        });
 
-      const responses = await Promise.all(deletePromises);
-      const failedDeletes = responses.filter(response => !response.ok);
+        if (!response.ok) throw new Error("Failed to delete Copart images");
+      } else {
+        // Traditional sequential delete for others
+        const endpoint = (imageId: string) => {
+          const baseEndpoint = `image_id=${imageId}&mark_not_to_show=true&make_primary=false`;
+          return `${import.meta.env.VITE_API_URL}/car_listing/update_images?${baseEndpoint}`;
+        };
 
-      if (failedDeletes.length > 0) {
-        throw new Error(`Failed to delete ${failedDeletes.length} images`);
+        const deletePromises = selectedImages.map(imageId =>
+          fetch(endpoint(imageId), {
+            method: "PUT",
+            headers: {
+              'accept': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+          })
+        );
+
+        const responses = await Promise.all(deletePromises);
+        const failedDeletes = responses.filter(response => !response.ok);
+
+        if (failedDeletes.length > 0) {
+          throw new Error(`Failed to delete ${failedDeletes.length} images`);
+        }
       }
       const updatedImages = editableListing.images.filter(img => !selectedImages.includes(img._id));
       setEditableListing({ ...editableListing, images: updatedImages });
@@ -763,8 +831,12 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin: isAdminProp = fa
       const formData = new FormData();
       validFiles.forEach((file) => formData.append("images", file));
 
+      const uploadEndpoint = display?.isCopart
+        ? `${import.meta.env.VITE_API_URL}/car_images/upload?id=${display._id}`
+        : `${import.meta.env.VITE_API_URL}/car_listing/upload-images?vehical_id=${editableListing.vehicleId}`;
+
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/car_listing/upload-images?vehical_id=${editableListing.vehicleId}`,
+        uploadEndpoint,
         {
           method: "POST",
           headers: {
@@ -934,7 +1006,6 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin: isAdminProp = fa
     );
   }
 
-  const display = isAdmin ? editableListing ?? listing : listing ?? editableListing;
   const listingUrl = `${window.location.origin}/listings/${slug}`;
 
   return (
@@ -1076,143 +1147,154 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin: isAdminProp = fa
                   </div>
                 )}
 
-                {display?.images?.length > 1 && (
-                  <div className="flex overflow-x-auto p-2 gap-2 bg-gray-50">
-                    {displayImages.map((img, index) => {
-                      const isSelected = selectedImages.includes(img._id);
-                      const isPrimary = index === 0;
+                {(displayImages.length > 0 || isAdmin) && (
+                  <div className="flex flex-col bg-gray-50 border-t">
+                    {displayImages.length > 0 && (
+                      <div className="flex overflow-x-auto p-2 gap-2">
+                        {displayImages.map((img, index) => {
+                          const isSelected = selectedImages.includes(img._id);
+                          const isPrimary = index === 0;
 
-                      return (
-                        <div
-                          key={img._id}
-                          className={`relative w-20 h-20 flex-shrink-0 cursor-pointer ${selectedImageIndex === index ? "ring-2 ring-primary" : ""} ${isReordering ? "cursor-move" : ""}`}
-                          onClick={() => {
-                            if (isReordering) return;
-                            setSelectedImageIndex(index);
-                          }}
-                          draggable={isReordering}
-                          onDragStart={(e) => {
-                            if (!isReordering) return;
-                            e.dataTransfer.setData("text/plain", index.toString());
-                          }}
-                          onDragOver={(e) => {
-                            if (!isReordering) return;
-                            e.preventDefault();
-                          }}
-                          onDrop={async (e) => {
-                            if (!isReordering) return;
-                            e.preventDefault();
+                          return (
+                            <div
+                              key={img._id}
+                              className={`relative w-20 h-20 flex-shrink-0 cursor-pointer ${selectedImageIndex === index ? "ring-2 ring-primary" : ""} ${isReordering ? "cursor-move" : ""}`}
+                              onClick={() => {
+                                if (isReordering) return;
+                                setSelectedImageIndex(index);
+                              }}
+                              draggable={isReordering}
+                              onDragStart={(e) => {
+                                if (!isReordering) return;
+                                e.dataTransfer.setData("text/plain", index.toString());
+                              }}
+                              onDragOver={(e) => {
+                                if (!isReordering) return;
+                                e.preventDefault();
+                              }}
+                              onDrop={async (e) => {
+                                if (!isReordering) return;
+                                e.preventDefault();
 
-                            const fromIndex = parseInt(e.dataTransfer.getData("text/plain"));
-                            const newImages = [...displayImages];
-                            const [movedImage] = newImages.splice(fromIndex, 1);
-                            newImages.splice(index, 0, movedImage);
+                                const fromIndex = parseInt(e.dataTransfer.getData("text/plain"));
+                                const newImages = [...displayImages];
+                                const [movedImage] = newImages.splice(fromIndex, 1);
+                                newImages.splice(index, 0, movedImage);
 
-                            if (editableListing) {
-                              setEditableListing({
-                                ...editableListing,
-                                images: newImages
-                              });
-                            }
-
-                            try {
-                              const token = localStorage.getItem("access_token")?.replace(/(^"|"$)/g, "");
-                              if (!token) throw new Error("Login required");
-
-                              await fetch(
-                                `${import.meta.env.VITE_API_URL}/car_listing/update_images?image_id=${movedImage._id}&new_position=${index}`,
-                                {
-                                  method: "PUT",
-                                  headers: {
-                                    "accept": "application/json",
-                                    "Authorization": `Bearer ${token}`,
-                                  },
+                                if (editableListing) {
+                                  setEditableListing({
+                                    ...editableListing,
+                                    images: newImages
+                                  });
                                 }
-                              );
-                            } catch (err) {
-                              console.error("Failed to update image position:", err);
-                              alert("Failed to save image order on server");
-                            }
-                          }}
 
-                        >
-                          <img
-                            src={getImageUrl(img.image)}
-                            alt={`Thumbnail ${index + 1}`}
-                            className="w-full h-full object-cover"
-                          />
+                                try {
+                                  const token = localStorage.getItem("access_token")?.replace(/(^"|"$)/g, "");
+                                  if (!token) throw new Error("Login required");
 
-                          {isAdmin && (
-                            <>
-                              {img.isPrimary && (
-                                <div className="absolute top-1 left-1 bg-green-600 text-white text-[10px] font-semibold px-1 rounded select-none pointer-events-none">
-                                  PRIMARY
-                                </div>
-                              )}
+                                  const reorderEndpoint = display?.isCopart
+                                    ? `${import.meta.env.VITE_API_URL}/cars/car_images/update?image_id=${movedImage._id}&new_position=${index}`
+                                    : `${import.meta.env.VITE_API_URL}/car_listing/update_images?image_id=${movedImage._id}&new_position=${index}`;
 
-                              {isReordering ? (
-                                <div className="absolute inset-0 bg-black/50 flex items-center justify-center text-white">
-                                  <Move size={16} />
-                                </div>
-                              ) : (
+                                  await fetch(
+                                    reorderEndpoint,
+                                    {
+                                      method: "PUT",
+                                      headers: {
+                                        "accept": "application/json",
+                                        "Authorization": `Bearer ${token}`,
+                                      },
+                                    }
+                                  );
+                                } catch (err) {
+                                  console.error("Failed to update image position:", err);
+                                  alert("Failed to save image order on server");
+                                }
+                              }}
+
+                            >
+                              <img
+                                src={getImageUrl(img.image)}
+                                alt={`Thumbnail ${index + 1}`}
+                                className="w-full h-full object-cover"
+                              />
+
+                              {isAdmin && (
                                 <>
-                                  <div className="absolute top-1 right-1">
-                                    <input
-                                      type="checkbox"
-                                      checked={isSelected}
-                                      onChange={() => handleImageSelect(img._id)}
-                                      className="h-4 w-4 rounded border-gray-300 text-dealership-primary focus:ring-dealership-primary"
-                                    />
-                                  </div>
-
-                                  {isSelected && (
-                                    <div className="absolute inset-0 bg-blue-500/20 border-2 border-blue-500 flex items-center justify-center">
-                                      <Check className="text-white bg-blue-500 rounded-full p-0.5" size={16} />
+                                  {img.isPrimary && (
+                                    <div className="absolute top-1 left-1 bg-green-600 text-white text-[10px] font-semibold px-1 rounded select-none pointer-events-none">
+                                      PRIMARY
                                     </div>
                                   )}
 
-                                  {!isPrimary && (
-                                    <button
-                                      className="absolute bottom-1 right-1 bg-yellow-500 text-white p-1 rounded-full"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setImageAsPrimary(img._id);
-                                      }}
-                                      title="Set as primary image"
-                                    >
-                                      <Star size={12} fill="currentColor" />
-                                    </button>
+                                  {isReordering ? (
+                                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center text-white">
+                                      <Move size={16} />
+                                    </div>
+                                  ) : (
+                                    <>
+                                      <div className="absolute top-1 right-1">
+                                        <input
+                                          type="checkbox"
+                                          checked={isSelected}
+                                          onChange={() => handleImageSelect(img._id)}
+                                          className="h-4 w-4 rounded border-gray-300 text-dealership-primary focus:ring-dealership-primary"
+                                        />
+                                      </div>
+
+                                      {isSelected && (
+                                        <div className="absolute inset-0 bg-blue-500/20 border-2 border-blue-500 flex items-center justify-center">
+                                          <Check className="text-white bg-blue-500 rounded-full p-0.5" size={16} />
+                                        </div>
+                                      )}
+
+                                      {!isPrimary && (
+                                        <button
+                                          className="absolute bottom-1 right-1 bg-yellow-500 text-white p-1 rounded-full"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setImageAsPrimary(img._id);
+                                          }}
+                                          title="Set as primary image"
+                                        >
+                                          <Star size={12} fill="currentColor" />
+                                        </button>
+                                      )}
+                                    </>
                                   )}
                                 </>
                               )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {isAdmin && !isReordering && (
+                      <div className="p-3 flex justify-center border-t">
+                        <label
+                          htmlFor="image-upload"
+                          className={`flex items-center justify-center gap-2 px-6 py-3 cursor-pointer border-2 border-dashed border-gray-400 text-gray-600 rounded-xl hover:border-dealership-primary hover:text-dealership-primary transition-all ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        >
+                          {isUploading ? (
+                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-dealership-primary"></div>
+                          ) : (
+                            <>
+                              <Upload size={18} />
+                              <span className="text-sm font-bold uppercase tracking-wide">Add More Images</span>
                             </>
                           )}
-                        </div>
-                      );
-                    })}
-                    {isAdmin && !isReordering && (
-                      <label
-                        htmlFor="image-upload"
-                        className={`flex flex-col items-center justify-center w-24 h-16 cursor-pointer border-2 border-dashed border-gray-400 text-gray-600 rounded hover:border-dealership-primary hover:text-dealership-primary transition-colors ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                      >
-                        {isUploading ? (
-                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-dealership-primary"></div>
-                        ) : (
-                          <>
-                            <Upload size={20} />
-                            <span className="text-xs mt-1 text-center">Add Images</span>
-                          </>
-                        )}
-                        <input
-                          id="image-upload"
-                          type="file"
-                          accept="image/*"
-                          multiple
-                          disabled={isUploading}
-                          className="hidden"
-                          onChange={handleImageUpload}
-                        />
-                      </label>
+                          <input
+                            id="image-upload"
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            disabled={isUploading}
+                            className="hidden"
+                            onChange={handleImageUpload}
+                          />
+                        </label>
+                      </div>
                     )}
                   </div>
                 )}
@@ -1245,9 +1327,22 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin: isAdminProp = fa
                     </div>
 
                   ) : (
-                    <p className="text-xl font-semibold text-dealership-primary">
-                      {display?.dealer?._id === "tp-dealer" ? "USD" : "AWG"} {Number(display?.price || 0).toLocaleString()}
-                    </p>
+                    <div className="space-y-1">
+                      <p className="text-xl font-semibold text-dealership-primary">
+                        {display?.dealer?._id === "tp-dealer" || display?.isCopart ? "USD" : "AWG"} {Number(display?.price || 0).toLocaleString()}
+                      </p>
+                      {display?.isCopart && (
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-500 font-medium">
+                          <span>Lot: {display.lot_number}</span>
+                          <span>VIN: {display.vin}</span>
+                          {display.runs_drives && (
+                            <span className="text-green-600 flex items-center gap-1">
+                              <Check className="w-4 h-4" /> {display.runs_drives}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
                 <div className="flex items-center gap-2 mt-2">
@@ -1343,29 +1438,90 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin: isAdminProp = fa
                       )}
                     </div>
 
-                    <div>
-                      <p className="font-medium">Mileage</p>
-                      {isAdmin ? (
-                        <div className="flex gap-2">
-                          <input
-                            type="number"
-                            className="border rounded p-1 w-32"
-                            value={mileageValue}
-                            onChange={(e) => setMileageValue(e.target.value === "" ? "" : Number(e.target.value))}
-                          />
-                          <select className="border rounded p-1" value={mileageUnit} onChange={(e) => setMileageUnit(e.target.value as "miles" | "km")}>
-                            <option value="miles">Miles</option>
-                            <option value="km">Kilometers</option>
-                          </select>
+                    {display?.isCopart ? (
+                      <>
+                        <div>
+                          <p className="font-medium">Odometer</p>
+                          <p className="text-gray-600">{display.mileage || "N/A"}</p>
                         </div>
-                      ) : (
-                        <p className="text-gray-600">
-                          {typeof display?.mileage === "number"
-                            ? `${display.mileage.toLocaleString()} miles`
-                            : display?.mileage ?? "N/A"}
-                        </p>
-                      )}
-                    </div>
+                        <div>
+                          <p className="font-medium">Primary Damage</p>
+                          <p className="text-gray-600">{display.damage_description || "N/A"}</p>
+                        </div>
+                        <div>
+                          <p className="font-medium">Secondary Damage</p>
+                          <p className="text-gray-600">{display.secondary_damage || "N/A"}</p>
+                        </div>
+                        <div>
+                          <p className="font-medium">Title Code</p>
+                          <p className="text-gray-600">{display.sale_title_type || "N/A"}</p>
+                        </div>
+                        <div>
+                          <p className="font-medium">Cylinders</p>
+                          <p className="text-gray-600">{display.cylinders || "N/A"}</p>
+                        </div>
+                        <div>
+                          <p className="font-medium">Color</p>
+                          <p className="text-gray-600">{display.color || "N/A"}</p>
+                        </div>
+                        <div>
+                          <p className="font-medium">Has Key</p>
+                          <p className="text-gray-600">{display.has_keys || "N/A"}</p>
+                        </div>
+                        <div>
+                          <p className="font-medium">Engine Type</p>
+                          <p className="text-gray-600">{display.engine || "N/A"}</p>
+                        </div>
+                        <div>
+                          <p className="font-medium">Vehicle Type</p>
+                          <p className="text-gray-600">{display.vehicle_type || "N/A"}</p>
+                        </div>
+                        <div>
+                          <p className="font-medium">Drivetrain</p>
+                          <p className="text-gray-600">{display.drive || "N/A"}</p>
+                        </div>
+                        <div>
+                          <p className="font-medium">Fuel</p>
+                          <p className="text-gray-600">{display.fuel_type || "N/A"}</p>
+                        </div>
+                        <div>
+                          <p className="font-medium">Body Style</p>
+                          <p className="text-gray-600">{display.body_style || "N/A"}</p>
+                        </div>
+                        <div className="md:col-span-2">
+                          <p className="font-medium">Sale Date</p>
+                          <p className="text-gray-600">{display.sale_date || "N/A"}</p>
+                        </div>
+                        <div>
+                          <p className="font-medium">Lane/Item</p>
+                          <p className="text-gray-600">{display.grid_row || "-/-"}</p>
+                        </div>
+                      </>
+                    ) : (
+                      <div>
+                        <p className="font-medium">Mileage</p>
+                        {isAdmin ? (
+                          <div className="flex gap-2">
+                            <input
+                              type="number"
+                              className="border rounded p-1 w-32"
+                              value={mileageValue}
+                              onChange={(e) => setMileageValue(e.target.value === "" ? "" : Number(e.target.value))}
+                            />
+                            <select className="border rounded p-1" value={mileageUnit} onChange={(e) => setMileageUnit(e.target.value as "miles" | "km")}>
+                              <option value="miles">Miles</option>
+                              <option value="km">Kilometers</option>
+                            </select>
+                          </div>
+                        ) : (
+                          <p className="text-gray-600">
+                            {typeof display?.mileage === "number"
+                              ? `${display.mileage.toLocaleString()} miles`
+                              : display?.mileage ?? "N/A"}
+                          </p>
+                        )}
+                      </div>
+                    )}
 
                     <div>
                       <p className="font-medium">Seats</p>
@@ -1460,12 +1616,113 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin: isAdminProp = fa
                     )}
                   </div>
                 </Card>
+
+                {display?.isCopart && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Card className="p-4 border-l-4 border-l-green-600">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-green-100 rounded-full">
+                          <Check className="w-5 h-5 text-green-600" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-gray-800">Engine Starts</p>
+                          <p className="text-xs text-gray-500">Copart verified that the engine starts.</p>
+                        </div>
+                      </div>
+                    </Card>
+                    <Card className="p-4 border-l-4 border-l-green-600">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-green-100 rounded-full">
+                          <Check className="w-5 h-5 text-green-600" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-gray-800">Transmission Engages</p>
+                          <p className="text-xs text-gray-500">Copart verified that the transmission engages.</p>
+                        </div>
+                      </div>
+                    </Card>
+                  </div>
+                )}
+
+                {display?.isCopart && (
+                  <Card className="p-6">
+                    <h2 className="text-xl font-semibold mb-4">Notes</h2>
+                    <p className="text-gray-600 italic">
+                      {display.special_note || "There are no notes for this lot"}
+                    </p>
+                  </Card>
+                )}
               </div>
             </div>
           </div>
 
           <div className="space-y-6">
-            {display?.dealer?._id !== "tp-dealer" && display?.dealer?._id !== "cp-dealer" && (
+            {display?.isCopart && (
+              <Card className="p-6 bg-white border-2 border-dealership-navy/10 shadow-lg text-center overflow-hidden relative">
+                <div className="absolute top-0 left-0 w-full h-1 bg-dealership-primary" />
+                <h2 className="text-xl font-bold mb-4 uppercase tracking-wider text-dealership-navy">Current Bid</h2>
+                <div className="text-4xl font-black mb-2 text-dealership-primary">
+                  USD {Number(display.high_bid || 0).toLocaleString()}
+                </div>
+                {/* <div className="text-sm text-gray-400 font-medium mb-6 flex items-center justify-center gap-1.5">
+                  <span className="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                  Auction ends in: 1D 19H 38min
+                </div> */}
+
+                <div className="space-y-4">
+                  <div className="relative group">
+                    <input
+                      type="text"
+                      placeholder="Enter Max Bid"
+                      className="w-full bg-gray-50 border-2 border-gray-100 rounded-xl p-4 text-dealership-navy font-bold placeholder:text-gray-300 focus:outline-none focus:border-dealership-primary/50 transition-all"
+                    />
+                    {!user && (
+                      <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-lg text-amber-700 text-xs font-semibold">
+                        Sign in required to place a bid
+                      </div>
+                    )}
+                    <Button
+                      className="w-full mt-3 bg-gradient-to-r from-dealership-primary to-[#b87333] hover:from-[#b87333] hover:to-dealership-primary text-white font-black py-7 text-lg shadow-lg shadow-dealership-primary/20 transition-all duration-300"
+                      onClick={() => {
+                        if (!user) {
+                          setShowLoginDialog(true);
+                          return;
+                        }
+                        // Static version: just show a toast for now as it's a static build
+                        toast.success(`Bid placed successfully!`);
+                      }}
+                    >
+                      PLACE BID
+                    </Button>
+                  </div>
+
+                  {Number(display.buy_it_now_price) > 0 && (
+                    <Button className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-xl transition-all">
+                      BUY IT NOW (USD {Number(display.buy_it_now_price).toLocaleString()})
+                    </Button>
+                  )}
+
+                  {display.make_offer_eligible === "Y" && (
+                    <Button variant="outline" className="w-full border-2 border-dealership-navy/10 text-dealership-navy hover:bg-gray-50 py-4 font-bold rounded-xl transition-all">
+                      MAKE AN OFFER
+                    </Button>
+                  )}
+                </div>
+
+                <div className="mt-8 pt-6 border-t border-gray-100 text-sm space-y-2.5">
+                  <div className="flex justify-between items-center text-gray-500 font-medium">
+                    {/* <span>Bidding increment</span>
+                    <span className="text-dealership-navy font-bold">$250</span> */}
+                  </div>
+                  {/* <div className="flex justify-between items-center text-gray-500 font-medium">
+                    <span>Seller Reserve</span>
+                    <span className="text-red-500 font-bold bg-red-50 px-2 py-0.5 rounded">Not yet met</span>
+                  </div> */}
+                </div>
+              </Card>
+            )}
+
+            {display?.dealer?._id !== "tp-dealer" && display?.dealer?._id !== "cp-dealer" && !display?.isCopart && (
               <Card className="p-6">
                 <h2 className="text-xl font-semibold mb-4 text-center">Dealer Information</h2>
                 <div className="space-y-4">
@@ -1558,6 +1815,10 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin: isAdminProp = fa
           currentIndex={selectedImageIndex}
         />
       )}
+      <LoginDialog
+        showLoginDialog={showLoginDialog}
+        setShowLoginDialog={setShowLoginDialog}
+      />
     </div>
   );
 };

@@ -38,6 +38,12 @@ interface CarAPI {
     badges?: string[];
     seats?: number | string | null;
     isCopart?: boolean;
+    lot_number?: string;
+    high_bid?: number | string;
+    location_city?: string;
+    location_state?: string;
+    buy_it_now_price?: number | string;
+    make_offer_eligible?: string;
 }
 
 interface DropdownItem {
@@ -189,10 +195,13 @@ const AuctionVehicles = () => {
                         listedAt: car.create_date_time,
                         badges: [],
                         badge: undefined,
-                        vehicle_id: car.vehical_id || "",
-                        location: `${car.location_city}, ${car.location_state}` || car.location_city || "",
-                        seats: null,
                         isCopart: true,
+                        lot_number: car.vehical_id,
+                        high_bid: car.high_bid || 0,
+                        location_city: car.location_city,
+                        location_state: car.location_state,
+                        buy_it_now_price: car.buy_it_now_price || 0,
+                        make_offer_eligible: car.make_offer_eligible,
                     };
                 });
 
@@ -509,30 +518,39 @@ const AuctionVehicles = () => {
                                             </div>
 
                                             <CardContent className="p-2 md:p-4 w-3/4 md:w-full flex flex-col flex-1">
-                                                <div className="flex items-center justify-between mb-2 md:mb-3 border-b border-gray-200 pb-1">
-                                                    <h3 className="text-base md:text-lg font-semibold text-left line-clamp-1" title={car.title}>
+                                                <div className="flex flex-col mb-2 md:mb-3 border-b border-gray-200 pb-1">
+                                                    <h3 className="text-base md:text-lg font-bold text-left line-clamp-1" title={car.title}>
                                                         {car.title}
                                                     </h3>
+                                                    <p className="text-xs md:text-sm text-gray-500 font-medium">
+                                                        Lot # {car.lot_number || "N/A"}
+                                                    </p>
                                                 </div>
 
-                                                <div className="grid grid-cols-2 gap-1 text-xs md:text-sm text-gray-600 mb-2 ">
-                                                    <div>Make: {car.make?.name}</div>
-                                                    <div>Model: {car.model ?? "N/A"}</div>
-                                                    <div>Type: {car.body_type?.name ?? "N/A"}</div>
-                                                    <div>Transmission: {car.transmission?.name ?? "N/A"}</div>
-                                                    <div>Color: {car.color ?? "N/A"}</div>
-                                                    {car.badges && car.badges.length > 0 && (
-                                                        <div>Badge: {car.badges.join(", ")}</div>
-                                                    )}
-                                                    <div>Vehicle ID: {car.vehicle_id ?? "N/A"}</div>
+                                                <div className="flex flex-col gap-1 text-xs md:text-sm text-gray-600 mb-2">
+                                                    <div className="flex justify-between">
+                                                        <span className="font-semibold text-dealership-primary">Current bid:</span>
+                                                        <span className="font-bold">USD {Number(car.high_bid || 0).toLocaleString()}</span>
+                                                    </div>
+                                                    <div className="flex gap-1 items-center mt-1">
+                                                        <span className="font-semibold text-dealership-primary">Location:</span>
+                                                        <span>{car.location_state || "N/A"} - {car.location_city || "N/A"}</span>
+                                                    </div>
                                                 </div>
 
                                                 <div className="flex items-center justify-between mt-auto border-t border-gray-200 pt-2">
-                                                    <p className="text-xl font-bold text-dealership-primary">
-                                                        USD {Number(car.price || 0).toLocaleString()}
-                                                    </p>
+                                                    <div className="flex flex-col">
+                                                        {Number(car.buy_it_now_price) > 0 && (
+                                                            <p className="text-[10px] text-green-600 font-bold uppercase leading-none mb-0.5">
+                                                                Buy It Now Available
+                                                            </p>
+                                                        )}
+                                                        <p className="text-xl font-black text-dealership-primary">
+                                                            USD {Number(car.price || 0).toLocaleString()}
+                                                        </p>
+                                                    </div>
                                                     <button
-                                                        className="hidden md:inline-flex items-center gap-1 text-dealership-primary hover:text-[#6B4A2B] font-medium"
+                                                        className="hidden md:inline-flex items-center gap-1 text-dealership-primary hover:text-[#6B4A2B] font-bold"
                                                         type="button"
                                                     >
                                                         View Details
