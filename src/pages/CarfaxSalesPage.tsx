@@ -10,7 +10,6 @@ const CarfaxReportOrder = () => {
   const [email, setEmail] = useState('');
   const [zip, setZip] = useState('');
   const [agreement, setAgreement] = useState(false);
-  const [specialOffers, setSpecialOffers] = useState(true);
   const [cardNumber, setCardNumber] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
   const [cvv, setCvv] = useState('');
@@ -71,6 +70,7 @@ const CarfaxReportOrder = () => {
     e.preventDefault();
     if (email && zip && agreement) {
       setCurrentStep(2);
+      window.scrollTo({ top: 0, behavior: 'instant' });
     } else {
       alert('Please fill all required fields and agree to the terms');
     }
@@ -88,8 +88,7 @@ const CarfaxReportOrder = () => {
         expiryDate,
         cvv,
         cardholderName,
-        agreement,
-        specialOffers
+        agreement
       });
       alert('Payment submitted successfully!');
       setCurrentStep(1);
@@ -108,7 +107,7 @@ const CarfaxReportOrder = () => {
     <div className="min-h-screen font-inter bg-background text-foreground">
       <Header />
       <Navbar />
-      
+
       <div className="container mx-auto px-4 py-12">
         {currentStep === 1 ? (
           <>
@@ -130,11 +129,10 @@ const CarfaxReportOrder = () => {
                 {packages.map((pkg) => (
                   <label
                     key={pkg.id}
-                    className={`relative cursor-pointer border-2 rounded-lg p-6 transition-all duration-200 ${
-                      selectedPackage === pkg.id
-                        ? 'border-dealership-gold bg-dealership-gold/5'
-                        : 'border-gray-200 hover:border-dealership-gold/50'
-                    }`}
+                    className={`relative cursor-pointer border-2 rounded-lg p-6 transition-all duration-200 ${selectedPackage === pkg.id
+                      ? 'border-dealership-gold bg-dealership-gold/5'
+                      : 'border-gray-200 hover:border-dealership-gold/50'
+                      }`}
                   >
                     <input
                       type="radio"
@@ -197,11 +195,10 @@ const CarfaxReportOrder = () => {
                 {paymentMethods.map((method) => (
                   <label
                     key={method.id}
-                    className={`flex items-center gap-4 p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 ${
-                      paymentMethod === method.id
-                        ? 'border-dealership-gold bg-dealership-gold/5'
-                        : 'border-gray-200 hover:border-dealership-gold/50'
-                    }`}
+                    className={`flex items-center gap-4 p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 ${paymentMethod === method.id
+                      ? 'border-dealership-gold bg-dealership-gold/5'
+                      : 'border-gray-200 hover:border-dealership-gold/50'
+                      }`}
                   >
                     <input
                       type="radio"
@@ -213,11 +210,10 @@ const CarfaxReportOrder = () => {
                       aria-label={method.name}
                     />
                     <div
-                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                        paymentMethod === method.id
-                          ? 'border-dealership-gold'
-                          : 'border-gray-300'
-                      }`}
+                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${paymentMethod === method.id
+                        ? 'border-dealership-gold'
+                        : 'border-gray-300'
+                        }`}
                     >
                       {paymentMethod === method.id && (
                         <div className="w-2.5 h-2.5 rounded-full bg-dealership-gold"></div>
@@ -289,11 +285,10 @@ const CarfaxReportOrder = () => {
                     className="sr-only"
                   />
                   <div
-                    className={`flex-shrink-0 w-5 h-5 border-2 rounded flex items-center justify-center mt-1 ${
-                      agreement
-                        ? 'bg-dealership-gold border-dealership-gold'
-                        : 'border-gray-300'
-                    }`}
+                    className={`flex-shrink-0 w-5 h-5 border-2 rounded flex items-center justify-center mt-1 ${agreement
+                      ? 'bg-dealership-gold border-dealership-gold'
+                      : 'border-gray-300'
+                      }`}
                   >
                     {agreement && (
                       <svg
@@ -332,32 +327,6 @@ const CarfaxReportOrder = () => {
               </form>
             </section>
 
-            {/* Special Offers Checkbox */}
-            <label className="flex items-start gap-3 cursor-pointer max-w-2xl">
-              <div
-                className={`flex-shrink-0 w-5 h-5 border-2 rounded flex items-center justify-center mt-1 ${
-                  specialOffers
-                    ? 'bg-dealership-gold border-dealership-gold'
-                    : 'border-gray-300'
-                }`}
-              >
-                {specialOffers && (
-                  <svg
-                    className="w-3.5 h-3.5 text-white"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="3"
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                )}
-              </div>
-            </label>
           </>
         ) : (
           <>

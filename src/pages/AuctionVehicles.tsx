@@ -1,11 +1,10 @@
 import { useEffect, useState, useMemo } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { Header } from "@/components/common/Header";
 import { Navbar } from "@/components/common/Navbar";
-import { GlobalListingsFilter } from "@/components/common/GlobalListingsFilter";
+import { FilterDrawer } from "@/components/common/FilterDrawer";
 import { Footer } from "@/components/common/Footer";
-import { Card, CardContent } from "@/components/ui/card";
-import { Share2, ArrowRight } from "lucide-react";
+import { VehicleCard } from "@/components/common/VehicleCard";
 import { SharePreview } from "@/components/common/SharePreview";
 import { Pagination } from "@/components/common/Pagination";
 import {
@@ -74,13 +73,6 @@ interface FilterState {
     fuelType?: string;
 }
 
-const getPriceBadge = (price: number): string | null => {
-    if (price < 10000) return "Best Deal";
-    if (price >= 10000 && price < 25000) return "Great Price";
-    if (price >= 25000 && price < 40000) return "Good Value";
-    return null;
-};
-
 const AuctionVehicles = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const [dropdowns, setDropdowns] = useState<DropdownsData | null>(null);
@@ -94,6 +86,7 @@ const AuctionVehicles = () => {
     const [selectedCar, setSelectedCar] = useState<CarAPI | null>(null);
     const [showSharePreview, setShowSharePreview] = useState(false);
     const [filteredCars, setFilteredCars] = useState<CarAPI[]>([]);
+    const [filterOpen, setFilterOpen] = useState(false);
 
     const pageSize = 9;
     const initialSort = searchParams.get("sort") || "date-desc";
@@ -413,16 +406,17 @@ const AuctionVehicles = () => {
     };
 
 
-    const handleApplyFilters = () => {
+    const handleApplyFilters = (newFilters?: FilterState) => {
+        const f = newFilters || filters;
         const params = new URLSearchParams();
-        if (filters.make) params.set("make", filters.make);
-        if (filters.model) params.set("model", filters.model);
-        if (filters.type) params.set("type", filters.type);
-        if (filters.color) params.set("color", filters.color);
-        if (filters.location) params.set("location", filters.location);
-        if (filters.fuelType) params.set("fuelType", filters.fuelType);
-        if (filters.priceRange) {
-            const [min, max] = filters.priceRange.split("-");
+        if (f.make) params.set("make", f.make);
+        if (f.model) params.set("model", f.model);
+        if (f.type) params.set("type", f.type);
+        if (f.color) params.set("color", f.color);
+        if (f.location) params.set("location", f.location);
+        if (f.fuelType) params.set("fuelType", f.fuelType);
+        if (f.priceRange) {
+            const [min, max] = f.priceRange.split("-");
             params.set("min_price", min);
             params.set("max_price", max);
         }
@@ -444,11 +438,14 @@ const AuctionVehicles = () => {
                 <div className="flex flex-col gap-8 mt-[20px] md:mt-0">
                     <div className="w-full flex justify-center">
                         {dynamicDropdowns && (
-                            <GlobalListingsFilter
+                            <FilterDrawer
                                 dropdowns={dynamicDropdowns}
                                 filters={filters}
                                 setFilters={setFilters}
                                 onApply={handleApplyFilters}
+                                filterMode="auction"
+                                isOpen={filterOpen}
+                                onToggle={() => setFilterOpen(!filterOpen)}
                             />
                         )}
                     </div>
@@ -476,92 +473,16 @@ const AuctionVehicles = () => {
                     ) : cars.length === 0 ? (
                         <div className="text-center py-8">No Auction Vehicles found matching your criteria.</div>
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {cars.map(car => {
-                                const priceNumber = Number(car.price);
-                                const badgeLabel = Number.isFinite(priceNumber) ? getPriceBadge(priceNumber) : null;
-
-                                return (
-                                    <Link key={car._id} to={`/listings/${car.slug}`} className="block h-full">
-                                        <Card className="flex flex-row overflow-hidden hover:shadow-lg transition-shadow md:flex-col relative h-full">
-                                            <div className="relative w-1/4 md:w-full h-24 md:h-48 m-auto">
-                                                {badgeLabel && car.status !== 3 && (
-                                                    <div className="hidden md:block absolute top-2 left-2 bg-dealership-primary text-white px-2 py-0.5 rounded-full text-[15px] font-semibold shadow-md z-10">
-                                                        {badgeLabel}
-                                                    </div>
-                                                )}
-                                                <img
-                                                    src={car.image || "/fallback.jpg"}
-                                                    alt={car.title}
-                                                    className="w-full h-full object-cover"
-                                                    loading="lazy"
-                                                />
-
-                                                {car.status === 3 && (
-                                                    <div
-                                                        className="absolute bottom-1 left-1 md:top-2 md:left-2 md:bottom-auto
-               bg-red-500 text-white px-1.5 py-0.5 md:px-2 md:py-0.5
-               rounded-full text-[10px] md:text-xs font-semibold
-               z-10 shadow-md"
-                                                    >
-                                                        Sold
-                                                    </div>
-                                                )}
-
-                                                <button
-                                                    onClick={(e) => onShare(car, e)}
-                                                    className="absolute top-2 left-2 p-1.5 bg-white rounded-full shadow-md hover:bg-gray-100 transition-colors md:left-auto md:right-2 z-20"
-                                                    aria-label="Share listing"
-                                                >
-                                                    <Share2 className="w-3 h-3 text-gray-600" />
-                                                </button>
-                                            </div>
-
-                                            <CardContent className="p-2 md:p-4 w-3/4 md:w-full flex flex-col flex-1">
-                                                <div className="flex flex-col mb-2 md:mb-3 border-b border-gray-200 pb-1">
-                                                    <h3 className="text-base md:text-lg font-bold text-left line-clamp-1" title={car.title}>
-                                                        {car.title}
-                                                    </h3>
-                                                    <p className="text-xs md:text-sm text-gray-500 font-medium">
-                                                        Lot # {car.lot_number || "N/A"}
-                                                    </p>
-                                                </div>
-
-                                                <div className="flex flex-col gap-1 text-xs md:text-sm text-gray-600 mb-2">
-                                                    <div className="flex justify-between">
-                                                        <span className="font-semibold text-dealership-primary">Current bid:</span>
-                                                        <span className="font-bold">USD {Number(car.high_bid || 0).toLocaleString()}</span>
-                                                    </div>
-                                                    <div className="flex gap-1 items-center mt-1">
-                                                        <span className="font-semibold text-dealership-primary">Location:</span>
-                                                        <span>{car.location_state || "N/A"} - {car.location_city || "N/A"}</span>
-                                                    </div>
-                                                </div>
-
-                                                <div className="flex items-center justify-between mt-auto border-t border-gray-200 pt-2">
-                                                    <div className="flex flex-col">
-                                                        {Number(car.buy_it_now_price) > 0 && (
-                                                            <p className="text-[10px] text-green-600 font-bold uppercase leading-none mb-0.5">
-                                                                Buy It Now Available
-                                                            </p>
-                                                        )}
-                                                        <p className="text-xl font-black text-dealership-primary">
-                                                            USD {Number(car.price || 0).toLocaleString()}
-                                                        </p>
-                                                    </div>
-                                                    <button
-                                                        className="hidden md:inline-flex items-center gap-1 text-dealership-primary hover:text-[#6B4A2B] font-bold"
-                                                        type="button"
-                                                    >
-                                                        View Details
-                                                        <ArrowRight className="w-4 h-4 transform -rotate-45" />
-                                                    </button>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                    </Link>
-                                );
-                            })}
+                        <div className={`grid gap-6 transition-all duration-300 ${filterOpen ? 'grid-cols-1 md:grid-cols-2 lg:mr-[340px]' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'}`}>
+                            {cars.map(car => (
+                                <VehicleCard
+                                    key={car._id}
+                                    car={car}
+                                    currency="USD"
+                                    listingType="auction"
+                                    onShare={onShare}
+                                />
+                            ))}
                         </div>
                     )}
 

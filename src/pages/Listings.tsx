@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Header } from "@/components/common/Header";
 import { Navbar } from "@/components/common/Navbar";
-import { ListingsFilter } from "@/components/common/ListingsFilter";
+import { FilterDrawer } from "@/components/common/FilterDrawer";
 import { Footer } from "@/components/common/Footer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Share2, ArrowRight } from "lucide-react";
@@ -88,6 +88,7 @@ const Listings = () => {
   const [selectedCar, setSelectedCar] = useState<CarAPI | null>(null);
   const [showSharePreview, setShowSharePreview] = useState(false);
   const [filteredCars, setFilteredCars] = useState<CarAPI[]>([]);
+  const [filterOpen, setFilterOpen] = useState(false);
 
   const pageSize = 9;
   const initialSort = searchParams.get("sort") || "date-desc";
@@ -346,17 +347,18 @@ const Listings = () => {
   };
 
 
-  const handleApplyFilters = () => {
+  const handleApplyFilters = (newFilters?: FilterState) => {
+    const f = newFilters || filters;
     const params = new URLSearchParams();
-    if (filters.make) params.set("make_id", filters.make);
-    if (filters.model) params.set("model", filters.model);
-    if (filters.type) params.set("body_type_id", filters.type);
-    if (filters.color) params.set("color", filters.color);
-    if (filters.location) params.set("location", filters.location);
-    if (filters.badge) params.set("badge_id", filters.badge);
-    if (filters.fuelType) params.set("fuel_type_id", filters.fuelType);
-    if (filters.priceRange) {
-      const [min, max] = filters.priceRange.split("-");
+    if (f.make) params.set("make_id", f.make);
+    if (f.model) params.set("model", f.model);
+    if (f.type) params.set("body_type_id", f.type);
+    if (f.color) params.set("color", f.color);
+    if (f.location) params.set("location", f.location);
+    if (f.badge) params.set("badge_id", f.badge);
+    if (f.fuelType) params.set("fuel_type_id", f.fuelType);
+    if (f.priceRange) {
+      const [min, max] = f.priceRange.split("-");
       params.set("min_price", min);
       params.set("max_price", max);
     }
@@ -378,11 +380,14 @@ const Listings = () => {
         <div className="flex flex-col gap-8 mt-[20px] md:mt-0">
           <div className="w-full flex justify-center">
             {dynamicDropdowns && (
-              <ListingsFilter
+              <FilterDrawer
                 dropdowns={dynamicDropdowns}
                 filters={filters}
                 setFilters={setFilters}
                 onApply={handleApplyFilters}
+                filterMode="normal"
+                isOpen={filterOpen}
+                onToggle={() => setFilterOpen(!filterOpen)}
               />
             )}
           </div>
@@ -410,7 +415,7 @@ const Listings = () => {
           ) : cars.length === 0 ? (
             <div className="text-center py-8">No cars found matching your criteria.</div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className={`grid gap-6 transition-all duration-300 ${filterOpen ? 'grid-cols-1 md:grid-cols-2 lg:mr-[340px]' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'}`}>
               {cars.map(car => {
                 const priceNumber = Number(car.price);
                 const badgeLabel = Number.isFinite(priceNumber) ? getPriceBadge(priceNumber) : null;
