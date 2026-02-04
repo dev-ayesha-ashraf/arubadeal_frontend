@@ -293,31 +293,13 @@ export const OurCars = ({ badgeFilter = "all" }: OurCarsProps) => {
                         <p className="text-xs font-bold text-dealership-primary mt-0.5 sm:text-2xl sm:mt-2">
                           AWG {Number(car.price).toLocaleString()}
                         </p>
-                        <div className="flex items-center text-[9px] text-gray-600 mt-0.5 truncate sm:text-sm">
-                          <h1 className="font-bold text-[9px] sm:text-[15px] mr-1">
-                            Engine:
-                          </h1>
-                          <span className="text-[9px] sm:text-[15px]">
-                            {car.engine_type || "N/A"}
-                          </span>
-                        </div>
-                        <div className="mt-1 flex flex-wrap gap-0.5 text-[8px] text-gray-700 sm:gap-2 sm:text-sm">
-                          <span className="px-1 py-0.5 bg-blue-100 rounded, capitalize">
-                            {car.transmission?.name}
-                          </span>
-                          <span className="px-1 py-0.5 bg-blue-100 rounded">
-                            {car.mileage}
-                          </span>
+                        <div className="grid grid-cols-2 gap-1 text-[9px] sm:text-sm text-gray-600 mb-2 mt-2">
+                          <div>{car.transmission?.name ?? "N/A"}</div>
+                          <div>{car.mileage ?? "N/A"}</div>
                           {car.badge?.name && (
-                            <span className="px-1 py-0.5 bg-blue-100 rounded, capitalize">
-                              {car.badge.name}
-                            </span>
+                            <div>{car.badge.name}</div>
                           )}
-                          {car.fuel_type?.name && (
-                            <span className="px-1 py-0.5 bg-blue-100 rounded capitalize">
-                              {car.fuel_type.name}
-                            </span>
-                          )}
+                          <div>{car.fuel_type?.name ?? "N/A"}</div>
                         </div>
                       </div>
                     </CardContent>

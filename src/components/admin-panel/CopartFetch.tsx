@@ -183,6 +183,8 @@ const CopartFetch = () => {
     const [isUpdating, setIsUpdating] = useState<string | null>(null);
     const [selectedListingForDetail, setSelectedListingForDetail] = useState<TPListing | null>(null);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+    const [activeView, setActiveView] = useState<"dashboard" | "saved-filters">("dashboard");
+    const [activeTab, setActiveTab] = useState("filters");
 
     const [savedFilters, setSavedFilters] = useState<SavedFilter[]>([]);
     const [isSavingFilter, setIsSavingFilter] = useState(false);
@@ -614,7 +616,7 @@ const CopartFetch = () => {
                     icon={Zap}
                 />
 
-                <Tabs defaultValue="filters" className="w-full space-y-8">
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-8">
                     <TabsList className="inline-flex items-center bg-transparent p-0 h-auto mb-6 w-full border-b justify-around">
                         <TabsTrigger
                             value="filters"
@@ -652,631 +654,771 @@ const CopartFetch = () => {
                         </TabsTrigger>
                     </TabsList>
 
-                    <TabsContent value="filters" className="space-y-8 animate-in fade-in-50 duration-500">
-                        {/* Stats Grid */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <StatsCard
-                                title="Saved Filters"
-                                value={savedFilters.length}
-                                icon={Save}
-                                variant="blue"
-                            />
-                            <StatsCard
-                                title="Current Applied"
-                                value={selectedFilterId ? filterTitle : "None"}
-                                icon={Zap}
-                                variant="green"
-                            />
-                            <StatsCard
-                                title="Fetch Limit"
-                                value={fetchParams.limit}
-                                icon={ArrowRight}
-                                variant="orange"
-                            />
-                        </div>
-
-                        {/* Fetch Form Card */}
-                        <Card className="border-slate-200 shadow-sm overflow-hidden">
-                            <div className="bg-dealership-primary/5 px-6 py-4 border-b border-slate-200 flex items-center gap-2">
-                                <Filter className="w-5 h-5 text-dealership-primary" />
-                                <h2 className="font-semibold text-slate-800">Fetch Configuration</h2>
-                            </div>
-                            <CardContent className="p-6">
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700">Make</label>
-                                        <Input
-                                            placeholder="e.g. Toyota"
-                                            value={fetchParams.Make}
-                                            onChange={(e) => setFetchParams({ ...fetchParams, Make: e.target.value })}
+                    {activeView === "dashboard" ? (
+                        <>
+                            <TabsContent value="filters" className="space-y-8 animate-in fade-in-50 duration-500">
+                                {/* Stats Grid */}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div
+                                        onClick={() => setActiveView("saved-filters")}
+                                        className="cursor-pointer transition-transform hover:scale-[1.02]"
+                                    >
+                                        <StatsCard
+                                            title="Saved Filters"
+                                            value={savedFilters.length}
+                                            icon={Save}
+                                            variant="blue"
+                                            description="Click to manage all filters"
                                         />
                                     </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700">Year</label>
-                                        <Input
-                                            placeholder="e.g. 2020"
-                                            value={fetchParams.Year}
-                                            onChange={(e) => setFetchParams({ ...fetchParams, Year: e.target.value })}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700">Transmission</label>
-                                        <Input
-                                            placeholder="e.g. Automatic"
-                                            value={fetchParams.Transmission}
-                                            onChange={(e) => setFetchParams({ ...fetchParams, Transmission: e.target.value })}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700">Fuel Type</label>
-                                        <Input
-                                            placeholder="e.g. Gas"
-                                            value={fetchParams.fuel_type}
-                                            onChange={(e) => setFetchParams({ ...fetchParams, fuel_type: e.target.value })}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700">Sale Title Type</label>
-                                        <Input
-                                            placeholder="e.g. CT"
-                                            value={fetchParams.sale_title_type}
-                                            onChange={(e) => setFetchParams({ ...fetchParams, sale_title_type: e.target.value })}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700">Est. Retail Value</label>
-                                        <Input
-                                            placeholder="e.g. 10000-30000"
-                                            value={fetchParams.est_retail_value}
-                                            onChange={(e) => setFetchParams({ ...fetchParams, est_retail_value: e.target.value })}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700">Limit</label>
-                                        <Input
-                                            type="number"
-                                            placeholder="e.g. 5"
-                                            value={fetchParams.limit}
-                                            onChange={(e) => setFetchParams({ ...fetchParams, limit: parseInt(e.target.value) || 5 })}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700">CSV File <span className="text-red-500">*</span></label>
-                                        <div className="relative">
-                                            <Input
-                                                ref={fileInputRef}
-                                                type="file"
-                                                accept=".csv"
-                                                onChange={handleFileChange}
-                                                className="pl-10"
-                                            />
-                                            <FileSpreadsheet className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                        </div>
-                                    </div>
+                                    <StatsCard
+                                        title="Current Applied"
+                                        value={selectedFilterId ? filterTitle : "None"}
+                                        icon={Zap}
+                                        variant="green"
+                                    />
+                                    <StatsCard
+                                        title="Fetch Limit"
+                                        value={fetchParams.limit}
+                                        icon={ArrowRight}
+                                        variant="orange"
+                                    />
                                 </div>
-                                <div className="mt-6 flex justify-end gap-3">
-                                    <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
-                                        <DialogTrigger asChild>
-                                            <Button
-                                                variant="outline"
-                                                className="border-dealership-primary text-dealership-primary hover:bg-dealership-primary/10"
-                                                onClick={() => {
-                                                    if (!selectedFilterId) {
-                                                        setFilterTitle("");
-                                                    }
-                                                }}
-                                            >
-                                                <Save className="w-4 h-4 mr-2" />
-                                                {selectedFilterId ? "Update Filter" : "Save Filter"}
-                                            </Button>
-                                        </DialogTrigger>
-                                        <DialogContent>
-                                            <DialogHeader>
-                                                <DialogTitle>{selectedFilterId ? "Update Filter" : "Save New Filter"}</DialogTitle>
-                                                <DialogDescription>
-                                                    Give this filter a name so you can easily reuse it later.
-                                                </DialogDescription>
-                                            </DialogHeader>
-                                            <div className="space-y-4 py-4">
-                                                <div className="space-y-2">
-                                                    <label className="text-sm font-medium">Filter Title</label>
+
+                                {/* Fetch Form Card */}
+                                <Card className="border-slate-200 shadow-sm overflow-hidden">
+                                    <div className="bg-dealership-primary/5 px-6 py-4 border-b border-slate-200 flex items-center gap-2">
+                                        <Filter className="w-5 h-5 text-dealership-primary" />
+                                        <h2 className="font-semibold text-slate-800">Fetch Configuration</h2>
+                                    </div>
+                                    <CardContent className="p-6">
+                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-slate-700">Make</label>
+                                                <Input
+                                                    placeholder="e.g. Toyota"
+                                                    value={fetchParams.Make}
+                                                    onChange={(e) => setFetchParams({ ...fetchParams, Make: e.target.value })}
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-slate-700">Year</label>
+                                                <Input
+                                                    placeholder="e.g. 2020"
+                                                    value={fetchParams.Year}
+                                                    onChange={(e) => setFetchParams({ ...fetchParams, Year: e.target.value })}
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-slate-700">Transmission</label>
+                                                <Input
+                                                    placeholder="e.g. Automatic"
+                                                    value={fetchParams.Transmission}
+                                                    onChange={(e) => setFetchParams({ ...fetchParams, Transmission: e.target.value })}
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-slate-700">Fuel Type</label>
+                                                <Input
+                                                    placeholder="e.g. Gas"
+                                                    value={fetchParams.fuel_type}
+                                                    onChange={(e) => setFetchParams({ ...fetchParams, fuel_type: e.target.value })}
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-slate-700">Sale Title Type</label>
+                                                <Input
+                                                    placeholder="e.g. CT"
+                                                    value={fetchParams.sale_title_type}
+                                                    onChange={(e) => setFetchParams({ ...fetchParams, sale_title_type: e.target.value })}
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-slate-700">Est. Retail Value</label>
+                                                <Input
+                                                    placeholder="e.g. 10000-30000"
+                                                    value={fetchParams.est_retail_value}
+                                                    onChange={(e) => setFetchParams({ ...fetchParams, est_retail_value: e.target.value })}
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-slate-700">Limit</label>
+                                                <Input
+                                                    type="number"
+                                                    placeholder="e.g. 5"
+                                                    value={fetchParams.limit}
+                                                    onChange={(e) => setFetchParams({ ...fetchParams, limit: parseInt(e.target.value) || 5 })}
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-medium text-slate-700">CSV File <span className="text-red-500">*</span></label>
+                                                <div className="relative">
                                                     <Input
-                                                        placeholder="e.g. Toyota Clean Title"
-                                                        value={filterTitle}
-                                                        onChange={(e) => setFilterTitle(e.target.value)}
+                                                        ref={fileInputRef}
+                                                        type="file"
+                                                        accept=".csv"
+                                                        onChange={handleFileChange}
+                                                        className="pl-10"
                                                     />
+                                                    <FileSpreadsheet className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                                                 </div>
                                             </div>
-                                            <DialogFooter>
-                                                <Button variant="outline" onClick={() => setShowSaveDialog(false)}>Cancel</Button>
-                                                <Button
-                                                    onClick={handleSaveFilter}
-                                                    disabled={isSavingFilter}
-                                                    className="bg-dealership-primary"
-                                                >
-                                                    {isSavingFilter ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Filter"}
-                                                </Button>
-                                            </DialogFooter>
-                                        </DialogContent>
-                                    </Dialog>
-
-                                    <Button
-                                        onClick={handleExecuteFetch}
-                                        disabled={fetching}
-                                        className="bg-dealership-primary hover:bg-dealership-primary/90 text-white min-w-[150px]"
-                                    >
-                                        {fetching ? (
-                                            <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Executing...</>
-                                        ) : (
-                                            <><Zap className="w-4 h-4 mr-2" /> Execute Sync</>
-                                        )}
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        onClick={handleClearForm}
-                                        className="text-slate-500"
-                                    >
-                                        Clear Form
-                                    </Button>
-                                </div>
-                            </CardContent>
-                        </Card>
-
-                        {/* Saved Filters Section */}
-                        {savedFilters.length > 0 && (
-                            <Card className="border-slate-200 shadow-sm overflow-hidden">
-                                <div className="bg-blue-50/50 px-6 py-4 border-b border-slate-200 flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <Save className="w-5 h-5 text-blue-600" />
-                                        <h2 className="font-semibold text-slate-800">Saved Filters</h2>
-                                    </div>
-                                    <Badge variant="outline" className="bg-white">{savedFilters.length} Filters</Badge>
-                                </div>
-                                <CardContent className="p-6">
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                                        {savedFilters.map((filter) => (
-                                            <div
-                                                key={filter.id}
-                                                className={`p-4 rounded-lg border transition-all cursor-pointer group relative ${selectedFilterId === filter.id
-                                                    ? "border-dealership-primary bg-dealership-primary/5 shadow-sm"
-                                                    : "border-slate-200 hover:border-dealership-primary/50 hover:bg-slate-50"
-                                                    }`}
-                                                onClick={() => applyFilter(filter)}
-                                            >
-                                                <div className="pr-12">
-                                                    <h3 className="font-semibold text-slate-800 truncate">{filter.title}</h3>
-                                                    <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
-                                                        {getFilterSummary(filter)}
-                                                    </p>
-                                                </div>
-                                                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        </div>
+                                        <div className="mt-6 flex justify-end gap-3">
+                                            <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+                                                <DialogTrigger asChild>
                                                     <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        className="h-7 w-7 p-0 text-slate-400 hover:text-blue-600 hover:bg-blue-50"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            applyFilter(filter);
-                                                            setShowSaveDialog(true);
+                                                        variant="outline"
+                                                        className="border-dealership-primary text-dealership-primary hover:bg-dealership-primary/10"
+                                                        onClick={() => {
+                                                            if (!selectedFilterId) {
+                                                                setFilterTitle("");
+                                                            }
                                                         }}
                                                     >
-                                                        <Edit2 className="w-3.5 h-3.5" />
+                                                        <Save className="w-4 h-4 mr-2" />
+                                                        {selectedFilterId ? "Update Filter" : "Save Filter"}
                                                     </Button>
-                                                    <Dialog>
-                                                        <DialogTrigger asChild>
+                                                </DialogTrigger>
+                                                <DialogContent>
+                                                    <DialogHeader>
+                                                        <DialogTitle>{selectedFilterId ? "Update Filter" : "Save New Filter"}</DialogTitle>
+                                                        <DialogDescription>
+                                                            Give this filter a name so you can easily reuse it later.
+                                                        </DialogDescription>
+                                                    </DialogHeader>
+                                                    <div className="space-y-4 py-4">
+                                                        <div className="space-y-2">
+                                                            <label className="text-sm font-medium">Filter Title</label>
+                                                            <Input
+                                                                placeholder="e.g. Toyota Clean Title"
+                                                                value={filterTitle}
+                                                                onChange={(e) => setFilterTitle(e.target.value)}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <DialogFooter>
+                                                        <Button variant="outline" onClick={() => setShowSaveDialog(false)}>Cancel</Button>
+                                                        <Button
+                                                            onClick={handleSaveFilter}
+                                                            disabled={isSavingFilter}
+                                                            className="bg-dealership-primary"
+                                                        >
+                                                            {isSavingFilter ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Filter"}
+                                                        </Button>
+                                                    </DialogFooter>
+                                                </DialogContent>
+                                            </Dialog>
+
+                                            <Button
+                                                onClick={handleExecuteFetch}
+                                                disabled={fetching}
+                                                className="bg-dealership-primary hover:bg-dealership-primary/90 text-white min-w-[150px]"
+                                            >
+                                                {fetching ? (
+                                                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Executing...</>
+                                                ) : (
+                                                    <><Zap className="w-4 h-4 mr-2" /> Execute Sync</>
+                                                )}
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                onClick={handleClearForm}
+                                                className="text-slate-500"
+                                            >
+                                                Clear Form
+                                            </Button>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+                                {/* Saved Filters Section */}
+                                {savedFilters.length > 0 && (
+                                    <Card className="border-slate-200 shadow-sm overflow-hidden">
+                                        <div className="bg-blue-50/50 px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <Save className="w-5 h-5 text-blue-600" />
+                                                <h2 className="font-semibold text-slate-800">Saved Filters</h2>
+                                            </div>
+                                            <Badge variant="outline" className="bg-white">{savedFilters.length} Filters</Badge>
+                                        </div>
+                                        <CardContent className="p-6">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                                {savedFilters.map((filter) => (
+                                                    <div
+                                                        key={filter.id}
+                                                        className={`p-4 rounded-lg border transition-all cursor-pointer group relative ${selectedFilterId === filter.id
+                                                            ? "border-dealership-primary bg-dealership-primary/5 shadow-sm"
+                                                            : "border-slate-200 hover:border-dealership-primary/50 hover:bg-slate-50"
+                                                            }`}
+                                                        onClick={() => applyFilter(filter)}
+                                                    >
+                                                        <div className="pr-12">
+                                                            <h3 className="font-semibold text-slate-800 truncate">{filter.title}</h3>
+                                                            <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                                                                {getFilterSummary(filter)}
+                                                            </p>
+                                                        </div>
+                                                        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                             <Button
                                                                 variant="ghost"
                                                                 size="sm"
-                                                                className="h-7 w-7 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50"
-                                                                onClick={(e) => e.stopPropagation()}
+                                                                className="h-7 w-7 p-0 text-slate-400 hover:text-blue-600 hover:bg-blue-50"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    applyFilter(filter);
+                                                                    setShowSaveDialog(true);
+                                                                }}
                                                             >
-                                                                <Trash2 className="w-3.5 h-3.5" />
+                                                                <Edit2 className="w-3.5 h-3.5" />
                                                             </Button>
-                                                        </DialogTrigger>
-                                                        <DialogContent>
-                                                            <DialogHeader>
-                                                                <DialogTitle>Delete Filter?</DialogTitle>
-                                                                <DialogDescription>
-                                                                    Are you sure you want to delete "{filter.title}"? This action cannot be undone.
-                                                                </DialogDescription>
-                                                            </DialogHeader>
-                                                            <DialogFooter className="gap-2 sm:gap-0">
+                                                            <Dialog>
                                                                 <DialogTrigger asChild>
-                                                                    <Button variant="outline">Cancel</Button>
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        className="h-7 w-7 p-0 text-slate-400 hover:text-red-600 hover:bg-red-50"
+                                                                        onClick={(e) => e.stopPropagation()}
+                                                                    >
+                                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                                    </Button>
                                                                 </DialogTrigger>
-                                                                <Button variant="destructive" onClick={() => handleDeleteFilter(filter.id)}>Delete</Button>
-                                                            </DialogFooter>
-                                                        </DialogContent>
-                                                    </Dialog>
-                                                </div>
-                                                {selectedFilterId === filter.id && (
-                                                    <div className="absolute -top-2 -right-2 bg-dealership-primary text-white rounded-full p-0.5">
-                                                        <Zap className="w-3 h-3" />
+                                                                <DialogContent>
+                                                                    <DialogHeader>
+                                                                        <DialogTitle>Delete Filter?</DialogTitle>
+                                                                        <DialogDescription>
+                                                                            Are you sure you want to delete "{filter.title}"? This action cannot be undone.
+                                                                        </DialogDescription>
+                                                                    </DialogHeader>
+                                                                    <DialogFooter className="gap-2 sm:gap-0">
+                                                                        <DialogTrigger asChild>
+                                                                            <Button variant="outline">Cancel</Button>
+                                                                        </DialogTrigger>
+                                                                        <Button variant="destructive" onClick={() => handleDeleteFilter(filter.id)}>Delete</Button>
+                                                                    </DialogFooter>
+                                                                </DialogContent>
+                                                            </Dialog>
+                                                        </div>
+                                                        {selectedFilterId === filter.id && (
+                                                            <div className="absolute -top-2 -right-2 bg-dealership-primary text-white rounded-full p-0.5">
+                                                                <Zap className="w-3 h-3" />
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                )}
+                                                ))}
                                             </div>
-                                        ))}
+                                        </CardContent>
+                                    </Card>
+                                )}
+                            </TabsContent>
+
+                            <TabsContent value="cars" className="space-y-8 animate-in fade-in-50 duration-500">
+                                {/* Functional Stats Grid for Cars */}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div
+                                        onClick={() => {
+                                            handleExecuteFetch();
+                                            setActiveTab("filters");
+                                        }}
+                                        className={`cursor-pointer transition-transform hover:scale-[1.02] ${fetching ? 'opacity-70 pointer-events-none' : ''}`}
+                                    >
+                                        <StatsCard
+                                            title="Apply Filter / Sync"
+                                            value={fetching ? "Syncing..." : "Run Fetch Now"}
+                                            icon={Zap}
+                                            variant="blue"
+                                            description={fetching ? "Processing in background" : "Sync new listings from Copart"}
+                                        />
                                     </div>
-                                </CardContent>
-                            </Card>
-                        )}
-                    </TabsContent>
-
-                    <TabsContent value="cars" className="space-y-8 animate-in fade-in-50 duration-500">
-                        {/* Stats Grid for Cars */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <StatsCard
-                                title="Total Price Value"
-                                value={`$${Number(stats.total).toLocaleString()}`}
-                                icon={Car}
-                                variant="blue"
-                            />
-                            <StatsCard
-                                title="Total Cars Count"
-                                value={stats.count}
-                                icon={Globe}
-                                variant="green"
-                            />
-                            <StatsCard
-                                title="Unique Makes"
-                                value={stats.makes}
-                                icon={Globe}
-                                variant="orange"
-                            />
-                        </div>
-
-                        {/* List Header & Search */}
-                        <div className="flex flex-col gap-4">
-                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                                <div className="relative w-full md:w-96">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                    <Input
-                                        placeholder="Search synced cars..."
-                                        className="pl-10"
-                                        value={searchTerm}
-                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                    <div
+                                        onClick={() => setActiveView("saved-filters")}
+                                        className="cursor-pointer transition-transform hover:scale-[1.02]"
+                                    >
+                                        <StatsCard
+                                            title="Saved Filters"
+                                            value={savedFilters.length}
+                                            icon={Save}
+                                            variant="green"
+                                            description="Click to manage filter list"
+                                        />
+                                    </div>
+                                    <StatsCard
+                                        title="Unique Makes"
+                                        value={stats.makes}
+                                        icon={Globe}
+                                        variant="orange"
                                     />
                                 </div>
-                                <div className="flex items-center gap-4">
-                                    <Button variant="outline" onClick={() => fetchExistingListings(pagination.page)} size="sm">
-                                        <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                                        Refresh List
-                                    </Button>
-                                    <LayoutToggle viewMode={viewMode} onViewModeChange={setViewMode} />
-                                </div>
-                            </div>
 
-                            {/* Bulk Actions Bar */}
-                            {selectedIds.size > 0 && (
-                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center justify-between gap-4">
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-sm font-medium text-slate-700">
-                                            {selectedIds.size} listing{selectedIds.size !== 1 ? 's' : ''} selected
-                                        </span>
+                                {/* List Header & Search */}
+                                <div className="flex flex-col gap-4">
+                                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                                        <div className="relative w-full md:w-96">
+                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                            <Input
+                                                placeholder="Search synced cars..."
+                                                className="pl-10"
+                                                value={searchTerm}
+                                                onChange={(e) => setSearchTerm(e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="flex items-center gap-4">
+                                            <Button variant="outline" onClick={() => fetchExistingListings(pagination.page)} size="sm">
+                                                <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                                                Refresh List
+                                            </Button>
+                                            <LayoutToggle viewMode={viewMode} onViewModeChange={setViewMode} />
+                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => setSelectedIds(new Set())}
-                                            className="border-blue-300 hover:bg-white"
-                                        >
-                                            Clear Selection
-                                        </Button>
-                                        <Button
-                                            variant="destructive"
-                                            size="sm"
-                                            onClick={handleBulkDelete}
-                                            disabled={isDeleting}
-                                            className="bg-red-600 hover:bg-red-700"
-                                        >
-                                            {isDeleting ? (
-                                                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Processing...</>
-                                            ) : (
-                                                <><Trash2 className="w-4 h-4 mr-2" /> Delete Selected</>
-                                            )}
-                                        </Button>
 
-                                        <Dialog open={isBulkUpdateDialogOpen} onOpenChange={setIsBulkUpdateDialogOpen}>
-                                            <DialogTrigger asChild>
-                                                <Button size="sm" className="bg-dealership-primary hover:bg-dealership-primary/90">
-                                                    <Edit2 className="w-4 h-4 mr-2" />
-                                                    Bulk Update
+                                    {/* Bulk Actions Bar */}
+                                    {selectedIds.size > 0 && (
+                                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center justify-between gap-4">
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-sm font-medium text-slate-700">
+                                                    {selectedIds.size} listing{selectedIds.size !== 1 ? 's' : ''} selected
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => setSelectedIds(new Set())}
+                                                    className="border-blue-300 hover:bg-white"
+                                                >
+                                                    Clear Selection
                                                 </Button>
-                                            </DialogTrigger>
-                                            <DialogContent>
-                                                <DialogHeader>
-                                                    <DialogTitle>Update {selectedIds.size} Listings</DialogTitle>
-                                                    <DialogDescription>
-                                                        Apply status and visibility changes to all selected listings.
-                                                    </DialogDescription>
-                                                </DialogHeader>
-                                                <div className="space-y-6 py-4">
-                                                    <div className="flex items-center space-x-2">
-                                                        <Checkbox
-                                                            id="bulk-active"
-                                                            checked={bulkIsActive}
-                                                            onCheckedChange={(c) => setBulkIsActive(!!c)}
-                                                        />
-                                                        <label htmlFor="bulk-active" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                                            Mark as Active
-                                                        </label>
-                                                    </div>
+                                                <Button
+                                                    variant="destructive"
+                                                    size="sm"
+                                                    onClick={handleBulkDelete}
+                                                    disabled={isDeleting}
+                                                    className="bg-red-600 hover:bg-red-700"
+                                                >
+                                                    {isDeleting ? (
+                                                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Processing...</>
+                                                    ) : (
+                                                        <><Trash2 className="w-4 h-4 mr-2" /> Delete Selected</>
+                                                    )}
+                                                </Button>
 
-                                                    <div className="flex flex-col space-y-2">
-                                                        <label htmlFor="bulk-status" className="text-sm font-medium leading-none">
-                                                            Set Status
-                                                        </label>
-                                                        <select
-                                                            id="bulk-status"
-                                                            className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                                            value={bulkStatus || ""}
-                                                            onChange={(e) => setBulkStatus(e.target.value)}
-                                                        >
-                                                            <option value="" disabled>Select Status</option>
-                                                            <option value="Approved">Approved</option>
-                                                            <option value="Pending">Pending</option>
-                                                            <option value="In Review">In Review</option>
-                                                            <option value="Decline">Decline</option>
-                                                        </select>
-                                                    </div>
+                                                <Dialog open={isBulkUpdateDialogOpen} onOpenChange={setIsBulkUpdateDialogOpen}>
+                                                    <DialogTrigger asChild>
+                                                        <Button size="sm" className="bg-dealership-primary hover:bg-dealership-primary/90">
+                                                            <Edit2 className="w-4 h-4 mr-2" />
+                                                            Bulk Update
+                                                        </Button>
+                                                    </DialogTrigger>
+                                                    <DialogContent>
+                                                        <DialogHeader>
+                                                            <DialogTitle>Update {selectedIds.size} Listings</DialogTitle>
+                                                            <DialogDescription>
+                                                                Apply status and visibility changes to all selected listings.
+                                                            </DialogDescription>
+                                                        </DialogHeader>
+                                                        <div className="space-y-6 py-4">
+                                                            <div className="flex items-center space-x-2">
+                                                                <Checkbox
+                                                                    id="bulk-active"
+                                                                    checked={bulkIsActive}
+                                                                    onCheckedChange={(c) => setBulkIsActive(!!c)}
+                                                                />
+                                                                <label htmlFor="bulk-active" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                                                    Mark as Active
+                                                                </label>
+                                                            </div>
 
-                                                    <div className="flex items-center space-x-2">
-                                                        <Checkbox
-                                                            id="bulk-featured"
-                                                            checked={bulkIsFeatured}
-                                                            onCheckedChange={(c) => setBulkIsFeatured(!!c)}
-                                                        />
-                                                        <label htmlFor="bulk-featured" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                                            Mark as Featured
-                                                        </label>
-                                                    </div>
-                                                </div>
-                                                <DialogFooter>
-                                                    <Button variant="outline" onClick={() => setIsBulkUpdateDialogOpen(false)}>Cancel</Button>
-                                                    <Button onClick={handleBulkUpdate} disabled={isDeleting} className="bg-dealership-primary">
-                                                        {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Update Listings"}
-                                                    </Button>
-                                                </DialogFooter>
-                                            </DialogContent>
-                                        </Dialog>
-                                    </div>
+                                                            <div className="flex flex-col space-y-2">
+                                                                <label htmlFor="bulk-status" className="text-sm font-medium leading-none">
+                                                                    Set Status
+                                                                </label>
+                                                                <select
+                                                                    id="bulk-status"
+                                                                    className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                                                    value={bulkStatus || ""}
+                                                                    onChange={(e) => setBulkStatus(e.target.value)}
+                                                                >
+                                                                    <option value="" disabled>Select Status</option>
+                                                                    <option value="Approved">Approved</option>
+                                                                    <option value="Pending">Pending</option>
+                                                                    <option value="In Review">In Review</option>
+                                                                    <option value="Decline">Decline</option>
+                                                                </select>
+                                                            </div>
+
+                                                            <div className="flex items-center space-x-2">
+                                                                <Checkbox
+                                                                    id="bulk-featured"
+                                                                    checked={bulkIsFeatured}
+                                                                    onCheckedChange={(c) => setBulkIsFeatured(!!c)}
+                                                                />
+                                                                <label htmlFor="bulk-featured" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                                                    Mark as Featured
+                                                                </label>
+                                                            </div>
+                                                        </div>
+                                                        <DialogFooter>
+                                                            <Button variant="outline" onClick={() => setIsBulkUpdateDialogOpen(false)}>Cancel</Button>
+                                                            <Button onClick={handleBulkUpdate} disabled={isDeleting} className="bg-dealership-primary">
+                                                                {isDeleting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Update Listings"}
+                                                            </Button>
+                                                        </DialogFooter>
+                                                    </DialogContent>
+                                                </Dialog>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
-                            )}
-                        </div>
 
-                        {/* Content Section */}
-                        {loading ? (
-                            <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl border border-slate-200">
-                                <Loader2 className="w-10 h-10 animate-spin text-dealership-primary mb-4" />
-                                <p className="text-slate-500">Loading synced listings...</p>
-                            </div>
-                        ) : filteredListings.length === 0 ? (
-                            <div className="text-center py-20 bg-white rounded-xl border border-dashed border-slate-300">
-                                <AlertCircle className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                                <h3 className="text-lg font-medium text-slate-900">No synced listings found</h3>
-                                <p className="text-slate-500">Try executing a sync or adjusting your search filters.</p>
-                            </div>
-                        ) : viewMode === "table" ? (
-                            <Card className="border-slate-200 shadow-sm overflow-hidden bg-white">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow className="bg-slate-50/50">
-                                            <TableHead className="w-12">
-                                                <Checkbox
-                                                    checked={selectedIds.size === filteredListings.length && filteredListings.length > 0}
-                                                    onCheckedChange={toggleSelectAll}
-                                                    className="rounded"
-                                                />
-                                            </TableHead>
-                                            <TableHead className="w-[100px]">Image</TableHead>
-                                            <TableHead>Vehicle Details</TableHead>
-                                            <TableHead>Year</TableHead>
-                                            <TableHead>Price (USD)</TableHead>
-                                            <TableHead>Mileage</TableHead>
-                                            <TableHead>Status</TableHead>
-                                            <TableHead>Source</TableHead>
-                                            <TableHead className="text-right">Action</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
+                                {/* Content Section */}
+                                {loading ? (
+                                    <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl border border-slate-200">
+                                        <Loader2 className="w-10 h-10 animate-spin text-dealership-primary mb-4" />
+                                        <p className="text-slate-500">Loading synced listings...</p>
+                                    </div>
+                                ) : filteredListings.length === 0 ? (
+                                    <div className="text-center py-20 bg-white rounded-xl border border-dashed border-slate-300">
+                                        <AlertCircle className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                                        <h3 className="text-lg font-medium text-slate-900">No synced listings found</h3>
+                                        <p className="text-slate-500">Try executing a sync or adjusting your search filters.</p>
+                                    </div>
+                                ) : viewMode === "table" ? (
+                                    <Card className="border-slate-200 shadow-sm overflow-hidden bg-white">
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow className="bg-slate-50/50">
+                                                    <TableHead className="w-12">
+                                                        <Checkbox
+                                                            checked={selectedIds.size === filteredListings.length && filteredListings.length > 0}
+                                                            onCheckedChange={toggleSelectAll}
+                                                            className="rounded"
+                                                        />
+                                                    </TableHead>
+                                                    <TableHead className="w-[100px]">Image</TableHead>
+                                                    <TableHead>Vehicle Details</TableHead>
+                                                    <TableHead>Year</TableHead>
+                                                    <TableHead>Price (USD)</TableHead>
+                                                    <TableHead>Mileage</TableHead>
+                                                    <TableHead>Status</TableHead>
+                                                    <TableHead>Source</TableHead>
+                                                    <TableHead className="text-right">Action</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {filteredListings.map((listing) => (
+                                                    <TableRow key={listing.id} className={selectedIds.has(listing.id) ? "bg-blue-50" : ""}>
+                                                        <TableCell>
+                                                            <Checkbox
+                                                                checked={selectedIds.has(listing.id)}
+                                                                onCheckedChange={() => toggleListingSelection(listing.id)}
+                                                                className="rounded"
+                                                            />
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <img
+                                                                src={listing.image || "/fallback.jpg"}
+                                                                alt={listing.title}
+                                                                className="w-16 h-12 object-cover rounded shadow-sm"
+                                                                onError={(e) => (e.currentTarget.src = "/fallback.jpg")}
+                                                            />
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <div className="font-medium text-slate-900">{listing.title}</div>
+                                                            <div className="text-xs text-slate-500 uppercase">{listing.make} • {listing.model}</div>
+                                                        </TableCell>
+                                                        <TableCell>{listing.year}</TableCell>
+                                                        <TableCell className="font-semibold text-dealership-primary">
+                                                            ${Number(listing.price).toLocaleString()}
+                                                        </TableCell>
+                                                        <TableCell>{listing.miles} miles</TableCell>
+                                                        <TableCell>
+                                                            <Badge variant="outline" className={`${listing.status === 'Approved' ? 'bg-green-50 text-green-700 border-green-200' :
+                                                                listing.status === 'Decline' ? 'bg-red-50 text-red-700 border-red-200' :
+                                                                    listing.status === 'In Review' ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                                                                        'bg-slate-50 text-slate-700 border-slate-200'
+                                                                }`}>
+                                                                {listing.status || "Pending"}
+                                                            </Badge>
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() => handleToggleActive(listing.id, !listing.is_active)}
+                                                                disabled={isUpdating === listing.id}
+                                                                className={`${listing.is_active
+                                                                    ? 'text-green-600 hover:bg-green-50'
+                                                                    : 'text-red-600 hover:bg-red-50'
+                                                                    }`}
+                                                                title={listing.is_active ? "Click to deactivate" : "Click to activate"}
+                                                            >
+                                                                {isUpdating === listing.id ? (
+                                                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                                                ) : listing.is_active ? (
+                                                                    <>
+                                                                        <Check className="w-4 h-4 mr-1" />
+                                                                        Active
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        <X className="w-4 h-4 mr-1" />
+                                                                        Inactive
+                                                                    </>
+                                                                )}
+                                                            </Button>
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <Badge variant="outline" className="bg-slate-50">
+                                                                {listing.dealer}
+                                                            </Badge>
+                                                        </TableCell>
+                                                        <TableCell className="text-right">
+                                                            <div className="flex justify-end gap-2">
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    className="h-8 w-8 p-0"
+                                                                    title="View Details"
+                                                                    onClick={() => {
+                                                                        setSelectedListingForDetail(listing);
+                                                                        setIsDetailModalOpen(true);
+                                                                    }}
+                                                                >
+                                                                    <Eye className="w-4 h-4 text-slate-600" />
+                                                                </Button>
+                                                            </div>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </Card>
+                                ) : (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                         {filteredListings.map((listing) => (
-                                            <TableRow key={listing.id} className={selectedIds.has(listing.id) ? "bg-blue-50" : ""}>
-                                                <TableCell>
+                                            <Card key={listing.id} className={`overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 border-slate-200 bg-white group relative ${selectedIds.has(listing.id) ? "ring-2 ring-blue-500" : ""}`}>
+                                                {/* Selection Checkbox */}
+                                                <div className="absolute top-3 left-3 z-10">
                                                     <Checkbox
                                                         checked={selectedIds.has(listing.id)}
                                                         onCheckedChange={() => toggleListingSelection(listing.id)}
                                                         className="rounded"
                                                     />
-                                                </TableCell>
-                                                <TableCell>
+                                                </div>
+
+                                                <div className="relative h-48 bg-gradient-to-br from-slate-100 to-slate-200 overflow-hidden">
                                                     <img
                                                         src={listing.image || "/fallback.jpg"}
                                                         alt={listing.title}
-                                                        className="w-16 h-12 object-cover rounded shadow-sm"
+                                                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                                                         onError={(e) => (e.currentTarget.src = "/fallback.jpg")}
                                                     />
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div className="font-medium text-slate-900">{listing.title}</div>
-                                                    <div className="text-xs text-slate-500 uppercase">{listing.make} • {listing.model}</div>
-                                                </TableCell>
-                                                <TableCell>{listing.year}</TableCell>
-                                                <TableCell className="font-semibold text-dealership-primary">
-                                                    ${Number(listing.price).toLocaleString()}
-                                                </TableCell>
-                                                <TableCell>{listing.miles} miles</TableCell>
-                                                <TableCell>
-                                                    <Badge variant="outline" className={`${listing.status === 'Approved' ? 'bg-green-50 text-green-700 border-green-200' :
-                                                        listing.status === 'Decline' ? 'bg-red-50 text-red-700 border-red-200' :
-                                                            listing.status === 'In Review' ? 'bg-orange-50 text-orange-700 border-orange-200' :
-                                                                'bg-slate-50 text-slate-700 border-slate-200'
-                                                        }`}>
-                                                        {listing.status || "Pending"}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        onClick={() => handleToggleActive(listing.id, !listing.is_active)}
-                                                        disabled={isUpdating === listing.id}
-                                                        className={`${listing.is_active
-                                                            ? 'text-green-600 hover:bg-green-50'
-                                                            : 'text-red-600 hover:bg-red-50'
-                                                            }`}
-                                                        title={listing.is_active ? "Click to deactivate" : "Click to activate"}
-                                                    >
-                                                        {isUpdating === listing.id ? (
-                                                            <Loader2 className="w-4 h-4 animate-spin" />
-                                                        ) : listing.is_active ? (
-                                                            <>
-                                                                <Check className="w-4 h-4 mr-1" />
-                                                                Active
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <X className="w-4 h-4 mr-1" />
-                                                                Inactive
-                                                            </>
-                                                        )}
-                                                    </Button>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Badge variant="outline" className="bg-slate-50">
-                                                        {listing.dealer}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell className="text-right">
-                                                    <div className="flex justify-end gap-2">
+                                                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+
+                                                    {/* Status Badge */}
+                                                    <div className="absolute bottom-3 right-3">
+                                                        <Badge className={`${listing.is_active ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600'} text-white`}>
+                                                            {listing.is_active ? 'Active' : 'Inactive'}
+                                                        </Badge>
+                                                    </div>
+                                                </div>
+
+                                                <CardContent className="p-5">
+                                                    {/* Title and Basic Info */}
+                                                    <div className="mb-4">
+                                                        <h3 className="font-bold text-lg text-slate-900 mb-2 line-clamp-2 group-hover:text-dealership-primary transition-colors">
+                                                            {listing.title}
+                                                        </h3>
+                                                        <p className="text-slate-600 text-sm mb-3">
+                                                            {listing.year} • {listing.make} {listing.model}
+                                                        </p>
+                                                    </div>
+
+                                                    <div className="grid grid-cols-2 gap-3 mb-4 text-sm">
+                                                        <div className="flex flex-col gap-1 text-slate-700">
+                                                            <div className="flex items-center gap-1">
+                                                                <span className="font-semibold text-slate-900">${Number(listing.price).toLocaleString()}</span>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="flex items-center gap-2 text-slate-700">
+                                                            <Car className="w-4 h-4 text-purple-600" />
+                                                            <span className="truncate">{listing.body_style}</span>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Toggle Active Status */}
+                                                    <div className="mb-4">
                                                         <Button
-                                                            variant="ghost"
+                                                            variant="outline"
                                                             size="sm"
-                                                            className="h-8 w-8 p-0"
-                                                            title="View Details"
+                                                            onClick={() => handleToggleActive(listing.id, !listing.is_active)}
+                                                            disabled={isUpdating === listing.id}
+                                                            className={`w-full ${listing.is_active
+                                                                ? 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100 hover:border-green-300'
+                                                                : 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100 hover:border-red-300'
+                                                                }`}
+                                                        >
+                                                            {isUpdating === listing.id ? (
+                                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                                            ) : listing.is_active ? (
+                                                                <>
+                                                                    <Check className="w-4 h-4 mr-2" />
+                                                                    Active - Click to Deactivate
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <X className="w-4 h-4 mr-2" />
+                                                                    Inactive - Click to Activate
+                                                                </>
+                                                            )}
+                                                        </Button>
+                                                    </div>
+
+                                                    {/* Actions */}
+                                                    <div className="flex flex-col gap-2">
+                                                        <Button
+                                                            variant="default"
+                                                            size="sm"
                                                             onClick={() => {
                                                                 setSelectedListingForDetail(listing);
                                                                 setIsDetailModalOpen(true);
                                                             }}
+                                                            className="w-full bg-dealership-primary hover:bg-dealership-primary/90 text-white"
                                                         >
-                                                            <Eye className="w-4 h-4 text-slate-600" />
+                                                            <Edit2 className="w-4 h-4 mr-2" />
+                                                            View Details
                                                         </Button>
                                                     </div>
-                                                </TableCell>
-                                            </TableRow>
+                                                </CardContent>
+                                            </Card>
                                         ))}
-                                    </TableBody>
-                                </Table>
-                            </Card>
-                        ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {filteredListings.map((listing) => (
-                                    <Card key={listing.id} className={`overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 border-slate-200 bg-white group relative ${selectedIds.has(listing.id) ? "ring-2 ring-blue-500" : ""}`}>
-                                        {/* Selection Checkbox */}
-                                        <div className="absolute top-3 left-3 z-10">
-                                            <Checkbox
-                                                checked={selectedIds.has(listing.id)}
-                                                onCheckedChange={() => toggleListingSelection(listing.id)}
-                                                className="rounded"
-                                            />
-                                        </div>
+                                    </div>
+                                )}
 
-                                        <div className="relative h-48 bg-gradient-to-br from-slate-100 to-slate-200 overflow-hidden">
-                                            <img
-                                                src={listing.image || "/fallback.jpg"}
-                                                alt={listing.title}
-                                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                                                onError={(e) => (e.currentTarget.src = "/fallback.jpg")}
-                                            />
-                                            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
-
-                                            {/* Status Badge */}
-                                            <div className="absolute bottom-3 right-3">
-                                                <Badge className={`${listing.is_active ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600'} text-white`}>
-                                                    {listing.is_active ? 'Active' : 'Inactive'}
-                                                </Badge>
-                                            </div>
-                                        </div>
-
-                                        <CardContent className="p-5">
-                                            {/* Title and Basic Info */}
-                                            <div className="mb-4">
-                                                <h3 className="font-bold text-lg text-slate-900 mb-2 line-clamp-2 group-hover:text-dealership-primary transition-colors">
-                                                    {listing.title}
-                                                </h3>
-                                                <p className="text-slate-600 text-sm mb-3">
-                                                    {listing.year} • {listing.make} {listing.model}
-                                                </p>
-                                            </div>
-
-                                            <div className="grid grid-cols-2 gap-3 mb-4 text-sm">
-                                                <div className="flex flex-col gap-1 text-slate-700">
-                                                    <div className="flex items-center gap-1">
-                                                        <span className="font-semibold text-slate-900">${Number(listing.price).toLocaleString()}</span>
-                                                    </div>
-                                                </div>
-
-                                                <div className="flex items-center gap-2 text-slate-700">
-                                                    <Car className="w-4 h-4 text-purple-600" />
-                                                    <span className="truncate">{listing.body_style}</span>
-                                                </div>
-                                            </div>
-
-                                            {/* Toggle Active Status */}
-                                            <div className="mb-4">
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() => handleToggleActive(listing.id, !listing.is_active)}
-                                                    disabled={isUpdating === listing.id}
-                                                    className={`w-full ${listing.is_active
-                                                        ? 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100 hover:border-green-300'
-                                                        : 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100 hover:border-red-300'
-                                                        }`}
-                                                >
-                                                    {isUpdating === listing.id ? (
-                                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                                    ) : listing.is_active ? (
-                                                        <>
-                                                            <Check className="w-4 h-4 mr-2" />
-                                                            Active - Click to Deactivate
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <X className="w-4 h-4 mr-2" />
-                                                            Inactive - Click to Activate
-                                                        </>
-                                                    )}
-                                                </Button>
-                                            </div>
-
-                                            {/* Actions */}
-                                            <div className="flex flex-col gap-2">
-                                                <Button
-                                                    variant="default"
-                                                    size="sm"
-                                                    onClick={() => {
-                                                        setSelectedListingForDetail(listing);
-                                                        setIsDetailModalOpen(true);
-                                                    }}
-                                                    className="w-full bg-dealership-primary hover:bg-dealership-primary/90 text-white"
-                                                >
-                                                    <Edit2 className="w-4 h-4 mr-2" />
-                                                    View Details
-                                                </Button>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                ))}
+                                <Pagination
+                                    currentPage={pagination.page}
+                                    totalPages={pagination.total_pages}
+                                    onPageChange={(page) => fetchExistingListings(page)}
+                                />
+                            </TabsContent>
+                        </>
+                    ) : (
+                        <div className="space-y-6 animate-in slide-in-from-right-4 duration-500">
+                            <div className="flex items-center justify-between bg-white p-4 rounded-xl border shadow-sm">
+                                <div className="flex items-center gap-4">
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setActiveView("dashboard")}
+                                        className="text-slate-600 hover:text-dealership-primary"
+                                    >
+                                        <ChevronLeft className="w-4 h-4 mr-2" />
+                                        Back to Dashboard
+                                    </Button>
+                                    <h2 className="text-xl font-bold text-slate-800">Saved Search Filters</h2>
+                                </div>
+                                <Badge variant="secondary" className="px-3 py-1 bg-dealership-primary/10 text-dealership-primary border-none">
+                                    {savedFilters.length} Active Filters
+                                </Badge>
                             </div>
-                        )}
 
-                        <Pagination
-                            currentPage={pagination.page}
-                            totalPages={pagination.total_pages}
-                            onPageChange={(page) => fetchExistingListings(page)}
-                        />
-                    </TabsContent>
+                            <Card className="border-slate-200 shadow-sm overflow-hidden bg-white">
+                                <div className="p-0">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow className="bg-slate-50/50">
+                                                <TableHead>Filter Name</TableHead>
+                                                <TableHead>Configuration Summary</TableHead>
+                                                <TableHead>Limit</TableHead>
+                                                <TableHead className="text-right">Actions</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {savedFilters.length === 0 ? (
+                                                <TableRow>
+                                                    <TableCell colSpan={4} className="h-32 text-center text-slate-500">
+                                                        No saved filters yet. Use the fetch configuration to save one.
+                                                    </TableCell>
+                                                </TableRow>
+                                            ) : (
+                                                savedFilters.map((filter) => (
+                                                    <TableRow key={filter.id} className="hover:bg-slate-50 group">
+                                                        <TableCell className="font-semibold text-slate-900">
+                                                            <div className="flex items-center gap-2">
+                                                                <div className={`w-2 h-2 rounded-full ${selectedFilterId === filter.id ? 'bg-green-500' : 'bg-slate-300'}`} />
+                                                                {filter.title}
+                                                            </div>
+                                                        </TableCell>
+                                                        <TableCell className="text-slate-600 max-w-md">
+                                                            <p className="truncate text-sm">
+                                                                {getFilterSummary(filter)}
+                                                            </p>
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <Badge variant="outline">{filter.limit || 'No limit'}</Badge>
+                                                        </TableCell>
+                                                        <TableCell className="text-right">
+                                                            <div className="flex justify-end gap-2">
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    onClick={() => {
+                                                                        applyFilter(filter);
+                                                                        setActiveView("dashboard");
+                                                                        setActiveTab("filters");
+                                                                    }}
+                                                                    className="h-8 border-dealership-primary text-dealership-primary hover:bg-dealership-primary hover:text-white"
+                                                                >
+                                                                    Apply
+                                                                </Button>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="h-8 w-8 text-slate-400 hover:text-blue-600"
+                                                                    onClick={() => {
+                                                                        applyFilter(filter);
+                                                                        setShowSaveDialog(true);
+                                                                    }}
+                                                                >
+                                                                    <Edit2 className="w-4 h-4" />
+                                                                </Button>
+                                                                <Dialog>
+                                                                    <DialogTrigger asChild>
+                                                                        <Button
+                                                                            variant="ghost"
+                                                                            size="icon"
+                                                                            className="h-8 w-8 text-slate-400 hover:text-red-600"
+                                                                        >
+                                                                            <Trash2 className="w-4 h-4" />
+                                                                        </Button>
+                                                                    </DialogTrigger>
+                                                                    <DialogContent>
+                                                                        <DialogHeader>
+                                                                            <DialogTitle>Delete Filter?</DialogTitle>
+                                                                            <DialogDescription>
+                                                                                Are you sure you want to delete "{filter.title}"? This action cannot be undone.
+                                                                            </DialogDescription>
+                                                                        </DialogHeader>
+                                                                        <DialogFooter className="gap-2 sm:gap-0">
+                                                                            <DialogTrigger asChild>
+                                                                                <Button variant="outline">Cancel</Button>
+                                                                            </DialogTrigger>
+                                                                            <Button variant="destructive" onClick={() => handleDeleteFilter(filter.id)}>Delete</Button>
+                                                                        </DialogFooter>
+                                                                    </DialogContent>
+                                                                </Dialog>
+                                                            </div>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))
+                                            )}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            </Card>
+                        </div>
+                    )}
                 </Tabs>
 
                 {/* Listing Detail Modal */}

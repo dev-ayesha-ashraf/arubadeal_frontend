@@ -103,19 +103,12 @@ export const VehicleCard = ({
                     </div>
 
                     <div className="grid grid-cols-2 gap-1 text-xs md:text-sm text-gray-600 mb-2">
-                        <div>Make: {car.make?.name ?? "N/A"}</div>
-                        <div>Model: {car.model ?? "N/A"}</div>
-                        <div>Type: {car.body_type?.name ?? "N/A"}</div>
                         <div>Transmission: {car.transmission?.name ?? "N/A"}</div>
-                        <div>Color: {car.color ?? "N/A"}</div>
+                        <div>Mileage: {car.mileage ?? "N/A"}</div>
                         {car.badges && car.badges.length > 0 && (
                             <div>Badge: {car.badges.join(", ")}</div>
                         )}
-                        {listingType === "auction" ? (
-                            <div>Vehicle ID: {car.lot_number ?? "N/A"}</div>
-                        ) : (
-                            <div>Vehicle ID: {car.vehicle_id ?? "N/A"}</div>
-                        )}
+                        <div>Fuel Type: {car.fuel_type?.name ?? "N/A"}</div>
                     </div>
 
                     <div className="flex items-center justify-between mt-auto border-t border-gray-200 pt-2">

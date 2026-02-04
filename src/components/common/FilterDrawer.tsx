@@ -1,6 +1,7 @@
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Filter, Search, X, ChevronUp } from "lucide-react";
+import { Drawer } from "vaul";
 
 interface DropdownItem {
     id?: string;
@@ -55,7 +56,6 @@ export const FilterDrawer = ({
     isOpen,
     onToggle
 }: FilterDrawerProps) => {
-    // Count active filters
     const activeFilterCount = Object.values(filters).filter(v => v !== undefined && v !== "").length;
 
     const handleClearFilters = () => {
@@ -65,16 +65,193 @@ export const FilterDrawer = ({
 
     const handleApply = () => {
         onApply();
-        // Don't close for sidebar, but maybe for top drawer?
-        // User said "only cards should become responsive... move on right" which implies persistent
-        // For mobile top drawer, they probably want to close it after applying.
         if (window.innerWidth < 1024) {
             onToggle();
         }
     };
 
-    // Use name for value in global/auction mode, id for normal mode
     const useNameAsValue = filterMode === "global" || filterMode === "auction";
+
+    const FilterFields = ({ isMobile = false }) => (
+        <div className={`grid ${isMobile ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1"} gap-3`}>
+            {/* Make */}
+            <div>
+                <label className="text-xs lg:text-sm font-medium text-gray-700 mb-1 lg:mb-1 block">Make</label>
+                <Select
+                    value={filters.make || ""}
+                    onValueChange={v => setFilters({ ...filters, make: v, model: undefined })}
+                >
+                    <SelectTrigger className="w-full h-10 text-sm lg:text-sm">
+                        <SelectValue placeholder="Select Make" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60 overflow-y-auto bg-white z-[110]">
+                        {dropdowns.makes.map(make => (
+                            <SelectItem
+                                key={make.id}
+                                value={useNameAsValue ? (make.name || "") : (make.id || "")}
+                                className="text-sm lg:text-sm"
+                            >
+                                {make.name}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
+
+            {/* Model */}
+            <div>
+                <label className="text-xs lg:text-sm font-medium text-gray-700 mb-1 lg:mb-1 block">Model</label>
+                <Select
+                    value={filters.model || ""}
+                    onValueChange={v => setFilters({ ...filters, model: v })}
+                >
+                    <SelectTrigger className="w-full h-10 text-sm lg:text-sm">
+                        <SelectValue placeholder="Select Model" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60 overflow-y-auto bg-white z-[110]">
+                        {dropdowns.models?.map(model => (
+                            <SelectItem key={model} value={model} className="text-sm lg:text-sm">{model}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
+
+            {/* Type */}
+            <div>
+                <label className="text-xs lg:text-sm font-medium text-gray-700 mb-1 lg:mb-1 block">Body Type</label>
+                <Select
+                    value={filters.type || ""}
+                    onValueChange={v => setFilters({ ...filters, type: v })}
+                >
+                    <SelectTrigger className="w-full h-10 text-sm lg:text-sm">
+                        <SelectValue placeholder="Select Type" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60 overflow-y-auto bg-white z-[110]">
+                        {dropdowns.types.map(type => (
+                            <SelectItem
+                                key={type.id}
+                                value={useNameAsValue ? (type.name || "") : (type.id || "")}
+                                className="text-sm lg:text-sm"
+                            >
+                                {type.name}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
+
+            {/* Fuel Type */}
+            <div>
+                <label className="text-xs lg:text-sm font-medium text-gray-700 mb-1 lg:mb-1 block">Fuel Type</label>
+                <Select
+                    value={filters.fuelType || ""}
+                    onValueChange={v => setFilters({ ...filters, fuelType: v })}
+                >
+                    <SelectTrigger className="w-full h-10 text-sm lg:text-sm">
+                        <SelectValue placeholder="Select Fuel Type" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60 overflow-y-auto bg-white z-[110]">
+                        {dropdowns.fuelTypes.map(fuelType => (
+                            <SelectItem
+                                key={fuelType.id}
+                                value={useNameAsValue ? (fuelType.name || "") : (fuelType.id || "")}
+                                className="text-sm lg:text-sm"
+                            >
+                                {fuelType.name}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
+
+            {/* Price Range */}
+            <div className={isMobile ? "col-span-1 sm:col-span-2" : ""}>
+                <label className="text-xs lg:text-sm font-medium text-gray-700 mb-1 lg:mb-1 block">Price Range</label>
+                <div className="flex gap-2">
+                    <input
+                        type="number"
+                        placeholder="Min"
+                        value={filters.minPrice ?? ""}
+                        onChange={e => {
+                            const newMin = e.target.value;
+                            const newPriceRange = makePriceRange(newMin, filters.maxPrice);
+                            setFilters({ ...filters, minPrice: newMin, priceRange: newPriceRange });
+                        }}
+                        className="border border-gray-300 rounded-lg p-2 w-1/2 focus:outline-none focus:ring-1 focus:ring-dealership-primary text-sm lg:text-sm"
+                    />
+                    <input
+                        type="number"
+                        placeholder="Max"
+                        value={filters.maxPrice ?? ""}
+                        onChange={e => {
+                            const newMax = e.target.value;
+                            const newPriceRange = makePriceRange(filters.minPrice, newMax);
+                            setFilters({ ...filters, maxPrice: newMax, priceRange: newPriceRange });
+                        }}
+                        className="border border-gray-300 rounded-lg p-2 w-1/2 focus:outline-none focus:ring-1 focus:ring-dealership-primary text-sm lg:text-sm"
+                    />
+                </div>
+            </div>
+
+            {/* Location */}
+            <div>
+                <label className="text-xs lg:text-sm font-medium text-gray-700 mb-1 lg:mb-1 block">Location</label>
+                <Select
+                    value={filters.location || ""}
+                    onValueChange={v => setFilters({ ...filters, location: v })}
+                >
+                    <SelectTrigger className="w-full h-10 text-sm lg:text-sm">
+                        <SelectValue placeholder="Location" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60 overflow-y-auto bg-white z-[110]">
+                        {dropdowns.locations.map(loc => (
+                            <SelectItem key={loc} value={loc} className="text-sm lg:text-sm">{loc}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
+
+            {/* Badge - only for normal mode */}
+            {filterMode === "normal" && (
+                <div>
+                    <label className="text-xs lg:text-sm font-medium text-gray-700 mb-1 lg:mb-1 block">Badge</label>
+                    <Select
+                        value={filters.badge || ""}
+                        onValueChange={v => setFilters({ ...filters, badge: v })}
+                    >
+                        <SelectTrigger className="w-full h-10 text-sm lg:text-sm">
+                            <SelectValue placeholder="Badge" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-60 overflow-y-auto bg-white z-[110]">
+                            {dropdowns.badges.map(badge => (
+                                <SelectItem key={badge.id} value={badge.id || ""} className="text-sm lg:text-sm">
+                                    {badge.name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+            )}
+
+            {/* Color */}
+            <div>
+                <label className="text-xs lg:text-sm font-medium text-gray-700 mb-1 lg:mb-1 block">Color</label>
+                <Select
+                    value={filters.color || ""}
+                    onValueChange={v => setFilters({ ...filters, color: v })}
+                >
+                    <SelectTrigger className="w-full h-10 text-sm lg:text-sm">
+                        <SelectValue placeholder="Color" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60 overflow-y-auto bg-white z-[110]">
+                        {dropdowns.colors.map(color => (
+                            <SelectItem key={color} value={color} className="text-sm lg:text-sm">{color}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
+        </div>
+    );
 
     return (
         <>
@@ -92,21 +269,16 @@ export const FilterDrawer = ({
                 )}
             </Button>
 
-            {/* Sidebar / Top Panel - slides in without overlay */}
-            {/* Fixed z-index to 100 to cover navbar/header */}
+            {/* Desktop Sidebar */}
             <div
-                className={`fixed bg-white shadow-2xl z-[100] transition-all duration-300 ease-in-out border-gray-200 
-                    ${isOpen ? "visible opacity-100" : "invisible opacity-0"}
-                    lg:top-0 lg:right-0 lg:left-auto lg:h-full lg:w-[320px] lg:border-l lg:translate-y-0
-                    ${isOpen ? "lg:translate-x-0" : "lg:translate-x-full"}
-                    top-0 left-0 w-full h-[45%] border-b translate-x-0
-                    ${isOpen ? "translate-y-0" : "-translate-y-full"}
+                className={`hidden lg:block fixed bg-white shadow-2xl z-[100] transition-all duration-300 ease-in-out border-gray-200 
+                    top-0 right-0 h-full w-[320px] border-l
+                    ${isOpen ? "translate-x-0 visible opacity-100" : "translate-x-full invisible opacity-0"}
                 `}
             >
-                {/* Header */}
-                <div className="flex items-center justify-between p-3 lg:p-4 border-b bg-gray-50">
-                    <h2 className="text-sm lg:text-lg font-semibold text-gray-800 flex items-center gap-2">
-                        <Filter className="w-4 h-4 lg:w-5 lg:h-5 text-dealership-primary" />
+                <div className="flex items-center justify-between p-4 border-b bg-gray-50">
+                    <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                        <Filter className="w-5 h-5 text-dealership-primary" />
                         Filter Cars
                     </h2>
                     <div className="flex items-center gap-2">
@@ -115,7 +287,7 @@ export const FilterDrawer = ({
                                 variant="ghost"
                                 size="sm"
                                 onClick={handleClearFilters}
-                                className="text-red-500 hover:text-red-600 hover:bg-red-50 flex items-center gap-1 text-[10px] lg:text-xs h-7 lg:h-9"
+                                className="text-red-500 hover:text-red-600 hover:bg-red-50 flex items-center gap-1 text-xs h-9"
                             >
                                 <X className="w-3 h-3" />
                                 Clear
@@ -125,207 +297,67 @@ export const FilterDrawer = ({
                             variant="ghost"
                             size="sm"
                             onClick={onToggle}
-                            className="hover:bg-gray-100 h-7 lg:h-9"
+                            className="hover:bg-gray-100 h-9"
                         >
-                            <ChevronUp className={`w-5 h-5 transition-transform ${isOpen ? "" : "rotate-180"} lg:rotate-90`} />
+                            <ChevronUp className={`w-5 h-5 transition-transform rotate-90`} />
                         </Button>
                     </div>
                 </div>
 
-                {/* Filter Content */}
-                {/* Compact grid for mobile top panel */}
-                <div className="flex flex-col p-3 lg:p-4 gap-3 lg:space-y-4 overflow-y-auto lg:h-[calc(100%-140px)] h-[calc(100%-100px)]">
-                    <div className="grid grid-cols-2 lg:grid-cols-1 gap-3">
-                        {/* Make */}
-                        <div>
-                            <label className="text-[10px] lg:text-sm font-medium text-gray-700 mb-0.5 lg:mb-1 block">Make</label>
-                            <Select
-                                value={filters.make || ""}
-                                onValueChange={v => setFilters({ ...filters, make: v, model: undefined })}
-                            >
-                                <SelectTrigger className="w-full h-8 lg:h-10 text-[11px] lg:text-sm">
-                                    <SelectValue placeholder="Select Make" />
-                                </SelectTrigger>
-                                <SelectContent className="max-h-60 overflow-y-auto bg-white z-[110]">
-                                    {dropdowns.makes.map(make => (
-                                        <SelectItem
-                                            key={make.id}
-                                            value={useNameAsValue ? (make.name || "") : (make.id || "")}
-                                            className="text-[11px] lg:text-sm"
-                                        >
-                                            {make.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        {/* Model */}
-                        <div>
-                            <label className="text-[10px] lg:text-sm font-medium text-gray-700 mb-0.5 lg:mb-1 block">Model</label>
-                            <Select
-                                value={filters.model || ""}
-                                onValueChange={v => setFilters({ ...filters, model: v })}
-                            >
-                                <SelectTrigger className="w-full h-8 lg:h-10 text-[11px] lg:text-sm">
-                                    <SelectValue placeholder="Select Model" />
-                                </SelectTrigger>
-                                <SelectContent className="max-h-60 overflow-y-auto bg-white z-[110]">
-                                    {dropdowns.models?.map(model => (
-                                        <SelectItem key={model} value={model} className="text-[11px] lg:text-sm">{model}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        {/* Type */}
-                        <div>
-                            <label className="text-[10px] lg:text-sm font-medium text-gray-700 mb-0.5 lg:mb-1 block">Body Type</label>
-                            <Select
-                                value={filters.type || ""}
-                                onValueChange={v => setFilters({ ...filters, type: v })}
-                            >
-                                <SelectTrigger className="w-full h-8 lg:h-10 text-[11px] lg:text-sm">
-                                    <SelectValue placeholder="Select Type" />
-                                </SelectTrigger>
-                                <SelectContent className="max-h-60 overflow-y-auto bg-white z-[110]">
-                                    {dropdowns.types.map(type => (
-                                        <SelectItem
-                                            key={type.id}
-                                            value={useNameAsValue ? (type.name || "") : (type.id || "")}
-                                            className="text-[11px] lg:text-sm"
-                                        >
-                                            {type.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        {/* Fuel Type */}
-                        <div>
-                            <label className="text-[10px] lg:text-sm font-medium text-gray-700 mb-0.5 lg:mb-1 block">Fuel Type</label>
-                            <Select
-                                value={filters.fuelType || ""}
-                                onValueChange={v => setFilters({ ...filters, fuelType: v })}
-                            >
-                                <SelectTrigger className="w-full h-8 lg:h-10 text-[11px] lg:text-sm">
-                                    <SelectValue placeholder="Select Fuel Type" />
-                                </SelectTrigger>
-                                <SelectContent className="max-h-60 overflow-y-auto bg-white z-[110]">
-                                    {dropdowns.fuelTypes.map(fuelType => (
-                                        <SelectItem
-                                            key={fuelType.id}
-                                            value={useNameAsValue ? (fuelType.name || "") : (fuelType.id || "")}
-                                            className="text-[11px] lg:text-sm"
-                                        >
-                                            {fuelType.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        {/* Price Range */}
-                        <div className="col-span-2 lg:col-span-1">
-                            <label className="text-[10px] lg:text-sm font-medium text-gray-700 mb-0.5 lg:mb-1 block">Price Range</label>
-                            <div className="flex gap-2">
-                                <input
-                                    type="number"
-                                    placeholder="Min"
-                                    value={filters.minPrice ?? ""}
-                                    onChange={e => {
-                                        const newMin = e.target.value;
-                                        const newPriceRange = makePriceRange(newMin, filters.maxPrice);
-                                        setFilters({ ...filters, minPrice: newMin, priceRange: newPriceRange });
-                                    }}
-                                    className="border border-gray-300 rounded-lg p-1.5 lg:p-2 w-1/2 focus:outline-none focus:ring-1 focus:ring-dealership-primary text-[11px] lg:text-sm"
-                                />
-                                <input
-                                    type="number"
-                                    placeholder="Max"
-                                    value={filters.maxPrice ?? ""}
-                                    onChange={e => {
-                                        const newMax = e.target.value;
-                                        const newPriceRange = makePriceRange(filters.minPrice, newMax);
-                                        setFilters({ ...filters, maxPrice: newMax, priceRange: newPriceRange });
-                                    }}
-                                    className="border border-gray-300 rounded-lg p-1.5 lg:p-2 w-1/2 focus:outline-none focus:ring-1 focus:ring-dealership-primary text-[11px] lg:text-sm"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Location */}
-                        <div>
-                            <label className="text-[10px] lg:text-sm font-medium text-gray-700 mb-0.5 lg:mb-1 block">Location</label>
-                            <Select
-                                value={filters.location || ""}
-                                onValueChange={v => setFilters({ ...filters, location: v })}
-                            >
-                                <SelectTrigger className="w-full h-8 lg:h-10 text-[11px] lg:text-sm">
-                                    <SelectValue placeholder="Location" />
-                                </SelectTrigger>
-                                <SelectContent className="max-h-60 overflow-y-auto bg-white z-[110]">
-                                    {dropdowns.locations.map(loc => (
-                                        <SelectItem key={loc} value={loc} className="text-[11px] lg:text-sm">{loc}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        {/* Badge - only for normal mode */}
-                        {filterMode === "normal" && (
-                            <div>
-                                <label className="text-[10px] lg:text-sm font-medium text-gray-700 mb-0.5 lg:mb-1 block">Badge</label>
-                                <Select
-                                    value={filters.badge || ""}
-                                    onValueChange={v => setFilters({ ...filters, badge: v })}
-                                >
-                                    <SelectTrigger className="w-full h-8 lg:h-10 text-[11px] lg:text-sm">
-                                        <SelectValue placeholder="Badge" />
-                                    </SelectTrigger>
-                                    <SelectContent className="max-h-60 overflow-y-auto bg-white z-[110]">
-                                        {dropdowns.badges.map(badge => (
-                                            <SelectItem key={badge.id} value={badge.id || ""} className="text-[11px] lg:text-sm">
-                                                {badge.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        )}
-
-                        {/* Color */}
-                        <div>
-                            <label className="text-[10px] lg:text-sm font-medium text-gray-700 mb-0.5 lg:mb-1 block">Color</label>
-                            <Select
-                                value={filters.color || ""}
-                                onValueChange={v => setFilters({ ...filters, color: v })}
-                            >
-                                <SelectTrigger className="w-full h-8 lg:h-10 text-[11px] lg:text-sm">
-                                    <SelectValue placeholder="Color" />
-                                </SelectTrigger>
-                                <SelectContent className="max-h-60 overflow-y-auto bg-white z-[110]">
-                                    {dropdowns.colors.map(color => (
-                                        <SelectItem key={color} value={color} className="text-[11px] lg:text-sm">{color}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </div>
+                <div className="p-4 overflow-y-auto h-[calc(100%-140px)]">
+                    <FilterFields />
                 </div>
 
-                {/* Apply Button */}
-                <div className="absolute bottom-0 left-0 right-0 p-3 lg:p-4 bg-white border-t">
+                <div className="absolute bottom-0 left-0 right-0 p-4 bg-white border-t">
                     <Button
                         onClick={handleApply}
-                        className="w-full bg-dealership-primary text-white py-1.5 lg:py-3 flex items-center justify-center gap-2 text-[11px] lg:text-sm h-8 lg:h-auto"
+                        className="w-full bg-dealership-primary text-white py-3 flex items-center justify-center gap-2 text-sm"
                     >
-                        <Search className="w-3 h-3 lg:w-4 lg:h-4" />
+                        <Search className="w-4 h-4" />
                         Apply Filters
                     </Button>
                 </div>
             </div>
+
+            {/* Mobile Bottom Sheet Drawer */}
+            <Drawer.Root open={isOpen && window.innerWidth < 1024} onOpenChange={(open) => !open && onToggle()} shouldScaleBackground>
+                <Drawer.Portal>
+                    <Drawer.Overlay className="fixed inset-0 bg-black/40 z-[100]" />
+                    <Drawer.Content className="bg-white flex flex-col rounded-t-[20px] h-auto max-h-[85%] fixed bottom-0 left-0 right-0 z-[101] outline-none">
+                        <div className="p-4 bg-white rounded-t-[20px] flex-1 overflow-y-auto pb-24">
+                            <div className="mx-auto w-12 h-1 flex-shrink-0 rounded-full bg-gray-300 mb-4" />
+                            <div className="flex items-center justify-between mb-4">
+                                <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                                    <Filter className="w-5 h-5 text-dealership-primary" />
+                                    Filter Cars
+                                </h2>
+                                {activeFilterCount > 0 && (
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={handleClearFilters}
+                                        className="text-red-500 hover:text-red-600 font-semibold h-8 text-xs"
+                                    >
+                                        Clear All
+                                    </Button>
+                                )}
+                            </div>
+
+                            <FilterFields isMobile={true} />
+                        </div>
+
+                        <div className="fixed bottom-0 left-0 right-0 p-3 bg-white border-t border-gray-100 z-[102] flex gap-3 shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
+                            <Button
+                                onClick={handleApply}
+                                className="flex-1 bg-dealership-primary text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 text-sm shadow-lg shadow-dealership-primary/20 active:scale-95 transition-transform"
+                            >
+                                <Search className="w-4 h-4" />
+                                Apply {activeFilterCount > 0 ? `(${activeFilterCount})` : ""} Filters
+                            </Button>
+                        </div>
+                    </Drawer.Content>
+                </Drawer.Portal>
+            </Drawer.Root>
         </>
     );
 };

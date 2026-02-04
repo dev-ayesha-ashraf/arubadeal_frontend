@@ -434,68 +434,69 @@ const AuctionVehicles = () => {
         <div className="min-h-screen">
             <Header />
             <Navbar />
-            <div className="container mx-auto px-4 py-8">
-                <div className="flex flex-col gap-8 mt-[20px] md:mt-0">
-                    <div className="w-full flex justify-center">
-                        {dynamicDropdowns && (
-                            <FilterDrawer
-                                dropdowns={dynamicDropdowns}
-                                filters={filters}
-                                setFilters={setFilters}
-                                onApply={handleApplyFilters}
-                                filterMode="auction"
-                                isOpen={filterOpen}
-                                onToggle={() => setFilterOpen(!filterOpen)}
+            <div vaul-drawer-wrapper="" className="bg-white min-h-screen">
+                <div className="container mx-auto px-4 py-8">
+                    <div className="flex flex-col gap-8 mt-[20px] md:mt-0">
+                        <div className="w-full flex justify-center">
+                            {dynamicDropdowns && (
+                                <FilterDrawer
+                                    dropdowns={dynamicDropdowns}
+                                    filters={filters}
+                                    setFilters={setFilters}
+                                    onApply={handleApplyFilters}
+                                    filterMode="auction"
+                                    isOpen={filterOpen}
+                                    onToggle={() => setFilterOpen(!filterOpen)}
+                                />
+                            )}
+                        </div>
+
+                        <div className="flex justify-between items-center mb-6">
+                            <h1 className="text-2xl font-bold text-gray-800">{title}</h1>
+
+                            <Select value={sortBy} onValueChange={handleSortChange}>
+                                <SelectTrigger className="w-[200px]">
+                                    <SelectValue placeholder="Sort by" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-white">
+                                    <SelectItem value="date-desc">Newest First</SelectItem>
+                                    <SelectItem value="date-asc">Oldest First</SelectItem>
+                                    <SelectItem value="price-asc">Price: Low to High</SelectItem>
+                                    <SelectItem value="price-desc">Price: High to Low</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {isLoading ? (
+                            <div className="text-center py-8">Loading...</div>
+                        ) : error ? (
+                            <div className="text-center py-8 text-red-600">{error}</div>
+                        ) : cars.length === 0 ? (
+                            <div className="text-center py-8">No Auction Vehicles found matching your criteria.</div>
+                        ) : (
+                            <div className={`grid gap-6 transition-all duration-300 ${filterOpen ? 'grid-cols-1 md:grid-cols-2 lg:mr-[340px]' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'}`}>
+                                {cars.map(car => (
+                                    <VehicleCard
+                                        key={car._id}
+                                        car={car}
+                                        currency="USD"
+                                        listingType="auction"
+                                        onShare={onShare}
+                                    />
+                                ))}
+                            </div>
+                        )}
+
+                        {totalPages > 1 && (
+                            <Pagination
+                                currentPage={currentPage}
+                                totalPages={totalPages}
+                                onPageChange={setCurrentPage}
                             />
                         )}
                     </div>
-
-                    <div className="flex justify-between items-center mb-6">
-                        <h1 className="text-2xl font-bold text-gray-800">{title}</h1>
-
-                        <Select value={sortBy} onValueChange={handleSortChange}>
-                            <SelectTrigger className="w-[200px]">
-                                <SelectValue placeholder="Sort by" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-white">
-                                <SelectItem value="date-desc">Newest First</SelectItem>
-                                <SelectItem value="date-asc">Oldest First</SelectItem>
-                                <SelectItem value="price-asc">Price: Low to High</SelectItem>
-                                <SelectItem value="price-desc">Price: High to Low</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-
-                    {isLoading ? (
-                        <div className="text-center py-8">Loading...</div>
-                    ) : error ? (
-                        <div className="text-center py-8 text-red-600">{error}</div>
-                    ) : cars.length === 0 ? (
-                        <div className="text-center py-8">No Auction Vehicles found matching your criteria.</div>
-                    ) : (
-                        <div className={`grid gap-6 transition-all duration-300 ${filterOpen ? 'grid-cols-1 md:grid-cols-2 lg:mr-[340px]' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'}`}>
-                            {cars.map(car => (
-                                <VehicleCard
-                                    key={car._id}
-                                    car={car}
-                                    currency="USD"
-                                    listingType="auction"
-                                    onShare={onShare}
-                                />
-                            ))}
-                        </div>
-                    )}
-
-                    {totalPages > 1 && (
-                        <Pagination
-                            currentPage={currentPage}
-                            totalPages={totalPages}
-                            onPageChange={setCurrentPage}
-                        />
-                    )}
                 </div>
             </div>
-
             <Footer />
 
             <SharePreview
