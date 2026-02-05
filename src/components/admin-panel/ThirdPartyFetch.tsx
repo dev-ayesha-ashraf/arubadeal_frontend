@@ -320,10 +320,9 @@ const ThirdPartyFetch = () => {
             setIsSavingFilter(true);
             const requestBody: any = {
                 title: filterTitle,
-                ...fetchParams // Include all current form values
+                ...fetchParams
             };
 
-            // Convert string years to range if applicable (though we already handle this in fetchParams logic usually)
             if (requestBody["vehicle.year_min"] && requestBody["vehicle.year_max"]) {
                 requestBody["vehicle.year"] = `${requestBody["vehicle.year_min"]}-${requestBody["vehicle.year_max"]}`;
                 delete requestBody["vehicle.year_min"];
@@ -848,7 +847,7 @@ const ThirdPartyFetch = () => {
                                 title="Saved Filters"
                                 value={savedFilters.length}
                                 icon={Save}
-                                variant="blue"
+                                variant="destructive"
                             />
                             <StatsCard
                                 title="Current Applied"
@@ -856,218 +855,245 @@ const ThirdPartyFetch = () => {
                                 icon={Zap}
                                 variant="green"
                             />
-                            <StatsCard
-                                title="Fetch Limit"
-                                value={fetchParams.limit}
-                                icon={ArrowRight}
-                                variant="orange"
-                            />
                         </div>
 
-                        {/* Fetch Form Card */}
-                        <Card className="border-slate-200 shadow-sm overflow-hidden">
-                            <div className="bg-dealership-primary/5 px-6 py-4 border-b border-slate-200 flex items-center gap-2">
-                                <Filter className="w-5 h-5 text-dealership-primary" />
-                                <h2 className="font-semibold text-slate-800">Fetch Configuration</h2>
-                            </div>
-                            <CardContent className="p-6">
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700">Make</label>
-                                        <Input
-                                            placeholder="e.g. Toyota"
-                                            value={fetchParams["vehicle.make"]}
-                                            onChange={(e) => setFetchParams({ ...fetchParams, "vehicle.make": e.target.value })}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700">Model</label>
-                                        <Input
-                                            placeholder="e.g. Camry"
-                                            value={fetchParams["vehicle.model"]}
-                                            onChange={(e) => setFetchParams({ ...fetchParams, "vehicle.model": e.target.value })}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700">Trim</label>
-                                        <Input
-                                            placeholder="e.g. LE"
-                                            value={fetchParams["vehicle.trim"]}
-                                            onChange={(e) => setFetchParams({ ...fetchParams, "vehicle.trim": e.target.value })}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700">Year Range</label>
-                                        <div className="flex items-center gap-2">
-                                            <Input
-                                                placeholder="Min (2014)"
-                                                value={fetchParams["vehicle.year_min"]}
-                                                onChange={(e) => setFetchParams({ ...fetchParams, "vehicle.year_min": e.target.value })}
-                                            />
-                                            <span className="text-slate-400">-</span>
-                                            <Input
-                                                placeholder="Max (2022)"
-                                                value={fetchParams["vehicle.year_max"]}
-                                                onChange={(e) => setFetchParams({ ...fetchParams, "vehicle.year_max": e.target.value })}
-                                            />
+                        <div className="max-w-5xl mx-auto space-y-8">
+                            <Card className="border-slate-200 shadow-lg overflow-hidden bg-white">
+                                <div className="bg-dealership-primary/5 px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <div className="p-2 bg-dealership-primary/10 rounded-lg">
+                                            <Filter className="w-5 h-5 text-dealership-primary" />
+                                        </div>
+                                        <div>
+                                            <h2 className="font-bold text-slate-800 text-lg">Third Party Sync Configuration</h2>
+                                            <p className="text-xs text-slate-500">Configure parameters for external inventory fetch</p>
                                         </div>
                                     </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700">Engine</label>
-                                        <Input
-                                            placeholder="e.g. 2.5L"
-                                            value={fetchParams["vehicle.engine"]}
-                                            onChange={(e) => setFetchParams({ ...fetchParams, "vehicle.engine": e.target.value })}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700">Price Range (USD)</label>
-                                        <div className="flex items-center gap-2">
-                                            <Input
-                                                placeholder="Min (2000)"
-                                                value={fetchParams["retailListing.price_min"]}
-                                                onChange={(e) => setFetchParams({ ...fetchParams, "retailListing.price_min": e.target.value })}
-                                            />
-                                            <span className="text-slate-400">-</span>
-                                            <Input
-                                                placeholder="Max (10000)"
-                                                value={fetchParams["retailListing.price_max"]}
-                                                onChange={(e) => setFetchParams({ ...fetchParams, "retailListing.price_max": e.target.value })}
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700">Max Miles</label>
-                                        <Input
-                                            placeholder="e.g. 50000"
-                                            value={fetchParams["retailListing.miles"]}
-                                            onChange={(e) => setFetchParams({ ...fetchParams, "retailListing.miles": e.target.value })}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700">Limit</label>
-                                        <Input
-                                            type="number"
-                                            placeholder="e.g. 50"
-                                            value={fetchParams.limit}
-                                            onChange={(e) => setFetchParams({ ...fetchParams, limit: parseInt(e.target.value) || 50 })}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700">Transmission</label>
-                                        <Input
-                                            placeholder="e.g. Automatic"
-                                            value={fetchParams["vehicle.transmission"]}
-                                            onChange={(e) => setFetchParams({ ...fetchParams, "vehicle.transmission": e.target.value })}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700">Body Style</label>
-                                        <Input
-                                            placeholder="e.g. Sedan"
-                                            value={fetchParams["vehicle.bodyStyle"]}
-                                            onChange={(e) => setFetchParams({ ...fetchParams, "vehicle.bodyStyle": e.target.value })}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700">Exterior Color</label>
-                                        <Input
-                                            placeholder="e.g. Blue"
-                                            value={fetchParams["vehicle.exteriorColor"]}
-                                            onChange={(e) => setFetchParams({ ...fetchParams, "vehicle.exteriorColor": e.target.value })}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700">ZIP Code</label>
-                                        <Input
-                                            placeholder="e.g. 90210"
-                                            value={fetchParams["zip"]}
-                                            onChange={(e) => setFetchParams({ ...fetchParams, "zip": e.target.value })}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-sm font-medium text-slate-700">Distance (miles)</label>
-                                        <Input
-                                            placeholder="e.g. 50"
-                                            value={fetchParams["distance"]}
-                                            onChange={(e) => setFetchParams({ ...fetchParams, "distance": e.target.value })}
-                                        />
-                                    </div>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={handleClearForm}
+                                        className="text-slate-500 hover:text-dealership-primary"
+                                    >
+                                        Reset Form
+                                    </Button>
                                 </div>
-                                <div className="mt-6 flex justify-end gap-3">
-                                    <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
-                                        <DialogTrigger asChild>
-                                            <Button
-                                                variant="outline"
-                                                className="border-dealership-primary text-dealership-primary hover:bg-dealership-primary/10"
-                                                onClick={() => {
-                                                    if (!selectedFilterId) {
-                                                        setFilterTitle("");
-                                                    }
-                                                }}
-                                            >
-                                                <Save className="w-4 h-4 mr-2" />
-                                                {selectedFilterId ? "Update Filter" : "Save Filter"}
-                                            </Button>
-                                        </DialogTrigger>
-                                        <DialogContent>
-                                            <DialogHeader>
-                                                <DialogTitle>{selectedFilterId ? "Update Filter" : "Save New Filter"}</DialogTitle>
-                                                <DialogDescription>
-                                                    Give this filter a name so you can easily reuse it later.
-                                                </DialogDescription>
-                                            </DialogHeader>
-                                            <div className="space-y-4 py-4">
-                                                <div className="space-y-2">
-                                                    <label className="text-sm font-medium">Filter Title</label>
+                                <CardContent className="p-8">
+                                    <div className="space-y-8">
+                                        {/* Critical Parameters Section */}
+                                        <div className="flex items-center justify-between pb-6 border-b border-slate-100">
+                                            <div className="space-y-1">
+                                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Number of Cars (Sync Count)</label>
+                                                <div className="flex items-center gap-3">
                                                     <Input
-                                                        placeholder="e.g. Toyota Camry 2020+"
-                                                        value={filterTitle}
-                                                        onChange={(e) => setFilterTitle(e.target.value)}
+                                                        type="number"
+                                                        placeholder="50"
+                                                        value={fetchParams.limit}
+                                                        onChange={(e) => setFetchParams({ ...fetchParams, limit: parseInt(e.target.value) || 0 })}
+                                                        className="w-24 border-dealership-primary/20 focus:border-dealership-primary font-bold text-dealership-primary"
+                                                    />
+                                                    <span className="text-sm text-slate-500 font-medium">listings will be synced from the source</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Advanced Configuration Grid */}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                            <div className="space-y-2 lg:col-span-2">
+                                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Vehicle Make</label>
+                                                <Input
+                                                    placeholder="e.g. Toyota, Honda (Comma Separated)"
+                                                    value={fetchParams["vehicle.make"]}
+                                                    onChange={(e) => setFetchParams({ ...fetchParams, "vehicle.make": e.target.value })}
+                                                    className="border-slate-200 focus:border-dealership-primary"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Vehicle Model</label>
+                                                <Input
+                                                    placeholder="e.g. Camry"
+                                                    value={fetchParams["vehicle.model"]}
+                                                    onChange={(e) => setFetchParams({ ...fetchParams, "vehicle.model": e.target.value })}
+                                                    className="border-slate-200 focus:border-dealership-primary"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Trim Level</label>
+                                                <Input
+                                                    placeholder="e.g. LE, XLE"
+                                                    value={fetchParams["vehicle.trim"]}
+                                                    onChange={(e) => setFetchParams({ ...fetchParams, "vehicle.trim": e.target.value })}
+                                                    className="border-slate-200 focus:border-dealership-primary"
+                                                />
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Year Range</label>
+                                                <div className="flex items-center gap-2">
+                                                    <Input
+                                                        placeholder="Min"
+                                                        value={fetchParams["vehicle.year_min"]}
+                                                        onChange={(e) => setFetchParams({ ...fetchParams, "vehicle.year_min": e.target.value })}
+                                                        className="border-slate-200 focus:border-dealership-primary"
+                                                    />
+                                                    <span className="text-slate-400">-</span>
+                                                    <Input
+                                                        placeholder="Max"
+                                                        value={fetchParams["vehicle.year_max"]}
+                                                        onChange={(e) => setFetchParams({ ...fetchParams, "vehicle.year_max": e.target.value })}
+                                                        className="border-slate-200 focus:border-dealership-primary"
                                                     />
                                                 </div>
                                             </div>
-                                            <DialogFooter>
-                                                <Button variant="outline" onClick={() => setShowSaveDialog(false)}>Cancel</Button>
-                                                <Button
-                                                    onClick={handleSaveFilter}
-                                                    disabled={isSavingFilter}
-                                                    className="bg-dealership-primary"
-                                                >
-                                                    {isSavingFilter ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Filter"}
-                                                </Button>
-                                            </DialogFooter>
-                                        </DialogContent>
-                                    </Dialog>
 
-                                    <Button
-                                        onClick={handleExecuteFetch}
-                                        disabled={fetching}
-                                        className="bg-dealership-primary hover:bg-dealership-primary/90 text-white min-w-[150px]"
-                                    >
-                                        {fetching ? (
-                                            <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Executing...</>
-                                        ) : (
-                                            <><Zap className="w-4 h-4 mr-2" /> Execute Sync</>
-                                        )}
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        onClick={handleClearForm}
-                                        className="text-slate-500"
-                                    >
-                                        Clear Form
-                                    </Button>
-                                </div>
-                            </CardContent>
-                        </Card>
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Engine Specs</label>
+                                                <Input
+                                                    placeholder="e.g. 2.5L I4"
+                                                    value={fetchParams["vehicle.engine"]}
+                                                    onChange={(e) => setFetchParams({ ...fetchParams, "vehicle.engine": e.target.value })}
+                                                    className="border-slate-200 focus:border-dealership-primary"
+                                                />
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Price Range (USD)</label>
+                                                <div className="flex items-center gap-2">
+                                                    <Input
+                                                        placeholder="Min"
+                                                        value={fetchParams["retailListing.price_min"]}
+                                                        onChange={(e) => setFetchParams({ ...fetchParams, "retailListing.price_min": e.target.value })}
+                                                        className="border-slate-200 focus:border-dealership-primary"
+                                                    />
+                                                    <span className="text-slate-400">-</span>
+                                                    <Input
+                                                        placeholder="Max"
+                                                        value={fetchParams["retailListing.price_max"]}
+                                                        onChange={(e) => setFetchParams({ ...fetchParams, "retailListing.price_max": e.target.value })}
+                                                        className="border-slate-200 focus:border-dealership-primary"
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Max Mileage</label>
+                                                <Input
+                                                    placeholder="e.g. 100000"
+                                                    value={fetchParams["retailListing.miles"]}
+                                                    onChange={(e) => setFetchParams({ ...fetchParams, "retailListing.miles": e.target.value })}
+                                                    className="border-slate-200 focus:border-dealership-primary"
+                                                />
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Transmission</label>
+                                                <Input
+                                                    placeholder="e.g. Automatic"
+                                                    value={fetchParams["vehicle.transmission"]}
+                                                    onChange={(e) => setFetchParams({ ...fetchParams, "vehicle.transmission": e.target.value })}
+                                                    className="border-slate-200 focus:border-dealership-primary"
+                                                />
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Body Style</label>
+                                                <Input
+                                                    placeholder="e.g. SUV, Truck"
+                                                    value={fetchParams["vehicle.bodyStyle"]}
+                                                    onChange={(e) => setFetchParams({ ...fetchParams, "vehicle.bodyStyle": e.target.value })}
+                                                    className="border-slate-200 focus:border-dealership-primary"
+                                                />
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Location (ZIP)</label>
+                                                <Input
+                                                    placeholder="e.g. 90210"
+                                                    value={fetchParams["zip"]}
+                                                    onChange={(e) => setFetchParams({ ...fetchParams, "zip": e.target.value })}
+                                                    className="border-slate-200 focus:border-dealership-primary"
+                                                />
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Radius (Miles)</label>
+                                                <Input
+                                                    placeholder="e.g. 100"
+                                                    value={fetchParams["distance"]}
+                                                    onChange={(e) => setFetchParams({ ...fetchParams, "distance": e.target.value })}
+                                                    className="border-slate-200 focus:border-dealership-primary"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="mt-10 flex flex-col sm:flex-row gap-4">
+                                        <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+                                            <DialogTrigger asChild>
+                                                <Button
+                                                    variant="outline"
+                                                    className="flex-1 py-6 border-2 hover:bg-slate-50"
+                                                    onClick={() => {
+                                                        if (!selectedFilterId) {
+                                                            setFilterTitle("");
+                                                        }
+                                                    }}
+                                                >
+                                                    <Save className="w-5 h-5 mr-2 text-blue-600" />
+                                                    {selectedFilterId ? "Update Saved Filter" : "Save as New Filter"}
+                                                </Button>
+                                            </DialogTrigger>
+                                            <DialogContent>
+                                                <DialogHeader>
+                                                    <DialogTitle>{selectedFilterId ? "Update Filter" : "Save New Filter"}</DialogTitle>
+                                                    <DialogDescription>
+                                                        Give this filter a name so you can easily reuse it later.
+                                                    </DialogDescription>
+                                                </DialogHeader>
+                                                <div className="space-y-4 py-4">
+                                                    <div className="space-y-2">
+                                                        <label className="text-sm font-medium">Filter Title</label>
+                                                        <Input
+                                                            placeholder="e.g. Toyota Camry 2020+"
+                                                            value={filterTitle}
+                                                            onChange={(e) => setFilterTitle(e.target.value)}
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <DialogFooter>
+                                                    <Button variant="outline" onClick={() => setShowSaveDialog(false)}>Cancel</Button>
+                                                    <Button
+                                                        onClick={handleSaveFilter}
+                                                        disabled={isSavingFilter}
+                                                        className="bg-dealership-primary"
+                                                    >
+                                                        {isSavingFilter ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Filter"}
+                                                    </Button>
+                                                </DialogFooter>
+                                            </DialogContent>
+                                        </Dialog>
+
+                                        <Button
+                                            onClick={handleExecuteFetch}
+                                            disabled={fetching}
+                                            className="flex-[2] py-6 text-lg bg-dealership-primary hover:bg-dealership-primary/90 shadow-lg shadow-dealership-primary/20"
+                                        >
+                                            {fetching ? (
+                                                <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Syncing Inventory...</>
+                                            ) : (
+                                                <><Zap className="w-5 h-5 mr-2" /> Execute Sync</>
+                                            )}
+                                        </Button>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
 
                         {/* Saved Filters Section */}
                         {savedFilters.length > 0 && (
-                            <Card className="border-slate-200 shadow-sm overflow-hidden">
-                                <div className="bg-blue-50/50 px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+                            <Card className="border-slate-200 shadow-sm overflow-hidden mt-8">
+                                <div className="bg-dealership-primary/5 px-6 py-4 border-b border-slate-200 flex items-center justify-between">
                                     <div className="flex items-center gap-2">
-                                        <Save className="w-5 h-5 text-blue-600" />
+                                        <Save className="w-5 h-5 text-dealership-primary" />
                                         <h2 className="font-semibold text-slate-800">Saved Filters</h2>
                                     </div>
                                     <Badge variant="outline" className="bg-white">{savedFilters.length} Filters</Badge>
@@ -1149,7 +1175,7 @@ const ThirdPartyFetch = () => {
                                 title="Total Price Value"
                                 value={`$${Number(stats.total).toLocaleString()}`}
                                 icon={Car}
-                                variant="blue"
+                                variant="destructive"
                             />
                             <StatsCard
                                 title="Total Cars Count"

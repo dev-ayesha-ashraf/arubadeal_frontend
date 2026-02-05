@@ -161,10 +161,10 @@ interface SavedFilter {
     limit: number;
     Year?: string;
     Make?: string;
-    "Fuel Type"?: string;
+    fuel_type?: string;
     Transmission?: string;
-    "Sale Title Type"?: string;
-    "Est. Retail Value"?: string;
+    sale_title_type?: string;
+    est_retail_value?: string;
 }
 
 const CopartFetch = () => {
@@ -194,6 +194,14 @@ const CopartFetch = () => {
     const [file, setFile] = useState<File | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    // Sync Flow State
+    const [syncStep, setSyncStep] = useState<"idle" | "uploaded" | "applying" | "success">("idle");
+    const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+    const [showSaveOptions, setShowSaveOptions] = useState(false);
+    const [isCreatingNewFilter, setIsCreatingNewFilter] = useState(false);
+    const [tempFilterTitle, setTempFilterTitle] = useState("");
+    const [filterNameError, setFilterNameError] = useState("");
+
     // Bulk Update State
     const [isBulkUpdateDialogOpen, setIsBulkUpdateDialogOpen] = useState(false);
     const [bulkStatus, setBulkStatus] = useState<string>("Approved");
@@ -209,7 +217,7 @@ const CopartFetch = () => {
 
     // Form state for fetch API
     const [fetchParams, setFetchParams] = useState({
-        limit: 5,
+        limit: 20,
         Year: "",
         Make: "",
         fuel_type: "",
@@ -369,10 +377,10 @@ const CopartFetch = () => {
         const parts = [];
         if (filter.Year) parts.push(filter.Year);
         if (filter.Make) parts.push(filter.Make);
-        if (filter["Fuel Type"]) parts.push(filter["Fuel Type"]);
+        if (filter.fuel_type) parts.push(filter.fuel_type);
         if (filter.Transmission) parts.push(filter.Transmission);
-        if (filter["Sale Title Type"]) parts.push(filter["Sale Title Type"]);
-        if (filter["Est. Retail Value"]) parts.push(filter["Est. Retail Value"]);
+        if (filter.sale_title_type) parts.push(filter.sale_title_type);
+        if (filter.est_retail_value) parts.push(filter.est_retail_value);
         if (filter.limit) parts.push(`Limit: ${filter.limit}`);
 
         return parts.join(" • ") || "No specific criteria";
@@ -380,7 +388,7 @@ const CopartFetch = () => {
 
     const handleClearForm = () => {
         setFetchParams({
-            limit: 5,
+            limit: 20,
             Year: "",
             Make: "",
             fuel_type: "",
@@ -388,45 +396,81 @@ const CopartFetch = () => {
             sale_title_type: "",
             est_retail_value: ""
         });
-        setFile(null);
-        if (fileInputRef.current) {
-            fileInputRef.current.value = "";
-        }
+        // We don't clear the file here because it should be preserved during the sync flow
+        // The file is only cleared when the user explicitly resets the sync step or starts a new sync
         setSelectedFilterId(null);
         setFilterTitle("");
-        toast.info("Form cleared");
+        toast.info("Parameters cleared");
     };
 
     const applyFilter = (filter: SavedFilter) => {
         setFetchParams({
-            limit: filter.limit || 5,
+            limit: filter.limit || 20,
             Year: filter.Year || "",
             Make: filter.Make || "",
-            fuel_type: filter["Fuel Type"] || "",
+            fuel_type: filter.fuel_type || "",
             Transmission: filter.Transmission || "",
-            sale_title_type: filter["Sale Title Type"] || "",
-            est_retail_value: filter["Est. Retail Value"] || ""
+            sale_title_type: filter.sale_title_type || "",
+            est_retail_value: filter.est_retail_value || ""
         });
 
         setSelectedFilterId(filter.id);
         setFilterTitle(filter.title);
+        setIsFilterModalOpen(false);
+        setIsCreatingNewFilter(false); // Close new filter form if open
         toast.info(`Applied filter: ${filter.title}`);
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
             setFile(e.target.files[0]);
+            setSyncStep("uploaded");
+            toast.success("CSV file uploaded successfully");
         }
     };
 
-    const handleExecuteFetch = async () => {
+    const handleExecuteFetch = async (shouldSave: boolean = false) => {
         if (!file) {
             toast.error("Please upload a CSV file");
             return;
         }
 
+        if (shouldSave && !tempFilterTitle.trim()) {
+            setFilterNameError("Filter name required");
+            return;
+        }
+
         try {
             setFetching(true);
+            setSyncStep("applying");
+
+            if (shouldSave) {
+                const requestBody: any = {
+                    title: tempFilterTitle,
+                    limit: Number(fetchParams.limit),
+                    Year: fetchParams.Year,
+                    Make: fetchParams.Make,
+                    fuel_type: fetchParams.fuel_type,
+                    Transmission: fetchParams.Transmission,
+                    sale_title_type: fetchParams.sale_title_type,
+                    est_retail_value: fetchParams.est_retail_value,
+                };
+                for (const key in requestBody) {
+                    if (!requestBody[key] && key !== 'limit') delete requestBody[key];
+                }
+
+                const response = await fetch(`${import.meta.env.VITE_API_URL}/copart_listing/filters`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${localStorage.getItem("access_token") || ""}`,
+                    },
+                    body: JSON.stringify(requestBody),
+                });
+                if (!response.ok) throw new Error("Failed to save filter");
+                fetchSavedFilters();
+            }
+
             const formData = new FormData();
             formData.append("file", file);
 
@@ -452,13 +496,12 @@ const CopartFetch = () => {
                 throw new Error(errData?.detail?.[0]?.msg || "Fetch failed");
             }
 
-            const result = await response.json();
-            toast.success(result.message || "Copart listings processing started in the background.");
-
-            // Wait a bit and refresh since it's a background process
+            setSyncStep("success");
+            toast.success("Sync applied successfully");
             setTimeout(fetchExistingListings, 3000);
         } catch (error: any) {
             toast.error(error.message);
+            setSyncStep("uploaded");
         } finally {
             setFetching(false);
         }
@@ -677,157 +720,358 @@ const CopartFetch = () => {
                                         icon={Zap}
                                         variant="green"
                                     />
-                                    <StatsCard
-                                        title="Fetch Limit"
-                                        value={fetchParams.limit}
-                                        icon={ArrowRight}
-                                        variant="orange"
-                                    />
                                 </div>
 
-                                {/* Fetch Form Card */}
-                                <Card className="border-slate-200 shadow-sm overflow-hidden">
-                                    <div className="bg-dealership-primary/5 px-6 py-4 border-b border-slate-200 flex items-center gap-2">
-                                        <Filter className="w-5 h-5 text-dealership-primary" />
-                                        <h2 className="font-semibold text-slate-800">Fetch Configuration</h2>
-                                    </div>
-                                    <CardContent className="p-6">
-                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-medium text-slate-700">Make</label>
-                                                <Input
-                                                    placeholder="e.g. Toyota"
-                                                    value={fetchParams.Make}
-                                                    onChange={(e) => setFetchParams({ ...fetchParams, Make: e.target.value })}
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-medium text-slate-700">Year</label>
-                                                <Input
-                                                    placeholder="e.g. 2020"
-                                                    value={fetchParams.Year}
-                                                    onChange={(e) => setFetchParams({ ...fetchParams, Year: e.target.value })}
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-medium text-slate-700">Transmission</label>
-                                                <Input
-                                                    placeholder="e.g. Automatic"
-                                                    value={fetchParams.Transmission}
-                                                    onChange={(e) => setFetchParams({ ...fetchParams, Transmission: e.target.value })}
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-medium text-slate-700">Fuel Type</label>
-                                                <Input
-                                                    placeholder="e.g. Gas"
-                                                    value={fetchParams.fuel_type}
-                                                    onChange={(e) => setFetchParams({ ...fetchParams, fuel_type: e.target.value })}
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-medium text-slate-700">Sale Title Type</label>
-                                                <Input
-                                                    placeholder="e.g. CT"
-                                                    value={fetchParams.sale_title_type}
-                                                    onChange={(e) => setFetchParams({ ...fetchParams, sale_title_type: e.target.value })}
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-medium text-slate-700">Est. Retail Value</label>
-                                                <Input
-                                                    placeholder="e.g. 10000-30000"
-                                                    value={fetchParams.est_retail_value}
-                                                    onChange={(e) => setFetchParams({ ...fetchParams, est_retail_value: e.target.value })}
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-medium text-slate-700">Limit</label>
-                                                <Input
-                                                    type="number"
-                                                    placeholder="e.g. 5"
-                                                    value={fetchParams.limit}
-                                                    onChange={(e) => setFetchParams({ ...fetchParams, limit: parseInt(e.target.value) || 5 })}
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-sm font-medium text-slate-700">CSV File <span className="text-red-500">*</span></label>
-                                                <div className="relative">
-                                                    <Input
-                                                        ref={fileInputRef}
-                                                        type="file"
-                                                        accept=".csv"
-                                                        onChange={handleFileChange}
-                                                        className="pl-10"
-                                                    />
-                                                    <FileSpreadsheet className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                                </div>
-                                            </div>
+                                {/* Guided Sync Flow Card */}
+                                <Card className="border-slate-200 shadow-lg overflow-hidden bg-white">
+                                    <div className="bg-dealership-primary/5 px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <RefreshCw className={`w-5 h-5 text-dealership-primary ${fetching ? 'animate-spin' : ''}`} />
+                                            <h2 className="font-bold text-slate-800 text-lg">Copart Inventory Sync</h2>
                                         </div>
-                                        <div className="mt-6 flex justify-end gap-3">
-                                            <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
-                                                <DialogTrigger asChild>
-                                                    <Button
-                                                        variant="outline"
-                                                        className="border-dealership-primary text-dealership-primary hover:bg-dealership-primary/10"
-                                                        onClick={() => {
-                                                            if (!selectedFilterId) {
-                                                                setFilterTitle("");
-                                                            }
-                                                        }}
-                                                    >
-                                                        <Save className="w-4 h-4 mr-2" />
-                                                        {selectedFilterId ? "Update Filter" : "Save Filter"}
-                                                    </Button>
-                                                </DialogTrigger>
-                                                <DialogContent>
-                                                    <DialogHeader>
-                                                        <DialogTitle>{selectedFilterId ? "Update Filter" : "Save New Filter"}</DialogTitle>
-                                                        <DialogDescription>
-                                                            Give this filter a name so you can easily reuse it later.
-                                                        </DialogDescription>
-                                                    </DialogHeader>
-                                                    <div className="space-y-4 py-4">
-                                                        <div className="space-y-2">
-                                                            <label className="text-sm font-medium">Filter Title</label>
-                                                            <Input
-                                                                placeholder="e.g. Toyota Clean Title"
-                                                                value={filterTitle}
-                                                                onChange={(e) => setFilterTitle(e.target.value)}
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                    <DialogFooter>
-                                                        <Button variant="outline" onClick={() => setShowSaveDialog(false)}>Cancel</Button>
-                                                        <Button
-                                                            onClick={handleSaveFilter}
-                                                            disabled={isSavingFilter}
-                                                            className="bg-dealership-primary"
-                                                        >
-                                                            {isSavingFilter ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save Filter"}
-                                                        </Button>
-                                                    </DialogFooter>
-                                                </DialogContent>
-                                            </Dialog>
-
-                                            <Button
-                                                onClick={handleExecuteFetch}
-                                                disabled={fetching}
-                                                className="bg-dealership-primary hover:bg-dealership-primary/90 text-white min-w-[150px]"
-                                            >
-                                                {fetching ? (
-                                                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Executing...</>
-                                                ) : (
-                                                    <><Zap className="w-4 h-4 mr-2" /> Execute Sync</>
-                                                )}
-                                            </Button>
+                                        {syncStep !== 'idle' && (
                                             <Button
                                                 variant="ghost"
-                                                onClick={handleClearForm}
-                                                className="text-slate-500"
+                                                size="sm"
+                                                onClick={() => {
+                                                    setSyncStep('idle');
+                                                    setFile(null);
+                                                    setSelectedFilterId(null);
+                                                    setShowSaveOptions(false);
+                                                }}
+                                                className="text-slate-500 hover:text-red-600"
                                             >
-                                                Clear Form
+                                                Reset Flow
                                             </Button>
+                                        )}
+                                    </div>
+                                    <CardContent className="p-8">
+                                        <div className="max-w-5xl mx-auto space-y-8">
+                                            {syncStep === "idle" && (
+                                                <div className="max-w-xl mx-auto text-center py-12 animate-in fade-in zoom-in duration-300">
+                                                    <div className="w-24 h-24 bg-dealership-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                                                        <Upload className="w-10 h-10 text-dealership-primary" />
+                                                    </div>
+                                                    <h3 className="text-2xl font-bold text-slate-900 mb-2">Start Sync Process</h3>
+                                                    <p className="text-slate-500 mb-10 text-lg">Upload your Copart CSV file to begin syncing inventory.</p>
+                                                    <input
+                                                        type="file"
+                                                        ref={fileInputRef}
+                                                        onChange={handleFileChange}
+                                                        accept=".csv"
+                                                        className="hidden"
+                                                    />
+                                                    <Button
+                                                        size="lg"
+                                                        onClick={() => fileInputRef.current?.click()}
+                                                        className="bg-dealership-primary hover:bg-dealership-primary/90 text-white px-10 py-6 text-xl rounded-xl shadow-xl hover:shadow-2xl transition-all"
+                                                    >
+                                                        Sync Now
+                                                    </Button>
+                                                </div>
+                                            )}
+
+                                            {syncStep === "uploaded" && (
+                                                <div className="py-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                                                    <div className="bg-green-50 border border-green-100 rounded-2xl p-6 mb-8 flex items-center gap-4">
+                                                        <div className="bg-green-500 text-white p-2 rounded-lg">
+                                                            <FileSpreadsheet className="w-6 h-6" />
+                                                        </div>
+                                                        <div className="text-left">
+                                                            <p className="font-bold text-green-900">{file?.name}</p>
+                                                            <p className="text-sm text-green-700">File uploaded and ready for sync</p>
+                                                        </div>
+                                                        <Check className="w-6 h-6 text-green-500 ml-auto" />
+                                                    </div>
+
+                                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                                        <Dialog open={isFilterModalOpen} onOpenChange={setIsFilterModalOpen}>
+                                                            <DialogTrigger asChild>
+                                                                <Button
+                                                                    variant="outline"
+                                                                    className="py-8 text-lg border-2 hover:bg-slate-50"
+                                                                >
+                                                                    <Filter className="w-5 h-5 mr-2 text-blue-600" />
+                                                                    Load Filters
+                                                                </Button>
+                                                            </DialogTrigger>
+                                                            <DialogContent className="max-w-3xl">
+                                                                <DialogHeader>
+                                                                    <DialogTitle>Select a Saved Filter</DialogTitle>
+                                                                    <DialogDescription>
+                                                                        Choose a filter to apply to the uploaded file.
+                                                                    </DialogDescription>
+                                                                </DialogHeader>
+                                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-4 max-h-[60vh] overflow-y-auto">
+                                                                    {savedFilters.length === 0 ? (
+                                                                        <div className="col-span-2 text-center py-12 text-slate-500">
+                                                                            No saved filters found.
+                                                                        </div>
+                                                                    ) : (
+                                                                        savedFilters.map((f) => (
+                                                                            <Card
+                                                                                key={f.id}
+                                                                                className="p-4 cursor-pointer hover:border-dealership-primary transition-colors group"
+                                                                                onClick={() => applyFilter(f)}
+                                                                            >
+                                                                                <div className="flex justify-between items-start mb-2">
+                                                                                    <h4 className="font-bold group-hover:text-dealership-primary line-clamp-1">{f.title}</h4>
+                                                                                    {selectedFilterId === f.id && <Check className="w-4 h-4 text-dealership-primary" />}
+                                                                                </div>
+                                                                                <p className="text-xs text-slate-500 line-clamp-2">{getFilterSummary(f)}</p>
+                                                                            </Card>
+                                                                        ))
+                                                                    )}
+                                                                </div>
+                                                            </DialogContent>
+                                                        </Dialog>
+
+                                                        <Button
+                                                            variant="outline"
+                                                            className="py-8 text-lg border-2 hover:bg-slate-50 border-dashed"
+                                                            onClick={() => {
+                                                                setIsCreatingNewFilter(true);
+                                                                setSelectedFilterId(null);
+                                                                handleClearForm();
+                                                            }}
+                                                        >
+                                                            <Edit2 className="w-5 h-5 mr-2 text-purple-600" />
+                                                            New Filter
+                                                        </Button>
+
+                                                        <Button
+                                                            className="py-8 text-lg bg-dealership-primary hover:bg-dealership-primary/90"
+                                                            onClick={() => {
+                                                                if (selectedFilterId) {
+                                                                    handleExecuteFetch(false);
+                                                                } else {
+                                                                    setShowSaveOptions(true);
+                                                                }
+                                                            }}
+                                                        >
+                                                            <Zap className="w-5 h-5 mr-2" />
+                                                            Apply Sync
+                                                        </Button>
+                                                    </div>
+
+                                                    {selectedFilterId && (
+                                                        <div className="mt-6 p-4 bg-dealership-primary/5 border border-dealership-primary/10 rounded-xl flex items-center justify-between text-left">
+                                                            <div className="text-left">
+                                                                <span className="text-xs font-bold text-dealership-primary uppercase tracking-wider">Active Filter</span>
+                                                                <p className="font-bold text-slate-900">{filterTitle}</p>
+                                                            </div>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() => setSelectedFilterId(null)}
+                                                                className="text-dealership-primary hover:bg-dealership-primary/10"
+                                                            >
+                                                                Remove
+                                                            </Button>
+                                                        </div>
+                                                    )}
+
+                                                    {isCreatingNewFilter && (
+                                                        <Card className="mt-8 border-slate-200 shadow-lg overflow-hidden bg-white text-left animate-in zoom-in-95 duration-200">
+                                                            <div className="bg-dealership-primary/5 px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className="p-2 bg-dealership-primary/10 rounded-lg">
+                                                                        <Edit2 className="w-5 h-5 text-dealership-primary" />
+                                                                    </div>
+                                                                    <div>
+                                                                        <h4 className="font-bold text-slate-900">Configure New Filter</h4>
+                                                                        <p className="text-xs text-slate-500">Set parameters for high-intent inventory sync</p>
+                                                                    </div>
+                                                                </div>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() => setIsCreatingNewFilter(false)}
+                                                                    className="hover:bg-dealership-primary/10"
+                                                                >
+                                                                    <X className="w-4 h-4" />
+                                                                </Button>
+                                                            </div>
+                                                            <div className="p-8 space-y-8">
+                                                                <div className="flex items-center justify-between pb-6 border-b border-slate-100">
+                                                                    <div className="space-y-1">
+                                                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Number of Cars (Sync Count)</label>
+                                                                        <div className="flex items-center gap-3">
+                                                                            <Input
+                                                                                type="number"
+                                                                                placeholder="20"
+                                                                                value={fetchParams.limit}
+                                                                                onChange={(e) => setFetchParams({ ...fetchParams, limit: parseInt(e.target.value) || 0 })}
+                                                                                className="w-24 border-dealership-primary/20 focus:border-dealership-primary font-bold text-dealership-primary"
+                                                                            />
+                                                                            <span className="text-sm text-slate-500 font-medium">listings will be synced</span>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+
+                                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                                                    <div className="space-y-2 lg:col-span-2">
+                                                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Makes (Comma Separated)</label>
+                                                                        <Input
+                                                                            placeholder="e.g. Toyota, Honda, Nissan"
+                                                                            value={fetchParams.Make}
+                                                                            onChange={(e) => setFetchParams({ ...fetchParams, Make: e.target.value })}
+                                                                            className="border-slate-200 focus:border-dealership-primary"
+                                                                        />
+                                                                    </div>
+                                                                    <div className="space-y-2">
+                                                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Year</label>
+                                                                        <Input
+                                                                            placeholder="e.g. 2020"
+                                                                            value={fetchParams.Year}
+                                                                            onChange={(e) => setFetchParams({ ...fetchParams, Year: e.target.value })}
+                                                                            className="border-slate-200 focus:border-dealership-primary"
+                                                                        />
+                                                                    </div>
+                                                                    <div className="space-y-2">
+                                                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Transmission</label>
+                                                                        <Input
+                                                                            placeholder="e.g. Automatic"
+                                                                            value={fetchParams.Transmission}
+                                                                            onChange={(e) => setFetchParams({ ...fetchParams, Transmission: e.target.value })}
+                                                                            className="border-slate-200 focus:border-dealership-primary"
+                                                                        />
+                                                                    </div>
+                                                                    <div className="space-y-2">
+                                                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Fuel Type</label>
+                                                                        <Input
+                                                                            placeholder="e.g. Gas"
+                                                                            value={fetchParams.fuel_type}
+                                                                            onChange={(e) => setFetchParams({ ...fetchParams, fuel_type: e.target.value })}
+                                                                            className="border-slate-200 focus:border-dealership-primary"
+                                                                        />
+                                                                    </div>
+                                                                    <div className="space-y-2">
+                                                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Sale Title Type</label>
+                                                                        <Input
+                                                                            placeholder="e.g. CT"
+                                                                            value={fetchParams.sale_title_type}
+                                                                            onChange={(e) => setFetchParams({ ...fetchParams, sale_title_type: e.target.value })}
+                                                                            className="border-slate-200 focus:border-dealership-primary"
+                                                                        />
+                                                                    </div>
+                                                                    <div className="space-y-2">
+                                                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Est. Retail Value</label>
+                                                                        <Input
+                                                                            placeholder="e.g. 25000"
+                                                                            value={fetchParams.est_retail_value}
+                                                                            onChange={(e) => setFetchParams({ ...fetchParams, est_retail_value: e.target.value })}
+                                                                            className="border-slate-200 focus:border-dealership-primary"
+                                                                        />
+                                                                    </div>
+                                                                </div>
+                                                                <div className="flex flex-col sm:flex-row gap-4">
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        className="flex-1 py-6"
+                                                                        onClick={handleClearForm}
+                                                                    >
+                                                                        Reset Params
+                                                                    </Button>
+                                                                    <Button
+                                                                        className="flex-[2] py-6 text-lg bg-dealership-primary hover:bg-dealership-primary/90 shadow-lg shadow-dealership-primary/20"
+                                                                        onClick={() => {
+                                                                            setIsCreatingNewFilter(false);
+                                                                            setShowSaveOptions(true);
+                                                                        }}
+                                                                    >
+                                                                        Continue to Apply Sync
+                                                                    </Button>
+                                                                </div>
+                                                            </div>
+                                                        </Card>
+                                                    )}
+
+                                                    {showSaveOptions && !selectedFilterId && (
+                                                        <div className="mt-8 p-6 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl animate-in zoom-in-95 duration-200">
+                                                            <h4 className="font-bold text-slate-900 mb-4">No filter selected. How would you like to proceed?</h4>
+                                                            <div className="space-y-4">
+                                                                <div className="flex flex-col gap-2">
+                                                                    <div className="flex gap-2">
+                                                                        <Input
+                                                                            placeholder="Enter filter name to save..."
+                                                                            value={tempFilterTitle}
+                                                                            onChange={(e) => {
+                                                                                setTempFilterTitle(e.target.value);
+                                                                                setFilterNameError("");
+                                                                            }}
+                                                                            className={filterNameError ? "border-red-500" : ""}
+                                                                        />
+                                                                        <Button
+                                                                            className="bg-dealership-primary"
+                                                                            onClick={() => handleExecuteFetch(true)}
+                                                                        >
+                                                                            Save & Sync
+                                                                        </Button>
+                                                                    </div>
+                                                                    {filterNameError && <p className="text-xs text-red-500 text-left pl-1">{filterNameError}</p>}
+                                                                </div>
+                                                                <div className="flex items-center gap-4">
+                                                                    <div className="flex-1 h-px bg-slate-200" />
+                                                                    <span className="text-xs font-medium text-slate-400 uppercase">Or</span>
+                                                                    <div className="flex-1 h-px bg-slate-200" />
+                                                                </div>
+                                                                <Button
+                                                                    variant="outline"
+                                                                    className="w-full"
+                                                                    onClick={() => handleExecuteFetch(false)}
+                                                                >
+                                                                    Apply Without Saving
+                                                                </Button>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            {syncStep === "applying" && (
+                                                <div className="py-12 animate-in fade-in duration-300">
+                                                    <div className="relative w-24 h-24 mx-auto mb-8">
+                                                        <div className="absolute inset-0 border-4 border-dealership-primary/20 rounded-full" />
+                                                        <div className="absolute inset-0 border-4 border-dealership-primary rounded-full border-t-transparent animate-spin" />
+                                                        <Zap className="absolute inset-0 m-auto w-10 h-10 text-dealership-primary animate-pulse" />
+                                                    </div>
+                                                    <h3 className="text-2xl font-bold text-slate-900 mb-2">Syncing Inventory...</h3>
+                                                    <p className="text-slate-500 text-lg">Please wait while we process the CSV and update the database.</p>
+                                                </div>
+                                            )}
+
+                                            {syncStep === "success" && (
+                                                <div className="py-12 animate-in zoom-in duration-300">
+                                                    <div className="w-24 h-24 bg-green-500 text-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-green-200">
+                                                        <Check className="w-12 h-12" />
+                                                    </div>
+                                                    <h3 className="text-3xl font-bold text-slate-900 mb-4">Sync Success!</h3>
+                                                    <p className="text-slate-500 mb-10 text-lg">Inventory has been updated successfully. New listings are now available.</p>
+                                                    <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                                                        <Button
+                                                            size="lg"
+                                                            onClick={() => setActiveTab("cars")}
+                                                            className="bg-dealership-primary hover:bg-dealership-primary/90 text-white px-8"
+                                                        >
+                                                            <Car className="w-5 h-5 mr-2" />
+                                                            View Listings
+                                                        </Button>
+                                                        <Button
+                                                            size="lg"
+                                                            variant="outline"
+                                                            onClick={() => {
+                                                                setSyncStep("idle");
+                                                                setFile(null);
+                                                                setSelectedFilterId(null);
+                                                            }}
+                                                            className="px-8"
+                                                        >
+                                                            New Sync
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     </CardContent>
                                 </Card>

@@ -373,6 +373,12 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin: isAdminProp = fa
   const [isReordering, setIsReordering] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [contactForm, setContactForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    message: ""
+  });
   const [isAccessDenied, setIsAccessDenied] = useState(false);
   const [showLoginDialog, setShowLoginDialog] = useState(false);
   const { user } = useAuth();
@@ -1193,7 +1199,7 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin: isAdminProp = fa
                                   if (!token) throw new Error("Login required");
 
                                   const reorderEndpoint = display?.isCopart
-                                    ? `${import.meta.env.VITE_API_URL}/cars/car_images/update?image_id=${movedImage._id}&new_position=${index}`
+                                    ? `${import.meta.env.VITE_API_URL}/car_images/update?image_id=${movedImage._id}&new_position=${index}`
                                     : `${import.meta.env.VITE_API_URL}/car_listing/update_images?image_id=${movedImage._id}&new_position=${index}`;
 
                                   await fetch(
@@ -1769,32 +1775,63 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ isAdmin: isAdminProp = fa
 
             <Card className="p-6">
               <h2 className="text-xl font-semibold mb-4">Contact Form</h2>
-              <form className="space-y-4" onSubmit={(e) => {
-                e.preventDefault();
-                trackCustomEvent("ContactFormSubmitted", {
-                  listing_id: listing?._id,
-                  listing_title: listing?.title,
-                  dealer_name: dealer?.name,
-                });
-                alert("Message sent (demo).");
-              }}>
+              <form
+                className="space-y-4"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  trackCustomEvent("ContactFormSubmitted", {
+                    listing_id: listing?._id,
+                    listing_title: listing?.title,
+                    dealer_name: dealer?.name,
+                  });
+                  alert("Message sent (demo).");
+                }}
+              >
                 <div>
                   <label className="block text-sm font-medium mb-1">Name</label>
-                  <input type="text" className="w-full p-2 border rounded-md" name="name" />
+                  <input
+                    type="text"
+                    className="w-full p-2 border rounded-md"
+                    value={contactForm.name}
+                    onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })}
+                    required
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Email</label>
-                  <input type="email" className="w-full p-2 border rounded-md" name="email" />
+                  <input
+                    type="email"
+                    className="w-full p-2 border rounded-md"
+                    value={contactForm.email}
+                    onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
+                    required
+                  />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Phone</label>
-                  <input type="tel" className="w-full p-2 border rounded-md" name="phone" />
+                  <label className="block text-sm font-medium mb-1">Phone / WhatsApp</label>
+                  <input
+                    type="tel"
+                    className="w-full p-2 border rounded-md"
+                    value={contactForm.phone}
+                    onChange={(e) => setContactForm({ ...contactForm, phone: e.target.value })}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Message</label>
-                  <textarea className="w-full p-2 border rounded-md" rows={4} name="message"></textarea>
+                  <textarea
+                    className="w-full p-2 border rounded-md"
+                    rows={4}
+                    value={contactForm.message}
+                    onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })}
+                    required
+                  ></textarea>
                 </div>
-                <Button className="w-full" type="submit">Send Message</Button>
+                <Button
+                  className="w-full bg-dealership-primary hover:bg-dealership-primary/90 text-white"
+                  type="submit"
+                >
+                  Send Message
+                </Button>
               </form>
             </Card>
           </div>

@@ -6,7 +6,7 @@ interface StatsCardProps {
     title: string;
     value: string | number;
     icon: LucideIcon;
-    variant?: "blue" | "green" | "orange" | "purple" | "default";
+    variant?: "blue" | "green" | "orange" | "purple" | "destructive" | "default";
     action?: ReactNode;
     description?: string;
     className?: string;
@@ -51,6 +51,12 @@ export default function StatsCard({
             text: "text-purple-600",
             value: "text-purple-900",
             icon: "text-purple-600",
+        },
+        destructive: {
+            card: "bg-gradient-to-br from-red-50 to-red-100 border-red-200",
+            text: "text-dealership-primary",
+            value: "text-dealership-primary",
+            icon: "text-dealership-primary",
         },
     };
 
